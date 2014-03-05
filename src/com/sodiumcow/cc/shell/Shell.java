@@ -13,9 +13,13 @@ import com.cleo.lexicom.certmgr.external.ICertManagerRunTime;
 import com.cleo.lexicom.external.HostType;
 import com.cleo.lexicom.external.ILicense;
 import com.cleo.lexicom.external.ILicenser;
+import com.cleo.lexicom.external.LexiComLogEvent;
+import com.cleo.lexicom.external.LexiComLogListener;
 import com.cleo.lexicom.external.RegistrationInfo;
+import com.sodiumcow.cc.Action;
 import com.sodiumcow.cc.Core;
 import com.sodiumcow.cc.Host;
+import com.sodiumcow.cc.Mailbox;
 import com.sodiumcow.cc.Path;
 import com.sodiumcow.cc.constant.Mode;
 import com.sodiumcow.cc.constant.Packaging;
@@ -27,8 +31,16 @@ import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
 
 public class Shell extends REPL {
-    static       Core      core     = new Core();
+    static Core core = new Core();
     
+    LexiComLogListener reporter = new LexiComLogListener() {
+        public void log(LexiComLogEvent e) {
+            if (!e.getEvent().getNodeName().equals("Stop")) {
+                report(e.getMessage());
+            }
+        }
+    };
+
     @Option(name="h", args="home", comment="installation directory")
     public void home_option(String arg) {
         core.setHome(new File(arg));
@@ -215,7 +227,7 @@ public class Shell extends REPL {
                 }
             }
         } catch (Exception e) {
-            error("could not list host types: "+e.getMessage());
+            error("could not list host types", e);
         }
     }
     
@@ -233,7 +245,7 @@ public class Shell extends REPL {
                     report(alias);
                 }
             } catch (Exception e) {
-                error("error listing certs: "+e.getMessage());
+                error("error listing certs", e);
             }
         }
     }
@@ -255,7 +267,7 @@ public class Shell extends REPL {
                             report(certManager.getFriendlyName(x));
                         }
                     } catch (Exception e) {
-                        error("error listing cert: "+e.getMessage());
+                        error("error listing cert", e);
                     }
                 }
                 /* this way doesn't work because getCAFiles seems to lowercase everything
@@ -270,7 +282,7 @@ public class Shell extends REPL {
                 }
                 */
             } catch (Exception e) {
-                error("error listing certs: "+e.getMessage());
+                error("error listing certs", e);
             }
         }
     }
@@ -294,7 +306,7 @@ public class Shell extends REPL {
                 report(item.toString());
             }
         } catch (Exception e) {
-            error("could not list: "+e.getMessage());
+            error("could not list", e);
         }
     }
 
@@ -307,7 +319,7 @@ public class Shell extends REPL {
                 report(Util.xml2tree(host));
             }
         } catch (Exception e) {
-            error("could not dump hosts: "+e.getMessage());
+            error("could not dump hosts", e);
         }
     }
     
@@ -324,7 +336,7 @@ public class Shell extends REPL {
                     has = core.hasProperty(path, prop);
                     report(path+(has?" has    ":" has no ")+prop);
                 } catch (Exception e) {
-                    error("error checking "+prop+": "+e.getMessage());
+                    error("error checking "+prop, e);
                 }
             }
         }
@@ -340,13 +352,15 @@ public class Shell extends REPL {
                 String[] values;
                 try {
                     values = core.getProperty(path, prop);
-                    if (values.length==1) {
+                    if (values==null) {
+                        report(path+"."+prop+" not found");
+                    } else if (values.length==1) {
                         report(path+"."+prop+"=", values[0]);
                     } else {
                         report(path+"."+prop+"=", values);
                     }
                 } catch (Exception e) {
-                    error("error getting "+prop+": "+e.getMessage());
+                    error("error getting "+prop, e);
                 }
             }
         }
@@ -368,7 +382,7 @@ public class Shell extends REPL {
                     core.save(path);
                 }
             } catch (Exception e) {
-                error("could not set property: "+e.getMessage());
+                error("could not set property", e);
             }
         }
     }
@@ -382,7 +396,7 @@ public class Shell extends REPL {
                 String alias = argv[1];
                 core.rename(path, alias);
             } catch (Exception e) {
-                error("could not rename: "+e.getMessage());
+                error("could not rename", e);
             }
         }
     }
@@ -399,7 +413,7 @@ public class Shell extends REPL {
                     report("lookup["+argv[1]+"]=", found.toString());
                 }
             } catch (Exception e) {
-                error("error looking up mailbox: "+e.getMessage());
+                error("error looking up mailbox", e);
             }
         } else if (argv[0].equalsIgnoreCase("mailbox")) {
             try {
@@ -410,7 +424,7 @@ public class Shell extends REPL {
                     report("lookup["+argv[1]+"]=", found.toString());
                 }
             } catch (Exception e) {
-                error("error looking up mailbox: "+e.getMessage());
+                error("error looking up mailbox", e);
             }
         } else {
             error("usage: lookup (host|mailbox) id");
@@ -441,7 +455,7 @@ public class Shell extends REPL {
                 try {
                     core.save(path);
                 } catch (Exception e) {
-                    error("error saving "+arg+": "+e.getMessage());
+                    error("error saving "+arg, e);
                 }
             }
         }
@@ -452,7 +466,7 @@ public class Shell extends REPL {
             error("usage: multi path [true|false]");
         } else {
             try {
-                Host h = Host.getHost(core, argv[0]);
+                Host h = new Host(core, argv[0]);
                 report("multi ID currently "+h.isMultipleIDsAllowed());
                 if (argv.length==2) {
                     if (argv[1].equalsIgnoreCase("false")) {
@@ -483,7 +497,7 @@ public class Shell extends REPL {
                     }
                     report(arg+" => "+core.getLexiCom().encode(arg));
                 } catch (Exception e) {
-                    error("could not encode: "+e.getMessage());
+                    error("could not encode", e);
                 }
             }
         }
@@ -502,7 +516,7 @@ public class Shell extends REPL {
                     }
                     report(arg+" => "+decoded);
                 } catch (Exception e) {
-                    error("could not decode: "+e.getMessage());
+                    error("could not decode", e);
                 }
             }
         }
@@ -513,7 +527,7 @@ public class Shell extends REPL {
             try {
                 report(arg+" => "+core.getLexiCom().encrypt(arg));
             } catch (Exception e) {
-                error("could not encrypt: "+e.getMessage());
+                error("could not encrypt", e);
             }
         }
     }
@@ -538,6 +552,66 @@ public class Shell extends REPL {
             }
         }
     }
+    @Command(name="send", args="file url", comment="send a file")
+    public void send(String...argv) {
+        if (argv.length!=2) {
+            error("usage: send file url");
+        } else {
+            String fn  = argv[0];
+            String url = argv[1];
+            File   f   = new File(fn);
+            URL    u   = URL.parseURL(url);
+            if (!f.exists()) {
+                error("file not found: "+fn);
+            } else if (!f.isFile()) {
+                error("regular file expected: "+fn);
+            } else if (u==null) {
+                error("could not parse URL: "+url);
+            } else if (u.getType()==null) {
+                error("unrecognized protocol: "+url);
+            } else if (u.getType().local) {
+                error("local protocol not supported: "+url);
+            } else if (u.getUser()==null || u.getPassword()==null) {
+                error("username and password are required (for now): "+url);
+            } else {
+                try {
+                    // Clone and save a preconfigured host/mailbox
+                    String  hostName    = u.getType().toString().toLowerCase()+"://"+u.getAddress();
+                    Host    host        = core.activateHost(u.getType(), hostName);
+                    Mailbox mailbox     = host.getMailboxes()[0];
+                    host.setProperty("Address", u.getAddress());
+                    if (u.getPort()>=0) {
+                        host.setProperty("Port", String.valueOf(u.getPort()));
+                    }
+                    mailbox.setProperty("Username", u.getUser());
+                    mailbox.setProperty("Password", u.getPassword());
+                    host.save();
+                    // Now create a temp action for sending
+                    Action  action      = mailbox.newTempAction("send");
+                    action.addLogListener(reporter);
+                    
+                    boolean ok = mailbox.send(f, u.getFolder(), u.getFilename());
+                    report("send "+(ok?"succeeded":"failed"));
+                    
+                    action.removeLogListener(reporter);
+                } catch (Exception e) {
+                    error("trouble activating host", e);
+                }
+            }
+        }
+    }
+
+    @Command(name="remove", args="path...", comment="remove nodes")
+    public void remove(String...argv) {
+        for (String arg : argv) {
+            try {
+                core.remove(new Path(arg));
+            } catch (Exception e) {
+                error("error removing "+arg, e);
+            }
+        }
+    }
+
     public static void main(String[] argv) {
         Shell repl = new Shell();
         repl.run(argv);

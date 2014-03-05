@@ -50,6 +50,12 @@ public class Path {
         return new Path (parent);
     }
 
+    public Path getChild(PathType type, String name) {
+        String[] child = Arrays.copyOf(path,  path.length+1);
+        child[child.length-1] = name;
+        return new Path (type, child);
+    }
+
     private void setTypeAndPath(PathType type, String...path) {
         if (path.length==0 && type==null ||
             path.length==1 && type==PathType.HOST ||

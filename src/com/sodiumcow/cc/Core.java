@@ -7,7 +7,9 @@ import java.util.HashMap;
 import org.w3c.dom.Document;
 
 import com.cleo.lexicom.external.ILexiCom;
+import com.cleo.lexicom.external.IMailboxController;
 import com.cleo.lexicom.external.LexiComFactory;
+import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.Mode;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Product;
@@ -88,11 +90,20 @@ public class Core {
         String[] names = lexicom.list(type.id, path.getPath());
         Path[] paths = new Path[names.length];
         for (int i=0; i<names.length; i++) {
-            paths[i] = new Path(PathType.HOST, names[i]);
+            paths[i] = path.getChild(type, names[i]);
         }
         return paths;
     }
-    
+
+    public Node[] getHosts() throws Exception {
+        Path[]   paths = list(PathType.HOST, new Path());
+        Node[]   hosts = new Node[paths.length];
+        for (int i=0; i<paths.length; i++) {
+            hosts[i] = new Host(this, paths[i]);
+        }
+        return hosts;
+    }
+
     public Document getHostDocument(Path path) throws Exception {
         connect();
         return lexicom.getDocument(path.getPath()[0]);
@@ -226,6 +237,22 @@ public class Core {
     public void rename(Path path, String alias) throws Exception {
         connect();
         lexicom.rename(path.getType().id, path.getPath(), alias);
+    }
+
+    public void remove(Path path) throws Exception {
+        connect();
+        lexicom.remove(path.getType().id, path.getPath());
+    }
+
+    public Host activateHost (HostType type, String alias) throws Exception {
+        connect();
+        String hostName = lexicom.activateHost(type.template, alias, false);
+        return new Host(this, hostName);
+    }
+
+    public IMailboxController getMailboxController (Path mailbox) throws Exception {
+        connect();
+        return lexicom.getMailboxController(mailbox.getPath());
     }
 
     public String getVersion() throws Exception {

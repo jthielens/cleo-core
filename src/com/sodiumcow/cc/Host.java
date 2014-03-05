@@ -1,25 +1,28 @@
 package com.sodiumcow.cc;
 
+import java.util.Arrays;
+
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Protocol;
 
-public class Host {
-    private Core core;
-    private Path path;
-
-    private Host() {
+public class Host extends Node {
+    public Host(Core core, Path path) {
+        super(core, path);
+        if (path.getType() != PathType.HOST) {
+            throw new IllegalArgumentException();
+        }
     }
 
-    static public Host getHost(Core core, String path) throws Exception {
-        return getHost(core, new Path(PathType.HOST, path));
+    public Host(Core core, String host) {
+        super(core, new Path(PathType.HOST, host));
     }
-    static public Host getHost(Core core, Path path) {
-        Host host = new Host();
-        host.core = core;
-        host.path = path;
-        return host;
+
+    public Mailbox[] getMailboxes() throws Exception {
+        Node[] nodes = getChildren(PathType.MAILBOX);
+        return (Mailbox[]) Arrays.copyOf(nodes, nodes.length, Mailbox[].class);
     }
-    
+
+    // hmm below this line---
     public boolean isMultipleIDsAllowed() throws Exception {
         return core.getLexiCom().isMultipleIDsAllowed(path.getType().id, path.getPath());
     }

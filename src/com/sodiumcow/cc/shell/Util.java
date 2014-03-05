@@ -114,26 +114,32 @@ public class Util {
             boolean prune = false;
             switch (p.getNodeType()) {
             case Node.ELEMENT_NODE:
+                // print out Name
                 s.append(prefix)
                  .append(p.getNodeName());
+                // append {attrs} if there are any
                 Map<String,String> attrs = attrs2map(p);
                 if (!attrs.isEmpty()) {
                     s.append(attrs.toString());
                 }
+                // :, but will it be "text" or nesting deeper?
                 s.append(':');
+                // if there is a single non-empty TEXT child, it's
+                // <thing>stuff</thing>, so make it thing:stuff
                 Node child = p.getFirstChild();
                 if (child != null &&
                     child.getNodeType()==Node.TEXT_NODE &&
                     child.getNextSibling() == null) {
                     String text = child.getNodeValue().trim();
                     if (!text.isEmpty()) {
-                        prune = true;
+                        prune = true; // suppress the child treewalker
                         s.append(text);
                     }
                 }
                 s.append("\n");
                 break;
             case Node.TEXT_NODE:
+                // print out the "string", skipping empties
                 String text = p.getNodeValue().trim();
                 if (!text.isEmpty()) {
                     s.append(prefix)
@@ -144,6 +150,7 @@ public class Util {
                 }
                 break;
             default:
+                // don't really expect any of these, so just dump it
                 s.append(prefix)
                  .append("type=")
                  .append(p.getNodeType())
@@ -152,12 +159,15 @@ public class Util {
                  .append("\n");
             }
             if (!prune && (next = p.getFirstChild()) != null) {
+                // deeper (remember thing:stuff though)
                 tree.push(p);
                 p = next;
                 prefix.append(". ");
             } else if ((next = p.getNextSibling()) != null) {
+                // to the right
                 p = next;
             } else {
+                // end of the row, pop up and to the right, and up...
                 while (!tree.isEmpty() && next == null) {
                     next = tree.pop().getNextSibling();
                     prefix.delete(0,2);
