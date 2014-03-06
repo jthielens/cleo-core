@@ -1,13 +1,17 @@
 package com.sodiumcow.cc.shell;
 
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -20,6 +24,7 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
 import com.cleo.lexicom.external.ILicense;
+import com.sodiumcow.repl.REPL;
 
 public class Util {
 
@@ -176,5 +181,51 @@ public class Util {
             }
         } while (p != null);
         return s.toString();
+    }
+
+    public static void report_bean(REPL repl, Object o) {
+        // pass 1: calculate max
+        int max = 1;
+        String name;
+        for (Method method : o.getClass().getMethods()) {
+            name = method.getName();
+            if (name.startsWith("get") && method.getParameterTypes().length==0) {
+                if (name.length()>max) max=name.length();
+            }
+        }
+        // pass 2: report
+        for (Method method : o.getClass().getMethods()) {
+            name = method.getName();
+            if (name.startsWith("get") && method.getParameterTypes().length==0) {
+                char[] attr = Arrays.copyOf((name.substring(3,4).toLowerCase()+
+                                             name.substring(4)).toCharArray(),
+                                            max-2);  // -2 = -"get" + " "
+                Arrays.fill(attr, name.length()-3, attr.length, ' ');
+                String prefix = new String(attr);
+                              
+                try {
+                    if (method.getReturnType().equals(String.class)) {
+                        String value = (String) method.invoke(o);
+                        repl.report(prefix, value);
+                    } else if (method.getReturnType().equals(String[].class)) {
+                        String[] value = (String[]) method.invoke(o);
+                        repl.report(prefix, value);
+                    } else if (method.getReturnType().equals(Integer.TYPE)) {
+                        int value = (Integer) method.invoke(o);
+                        repl.report(prefix, String.valueOf(value));
+                    } else if (method.getReturnType().equals(Properties.class)) {
+                        Properties value  = (Properties) method.invoke(o);
+                        String[]   values = new String[value.size()];
+                        int        i      = 0;
+                        for (Entry<Object,Object> v : value.entrySet()) {
+                            values[i++] = (String)v.getKey()+"="+(String)v.getValue();
+                        }
+                        repl.report(prefix, values);
+                    }
+                } catch (Exception e) {
+                    repl.error("error invoking "+method.getName(), e);
+                }
+            }
+        }
     }
 }

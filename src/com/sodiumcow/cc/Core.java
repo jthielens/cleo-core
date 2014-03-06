@@ -6,6 +6,7 @@ import java.util.HashMap;
 
 import org.w3c.dom.Document;
 
+import com.cleo.lexicom.LexiComException;
 import com.cleo.lexicom.external.ILexiCom;
 import com.cleo.lexicom.external.IMailboxController;
 import com.cleo.lexicom.external.LexiComFactory;
@@ -95,18 +96,49 @@ public class Core {
         return paths;
     }
 
-    public Node[] getHosts() throws Exception {
+    public Host[] getHosts() throws Exception {
         Path[]   paths = list(PathType.HOST, new Path());
-        Node[]   hosts = new Node[paths.length];
+        Host[]   hosts = new Host[paths.length];
         for (int i=0; i<paths.length; i++) {
             hosts[i] = new Host(this, paths[i]);
         }
         return hosts;
     }
 
+    public Host getHost(String alias) throws Exception {
+        Path test = new Path(PathType.HOST, alias);
+        if (exists(test)) {
+            return new Host(this, test);
+        }
+        return null;
+    }
+
+    public Host findHost(HostType type, String address, int port) throws Exception {
+        for (Host h : getHosts()) {
+            if (h.getHostType()==type &&
+                h.matchPropertyIgnoreCase("Address", address) &&
+                (port<0 || h.matchProperty("Port", String.valueOf(port)))) {
+                return h;
+            }
+        }
+        return null;
+    }
+
     public Document getHostDocument(Path path) throws Exception {
         connect();
         return lexicom.getDocument(path.getPath()[0]);
+    }
+
+    public boolean exists(Path path) throws Exception {
+        try {
+            hasProperty(path, "alias");
+            return true;
+        } catch (LexiComException e) {
+            if (e.getMessage().matches("Element path '.*' not found")) {
+                return false;
+            }
+            throw (e);
+        }
     }
 
     public boolean hasProperty(Path path, String property) throws Exception {
@@ -253,6 +285,23 @@ public class Core {
     public IMailboxController getMailboxController (Path mailbox) throws Exception {
         connect();
         return lexicom.getMailboxController(mailbox.getPath());
+    }
+    
+    public String encode(String s) throws Exception {
+        connect();
+        return lexicom.encode(s);
+    }
+    public String decode(String s) throws Exception {
+        connect();
+        return lexicom.decode(s);
+    }
+    public String encrypt(String s) throws Exception {
+        connect();
+        return lexicom.encrypt(s);
+    }
+    public String decrypt(String s) throws Exception {
+        connect();
+        return lexicom.decrypt(s);
     }
 
     public String getVersion() throws Exception {

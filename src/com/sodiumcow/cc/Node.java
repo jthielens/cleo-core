@@ -25,6 +25,10 @@ public class Node {
         }
     }
 
+    public String getPathName() {
+        return path.toString();
+    }
+
     public Node(Core core, Path path) {
         this.core = core;
         this.path = path;
@@ -38,12 +42,38 @@ public class Node {
         return core.getProperty(path, property);
     }
 
+    public boolean matchPropertyIgnoreCase(String property, String match) throws Exception {
+        String[] values = getProperty(property);
+        if (values!=null) {
+            for (String value : values) {
+                if (value.equalsIgnoreCase(match)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    public boolean matchProperty(String property, String match) throws Exception {
+        String[] values = getProperty(property);
+        if (values!=null) {
+            for (String value : values) {
+                if (value.equals(match)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public void setProperty(String property, String value) throws Exception {
         core.setProperty(path, property, value);
     }
 
     public void setProperty(String property, String[] values) throws Exception {
         core.setProperty(path, property, values);
+    }
+
+    public boolean exists() throws Exception {
+        return core.exists(path);
     }
 
     public Node[] getChildren(PathType type) throws Exception {
@@ -57,6 +87,9 @@ public class Node {
 
     public void save() throws Exception {
         core.save(path);
+    }
+    public void remove() throws Exception {
+        core.remove(path);
     }
 
     public void addLogListener(LexiComLogListener listener) throws Exception {

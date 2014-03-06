@@ -9,6 +9,7 @@ import java.util.Enumeration;
 
 import org.w3c.dom.Document;
 
+import com.cleo.lexicom.beans.Options;
 import com.cleo.lexicom.certmgr.external.ICertManagerRunTime;
 import com.cleo.lexicom.external.HostType;
 import com.cleo.lexicom.external.ILicense;
@@ -324,7 +325,7 @@ public class Shell extends REPL {
     }
     
     @Command(name="has", args="path property ...", comment="does path have property...")
-    public void has_command(String...argv) {
+    public void has(String...argv) {
         if (argv.length<=1) {
             error("usage: has path property ...");
         } else {
@@ -342,7 +343,7 @@ public class Shell extends REPL {
         }
     }
     @Command(name="get", args="path property ...", comment="get property...")
-    public void get_command(String...argv) {
+    public void get(String...argv) {
         if (argv.length<=1) {
             error("usage: get path property ...");
         } else {
@@ -383,6 +384,17 @@ public class Shell extends REPL {
                 }
             } catch (Exception e) {
                 error("could not set property", e);
+            }
+        }
+    }
+    @Command(name="exists", args="path...", comment="check for object")
+    public void exists(String...argv) {
+        for (String arg : argv) {
+            try {
+                boolean exists = core.exists(new Path(arg));
+                report(arg+(exists?" exists":" doesn't exist"));
+            } catch (Exception e) {
+                error("error checking "+arg, e);
             }
         }
     }
@@ -495,7 +507,7 @@ public class Shell extends REPL {
                     if (reverse) {
                         arg = new StringBuilder(arg).reverse().toString();
                     }
-                    report(arg+" => "+core.getLexiCom().encode(arg));
+                    report(arg+" => "+core.encode(arg));
                 } catch (Exception e) {
                     error("could not encode", e);
                 }
@@ -510,7 +522,7 @@ public class Shell extends REPL {
                 reverse = true;
             } else {
                 try {
-                    String decoded = core.getLexiCom().decode(arg);
+                    String decoded = core.decode(arg);
                     if (reverse) {
                         decoded = new StringBuilder(decoded).reverse().toString();
                     }
@@ -525,7 +537,7 @@ public class Shell extends REPL {
     public void encrypt_command(String...argv) {
         for (String arg : argv) {
             try {
-                report(arg+" => "+core.getLexiCom().encrypt(arg));
+                report(arg+" => "+core.encrypt(arg));
             } catch (Exception e) {
                 error("could not encrypt", e);
             }
@@ -535,15 +547,14 @@ public class Shell extends REPL {
     public void decrypt_command(String...argv) {
         for (String arg : argv) {
             try {
-                report(arg+" => "+core.getLexiCom().decrypt(arg));
+                report(arg+" => "+core.decrypt(arg));
             } catch (Exception e) {
                 error("could not decrypt", e);
             }
         }
     }
-    @Command(name="huh", comment="show stuff")
+    @Command(name="url", args="url...", comment="parse url string(s)")
     public void huh(String...argv) {
-        //report("bean separator="+LexUtil.beanSeparator);
         for (String arg : argv) {
             try {
                 report(URL.parseURL(arg).dump());
@@ -575,16 +586,32 @@ public class Shell extends REPL {
                 error("username and password are required (for now): "+url);
             } else {
                 try {
-                    // Clone and save a preconfigured host/mailbox
-                    String  hostName    = u.getType().toString().toLowerCase()+"://"+u.getAddress();
-                    Host    host        = core.activateHost(u.getType(), hostName);
-                    Mailbox mailbox     = host.getMailboxes()[0];
-                    host.setProperty("Address", u.getAddress());
-                    if (u.getPort()>=0) {
-                        host.setProperty("Port", String.valueOf(u.getPort()));
+                    // Find matching host/mailbox or clone a preconfigured one
+                    String  hostname    = u.getType().toString().toLowerCase()+"://"+u.getAddress();
+                    Host    host        = core.findHost(u.getType(), u.getAddress(), u.getPort());
+                    boolean new_host;
+                    Mailbox mailbox     = null;
+                    if (host==null) {
+                        host = core.activateHost(u.getType(), hostname);
+                        host.setProperty("Address", u.getAddress());
+                        if (u.getPort()>=0) {
+                            host.setProperty("Port", String.valueOf(u.getPort()));
+                        }
+                        report("created host "+host.getPathName());
+                        new_host=true;
+                    } else {
+                        report("reusing host "+host.getPathName());
+                        new_host=false;
+                        mailbox = host.findMailbox(u.getUser(), u.getPassword());
                     }
-                    mailbox.setProperty("Username", u.getUser());
-                    mailbox.setProperty("Password", u.getPassword());
+                    if (mailbox==null) {
+                        mailbox = host.getMailboxes()[0];
+                        report("adopting mailbox "+mailbox.getPathName());
+                        mailbox.setProperty("Username", u.getUser());
+                        mailbox.setProperty("Password", u.getPassword());
+                    } else {
+                        report("reusing mailbox "+mailbox.getPathName());
+                    }
                     host.save();
                     // Now create a temp action for sending
                     Action  action      = mailbox.newTempAction("send");
@@ -594,6 +621,9 @@ public class Shell extends REPL {
                     report("send "+(ok?"succeeded":"failed"));
                     
                     action.removeLogListener(reporter);
+                    if (new_host) {
+                        host.remove();
+                    }
                 } catch (Exception e) {
                     error("trouble activating host", e);
                 }
@@ -612,6 +642,15 @@ public class Shell extends REPL {
         }
     }
 
+    @Command(name="opts", comment="display options")
+    public void opts(String...argv) {
+        try {
+            Options o = core.getLexiCom().getOptions();
+            Util.report_bean(this, o);
+        } catch (Exception e) {
+            error("error getting options", e);
+        }
+    }
     public static void main(String[] argv) {
         Shell repl = new Shell();
         repl.run(argv);

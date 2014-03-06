@@ -50,6 +50,7 @@ public class REPL {
         Arrays.fill(pad,  ' ');
         String spad = new String(pad);
 
+        if (s==null) s="null";
         String[] lines = s.split("\n");
         for (String line : lines) {
             print(prefix+line);
@@ -58,6 +59,13 @@ public class REPL {
     }
     
     public void report(String prefix, String[] ss) {
+        if (ss==null) {
+            report(prefix, "null");
+            return;
+        } else if (ss.length==0) {
+            report(prefix, "[]");
+            return;
+        }
         prefix     = "    "+prefix;
         char[] pad = prefix.toCharArray();
         Arrays.fill(pad,  ' ');

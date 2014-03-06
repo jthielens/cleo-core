@@ -2,6 +2,7 @@ package com.sodiumcow.cc;
 
 import java.util.Arrays;
 
+import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Protocol;
 
@@ -22,6 +23,24 @@ public class Host extends Node {
         return (Mailbox[]) Arrays.copyOf(nodes, nodes.length, Mailbox[].class);
     }
 
+    public Mailbox getMailbox(String alias) throws Exception {
+        Path test = path.getChild(PathType.MAILBOX, alias);
+        if (core.exists(test)) {
+            return new Mailbox(core, test);
+        }
+        return null;
+    }
+
+    public Mailbox findMailbox(String username, String password) throws Exception {
+        for (Mailbox m : getMailboxes()) {
+            if (m.matchProperty("Username", username) &&
+                m.matchProperty("Password", core.encode(password))) {
+                return m;
+            }
+        }
+        return null;
+    }
+
     // hmm below this line---
     public boolean isMultipleIDsAllowed() throws Exception {
         return core.getLexiCom().isMultipleIDsAllowed(path.getType().id, path.getPath());
@@ -35,5 +54,8 @@ public class Host extends Node {
 
     public Protocol getProtocol() throws Exception {
         return Protocol.valueOf(core.getLexiCom().getHostProtocol(path.getPath()[0]));
+    }
+    public HostType getHostType() throws Exception {
+        return HostType.fromTransport(getProperty("transport")[0]);
     }
 }

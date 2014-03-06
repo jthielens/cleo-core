@@ -2,6 +2,7 @@ package com.sodiumcow.cc;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.Arrays;
 import java.util.Properties;
 
 import com.cleo.lexicom.external.IMailboxController;
@@ -21,6 +22,19 @@ public class Mailbox extends Node {
 
     public Mailbox(Core core, String host, String mailbox) {
         super(core, new Path(PathType.MAILBOX, host, mailbox));
+    }
+
+    public Action[] getActions() throws Exception {
+        Node[] nodes = getChildren(PathType.ACTION);
+        return (Action[]) Arrays.copyOf(nodes, nodes.length, Action[].class);
+    }
+
+    public Action getAction(String alias) throws Exception {
+        Path test = path.getChild(PathType.ACTION, alias);
+        if (core.exists(test)) {
+            return new Action(core, test);
+        }
+        return null;
     }
 
     private synchronized void connect() throws Exception {
