@@ -1,12 +1,15 @@
-package com.sodiumcow.cc.shell;
+package com.sodiumcow.cc;
 
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.sodiumcow.cc.constant.HostType;
+import com.sodiumcow.cc.exception.URLResolutionException;
 
 public class URL {
+    private String   raw;
+
     private HostType type;
     private String   address;
     private int      port;
@@ -18,7 +21,10 @@ public class URL {
     private String   password;
     
     private HashMap<String,String> options;
-    
+
+    private Host    host;
+    private Mailbox mailbox;
+
     public HostType getType() {
         return type;
     }
@@ -51,6 +57,14 @@ public class URL {
         return options;
     }
 
+    public Host getHost() {
+        return host;
+    }
+
+    public Mailbox getMailbox() {
+        return mailbox;
+    }
+
     public String dump() {
         return (type==null?"null":type.toString())+
                "://"+address+":"+port+
@@ -79,6 +93,7 @@ public class URL {
             String filename = m.group(8);
             
             URL url = new URL();
+            url.raw = s;
             try {
                 url.type = HostType.valueOf(protocol.toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -110,4 +125,29 @@ public class URL {
         }
     }
 
+    public void resolve(Core core) throws URLResolutionException, Exception {
+        // check basic preconditions
+        if (type==null) {
+            throw new URLResolutionException("unrecognized protocol: "+raw);
+        } else if (type.local) {
+            throw new URLResolutionException("local protocol not supported: "+raw);
+        } else if (user==null || password==null) {
+            throw new URLResolutionException("username and password are required (for now): "+raw);
+        }
+
+        // Find matching host/mailbox or clone a preconfigured one
+        String hostname = type.toString().toLowerCase()+"://"+address;
+        host            = core.findHost(type, address, port);
+        mailbox         = null;
+        if (host==null) {
+            host = core.activateHost(type, hostname);
+            host.setProperty("Address", address);
+            if (port>=0) {
+                host.setProperty("Port", String.valueOf(port));
+            }
+        } else {
+            mailbox = host.findMailbox(user, password);
+        }
+        host.save();
+    }
 }

@@ -25,8 +25,8 @@ public class Node {
         }
     }
 
-    public String getPathName() {
-        return path.toString();
+    public Path getPath() {
+        return path;
     }
 
     public Node(Core core, Path path) {
@@ -90,6 +90,10 @@ public class Node {
     }
     public void remove() throws Exception {
         core.remove(path);
+    }
+    public void rename(String alias) throws Exception {
+        core.rename(path, alias);
+        path.setAlias(alias);
     }
 
     public void addLogListener(LexiComLogListener listener) throws Exception {

@@ -7,13 +7,21 @@ import java.util.regex.Pattern;
 import com.sodiumcow.cc.constant.PathType;
 
 public class Path {
-    private String       path[];
+    private String   path[];
     private PathType type;
 
     public String[] getPath() {
         return path;
     }
+
+    public String getAlias() {
+        return path[path.length-1];
+    }
     
+    public void setAlias(String alias) {
+        path[path.length-1] = alias;
+    }
+
     public PathType getType() {
         return type;
     }
@@ -40,6 +48,10 @@ public class Path {
             // can't happen since that's an exhaustive list, but to keep Eclipse happy:
             return "";
         }
+    }
+
+    public Path getHost() {
+        return new Path(PathType.HOST, path[0]);
     }
 
     public Path getParent() {

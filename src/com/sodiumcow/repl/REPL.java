@@ -3,11 +3,15 @@ package com.sodiumcow.repl;
 import static java.lang.Character.isWhitespace;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.TreeMap;
 
 import com.sodiumcow.repl.annotation.Command;
@@ -16,41 +20,59 @@ import com.sodiumcow.repl.annotation.Option;
 public class REPL {
 
     public void error(String e) {
-        System.out.println(e);
+        if (e!=null) {
+            System.out.println(e);
+        }
     }
     
-    public void error(Exception e) {
+    public void error(Throwable e) {
         error(e.toString());
     }
     
-    public void error(String s, Exception e) {
+    public void error(String s, Throwable e) {
         e.printStackTrace();
-        String m = e.getMessage();
-        if (m != null) {
-            s = s+": "+m;
+        if (s!=null) {
+            String m = e.getMessage();
+            if (m!=null) {
+                s = s+": "+m;
+            }
+            System.out.println(s);
         }
-        System.out.println(s);
     }
 
     public void prompt(String s) {
-        System.out.print(s);
+        if (System.console()!=null && s!=null) {
+            System.out.print(s);
+        }
     }
     
     public void print(String s) {
-        System.out.println(s);
+        if (s!=null) {
+            System.out.println(s);
+        }
     }
     
     public void report(String s) {
-        print("    "+s);
+        report(null, s);
+    }
+    
+    public void report(String[] s) {
+        report(null, s);
+    }
+    
+    public void report(List<String> s) {
+        report(null, s.toArray(new String[s.size()]));
     }
     
     public void report(String prefix, String s) {
+        if (prefix==null) prefix="";
+        if (     s==null) s="null";
+
         prefix     = "    "+prefix;
         char[] pad = prefix.toCharArray();
         Arrays.fill(pad,  ' ');
-        String spad = new String(pad);
+        String spad = new String(pad); // i.e. spad = ' ' x prefix.length
 
-        if (s==null) s="null";
         String[] lines = s.split("\n");
         for (String line : lines) {
             print(prefix+line);
@@ -59,31 +81,89 @@ public class REPL {
     }
     
     public void report(String prefix, String[] ss) {
+        boolean no_prefix = prefix==null;
         if (ss==null) {
             report(prefix, "null");
             return;
         } else if (ss.length==0) {
             report(prefix, "[]");
             return;
+        } else if (no_prefix) {
+            prefix = "";
         }
         prefix     = "    "+prefix;
         char[] pad = prefix.toCharArray();
         Arrays.fill(pad,  ' ');
         String spad = new String(pad);
         char   c    = '[';
-        ss[ss.length-1] = ss[ss.length-1]+"]";
+        if (!no_prefix) {
+            ss[ss.length-1] = ss[ss.length-1]+"]";
+        }
 
         for (String s : ss) {
+            if (s==null) s="null";
             String[] lines = s.split("\n");
             for (String line : lines) {
-                print(prefix+c+line);
+                if (no_prefix) {
+                    print(prefix+line);
+                } else {
+                    print(prefix+c+line);
+                }
                 c = ' ';
                 prefix = spad;
             }
             c = ',';
         }
     }
-    
+
+    public void report(String prefix, List<String> s) {
+        report(prefix, s.toArray(new String[s.size()]));
+    }
+
+    public void report(String[] columns, String[][] values) {
+        // calculate widths
+        int[]     widths = new int[columns.length];
+        boolean[] digits = new boolean[columns.length];
+        for (int c=0; c<columns.length; c++) {
+            widths[c] = columns[c].length();
+            digits[c] = true;
+            for (int r=0; r<values.length; r++) {
+                String x = values[r][c];
+                if (x==null) {
+                    values[r][c] = "";
+                } else {
+                    if (x.length() > widths[c]) {
+                        widths[c] = x.length();
+                    }
+                    if (!x.matches("\\s*\\d*")) {
+                        digits[c] = false;
+                    }
+                }
+            }
+        }
+        // create format string
+        StringBuilder format = new StringBuilder();
+        StringBuilder line   = new StringBuilder();
+        for (int c=0; c<columns.length; c++) {
+            format.append('%');
+            if (!digits[c]) format.append('-');
+            format.append(widths[c]).append("s ");
+            for (int x=0; x<widths[c]; x++) line.append('-');
+            line.append(' ');
+        }
+        if (format.length()>0) {
+            format.setLength(format.length()-1);
+            line.setLength(line.length()-1);
+        }
+        // done
+        String f = format.toString();
+        report(String.format(f, (Object[]) columns));
+        report(line.toString());
+        for (int r=0; r<values.length; r++) {
+            report(String.format(f, (Object[]) values[r]));
+        }
+    }
+
     public boolean connect() {
         return true;
     }
@@ -222,7 +302,43 @@ public class REPL {
         return cmd.toArray(new String[cmd.size()]);
     }
 
+    private String slurp(InputStream is) {
+        StringBuilder output = new StringBuilder();
+        try {
+            InputStreamReader isr = new InputStreamReader(is);
+            char[] buffer = new char[1024];
+            int length;
+            while ((length = isr.read(buffer)) > 0) {
+                output.append(buffer, 0, length);
+            }
+        } catch (Exception e) {
+            // so what
+        }
+        return output.toString();
+    }
+
+    public String bang(String[] argv) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder (argv);
+            Process p = pb.start(); // Runtime.getRuntime().exec(argv);
+            p.getOutputStream().close();
+            String errors = slurp(p.getErrorStream());
+            String output = slurp(p.getInputStream());
+            return output + errors;
+        } catch (IOException e) {
+            error("error: ", e);
+            return "";
+        }
+    }
+
     private void command(String[] argv) {
+        // look for !shell
+        if (argv.length>0 && argv[0].startsWith("!")) {
+            argv[0] = argv[0].substring(1);
+            System.out.print(bang(argv));
+            return;
+        }
+
         // splice out options
         argv = process_options(argv);
 
@@ -243,6 +359,9 @@ public class REPL {
                 }
                 try {
                     method.invoke(this, new Object[] {arguments});
+                } catch (InvocationTargetException e) {
+                    error(e);
+                    error("caused by", e.getCause());
                 } catch (Exception e) {
                     error(e);
                 }
@@ -283,7 +402,9 @@ public class REPL {
         ArrayList<String> strings = new ArrayList<String>();
         StringBuilder     sb      = new StringBuilder();
         
-        char mode = ' ';
+        char mode  = ' ';
+        int  hex_count = -1;
+        int  hex_value = 0;
         for (char c : s.toCharArray()) {
             switch (mode) {
             case ' ': // skipping whitespace, anything interesting starts a token
@@ -299,11 +420,32 @@ public class REPL {
             case '\\': // append quoted c and go back to collecting a token
             case '(':  // hack for \ inside '
             case '#':  // hack for \ inside "
-                sb.append(c);
-                if (mode=='\\') {
-                    mode = '.';
+                if (hex_count >= 0) {
+                    int value = Character.digit(c, 16);
+                    hex_value *= 16;
+                    if (value > 0) { // treat non-hex as 0
+                        hex_value += value;
+                    }
+                    hex_count++;
+                    if (hex_count==2) {
+                        sb.appendCodePoint(hex_value);
+                        hex_count = -1;
+                        if (mode=='\\') {
+                            mode = '.';
+                        } else {
+                            mode--; // back to ' or "
+                        }
+                    }
+                } else if (c=='x'||c=='X') {
+                    hex_count = 0;
+                    hex_value = 0;
                 } else {
-                    mode--; // back to ' or "
+                    sb.append(c);
+                    if (mode=='\\') {
+                        mode = '.';
+                    } else {
+                        mode--; // back to ' or "
+                    }
                 }
                 break;
             case '"':  // append c until a match is found
@@ -377,11 +519,11 @@ public class REPL {
                 help = false;
                 prompt("[] ");
                 command=i.readLine();
-                if (command==null) break;
-                //String[][]commands = split_commands(command.trim().split("\\s+"));
+                if (command==null) break;                  // EOF -- done
+                if (command.matches("\\s*#.*")) continue;  // Comment -- skip
                 String[][]commands = split_commands(split_string(command));
                 if (commands.length==0) {
-                    command(new String[] {"quit"});
+                    // command(new String[] {"quit"}); // auto-quit?
                 } else {
                     for (String[] cmd : commands) {
                         command(cmd);

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <!-- Configuration of the Ant build system to generate a Jar file --> 
-<project name="cc-license" default="CreateJar">
+<project name="cc-shell" default="CreateJar">
   <target name="CreateJar" description="Create Jar file">
-    <jar jarfile="dist/cc-license.jar" basedir="bin" includes="**/*.class" />
-    <copy file="dist/cc-license.jar" todir="${user.home}/vagrant/harmony" />
+    <jar jarfile="dist/cc-shell.jar" basedir="bin" includes="**/*.class" />
+    <copy file="dist/cc-shell.jar" todir="${user.home}/vagrant/harmony" />
   </target>
 </project>

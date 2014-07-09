@@ -2,11 +2,22 @@ package com.sodiumcow.cc;
 
 import java.util.Arrays;
 
+import com.sodiumcow.cc.constant.HostSource;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Protocol;
 
 public class Host extends Node {
+    public static final String TEMPLATE_MAILBOX = "template mailbox";
+    
+    private HostSource source = HostSource.NEW;
+    public HostSource getSource() {
+        return source;
+    }
+    public void setSource(HostSource source) {
+        this.source = source;
+    }
+
     public Host(Core core, Path path) {
         super(core, path);
         if (path.getType() != PathType.HOST) {
@@ -31,10 +42,32 @@ public class Host extends Node {
         return null;
     }
 
+    public Mailbox cloneMailbox(String template, String alias) throws Exception {
+        Path template_path = path.getChild(PathType.MAILBOX, template);
+        if (template_path!=null) {
+            Path mailbox  = core.clone(template_path, alias);
+            return new Mailbox(core, mailbox);
+        } else {
+            return createMailbox(alias);
+        }
+    }
+
+    public Mailbox cloneMailbox(String alias) throws Exception {
+        return cloneMailbox(TEMPLATE_MAILBOX, alias);
+    }
+
+    public Mailbox createMailbox(String alias) throws Exception {
+        Path mailbox = core.create(path.getChild(PathType.MAILBOX, alias));
+        return new Mailbox(core, mailbox);
+    }
+
     public Mailbox findMailbox(String username, String password) throws Exception {
+        boolean isHttp = getProtocol()==Protocol.HTTP_CLIENT;
+        String userproperty = isLocal() ? "alias" : isHttp ? "Authusername": "Username";
+        String passwordproperty = isHttp ? "Authpassword": "Password";
         for (Mailbox m : getMailboxes()) {
-            if (m.matchProperty("Username", username) &&
-                m.matchProperty("Password", core.encode(password))) {
+            if (m.matchProperty(userproperty, username) &&
+                m.matchProperty(passwordproperty, core.encode(password))) {
                 return m;
             }
         }

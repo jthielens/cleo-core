@@ -10,6 +10,7 @@ import com.cleo.lexicom.LexiComException;
 import com.cleo.lexicom.external.ILexiCom;
 import com.cleo.lexicom.external.IMailboxController;
 import com.cleo.lexicom.external.LexiComFactory;
+import com.sodiumcow.cc.constant.HostSource;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.Mode;
 import com.sodiumcow.cc.constant.PathType;
@@ -101,6 +102,7 @@ public class Core {
         Host[]   hosts = new Host[paths.length];
         for (int i=0; i<paths.length; i++) {
             hosts[i] = new Host(this, paths[i]);
+            hosts[i].setSource(HostSource.LIST);
         }
         return hosts;
     }
@@ -108,7 +110,9 @@ public class Core {
     public Host getHost(String alias) throws Exception {
         Path test = new Path(PathType.HOST, alias);
         if (exists(test)) {
-            return new Host(this, test);
+            Host host = new Host(this, test);
+            host.setSource(HostSource.GET);
+            return host;
         }
         return null;
     }
@@ -118,6 +122,7 @@ public class Core {
             if (h.getHostType()==type &&
                 h.matchPropertyIgnoreCase("Address", address) &&
                 (port<0 || h.matchProperty("Port", String.valueOf(port)))) {
+                h.setSource(HostSource.FIND);
                 return h;
             }
         }
@@ -263,7 +268,11 @@ public class Core {
 
     public void save(Path path) throws Exception {
         connect();
-        lexicom.save(path.getType().id, path.getPath());
+        if (path.getType() == PathType.HOST) {
+            lexicom.save(path.getAlias());
+        } else {
+            lexicom.save(path.getType().id, path.getPath());
+        }
     }
 
     public void rename(Path path, String alias) throws Exception {
@@ -276,10 +285,25 @@ public class Core {
         lexicom.remove(path.getType().id, path.getPath());
     }
 
+    public Path create(Path path) throws Exception {
+        connect();
+        Path parent = path.getParent();
+        String alias = lexicom.create(path.getType().id, parent.getPath(), path.getAlias(), false);
+        return parent.getChild(path.getType(), alias);
+    }
+
+    public Path clone(Path path, String alias) throws Exception {
+        connect();
+        alias = lexicom.clone(path.getType().id, path.getPath(), alias, false);
+        return path.getParent().getChild(path.getType(), alias);
+    }
+
     public Host activateHost (HostType type, String alias) throws Exception {
         connect();
         String hostName = lexicom.activateHost(type.template, alias, false);
-        return new Host(this, hostName);
+        Host host = new Host(this, hostName);
+        host.setSource(HostSource.ACTIVATE);
+        return host;
     }
 
     public IMailboxController getMailboxController (Path mailbox) throws Exception {
@@ -287,13 +311,22 @@ public class Core {
         return lexicom.getMailboxController(mailbox.getPath());
     }
     
+    static final String BEAN_PREFIX = "com.cleo.lexicom.beans";
     public String encode(String s) throws Exception {
         connect();
+        if (s.startsWith(BEAN_PREFIX+".")) {
+            s = new StringBuilder(s.substring(BEAN_PREFIX.length())).reverse().toString();
+        }
         return lexicom.encode(s);
     }
     public String decode(String s) throws Exception {
         connect();
-        return lexicom.decode(s);
+        String decoded = lexicom.decode(s);
+        if (decoded.matches("[a-zA-Z0-9\\.\\$]+\\.")) {
+            decoded = BEAN_PREFIX+
+                    new StringBuilder(decoded).reverse().toString();
+        }
+        return decoded;
     }
     public String encrypt(String s) throws Exception {
         connect();
