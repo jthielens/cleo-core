@@ -254,8 +254,8 @@ public class REPL {
         }
     }
     
-    private boolean done = false;
-    private boolean help = false;
+    private boolean done     = false;
+    private boolean confused = false;
     
     @Command(name="exit", comment="exit")
     public void exit_command(String...argv) {
@@ -283,11 +283,11 @@ public class REPL {
                         }
                     } catch (Exception e) {
                         error("error setting option "+argv[i]+": "+e);
-                        help = true;  // don't keep going in case of error
+                        confused = true;  // don't keep going in case of error
                     }
                 } else {
                     error("error: unrecognized option: "+argv[i]);
-                    help = true;  // don't keep going in case of error
+                    confused = true;  // don't keep going in case of error
                 }
             } else if (argv[i].equals("--")) {
                 // stop after -- in case you need arguments like this
@@ -339,6 +339,12 @@ public class REPL {
             return;
         }
 
+        // look for help
+        if (argv.length>0 && argv[0].equalsIgnoreCase("help")) {
+            list_commands();
+            return;
+        }
+
         // splice out options
         argv = process_options(argv);
 
@@ -351,7 +357,7 @@ public class REPL {
                 cmd.append(argv[j]);
             }
             method = find_command(cmd.toString());
-            if (method != null && !help) {
+            if (method != null && !confused) {
                 // ok -- pass the rest as arguments
                 String[] arguments = new String[argv.length-i];
                 for (int j=0; j<arguments.length; j++) {
@@ -373,7 +379,7 @@ public class REPL {
             if (argv.length==0) {
                 report("options set");
             } else {
-                help = true;
+                confused = true;
             }
         }
     }
@@ -495,8 +501,8 @@ public class REPL {
                         commanded = true;
                     }
                 }
-                if (help) {
-                    list_commands();
+                if (confused) {
+                    error("type \"help\" for help");
                 }
                 if (!commanded) {
                     // didn't see any commands -- run repl
@@ -510,18 +516,30 @@ public class REPL {
     }
     
     private void run() {
-        String command;
         BufferedReader i = null;
         try {
             i = new BufferedReader(new InputStreamReader (System.in));
             System.out.println("Command processor initialized");
             while (!done) {
-                help = false;
+                confused = false;
+                StringBuilder command = null;
                 prompt("[] ");
-                command=i.readLine();
+                for(;;) {
+                    String line = i.readLine();
+                    if (line==null) break;
+                    if (command==null) command = new StringBuilder();
+                    command.append(line);
+                    if (line.endsWith("\\")) {
+                        command.setLength(command.length()-1);
+                        prompt("<> ");
+                    } else {
+                        break;
+                    }
+                }
                 if (command==null) break;                  // EOF -- done
-                if (command.matches("\\s*#.*")) continue;  // Comment -- skip
-                String[][]commands = split_commands(split_string(command));
+                String commandString = command.toString();
+                if (commandString.matches("\\s*#.*")) continue;  // Comment -- skip
+                String[][]commands = split_commands(split_string(commandString));
                 if (commands.length==0) {
                     // command(new String[] {"quit"}); // auto-quit?
                 } else {
@@ -529,8 +547,8 @@ public class REPL {
                         command(cmd);
                     }
                 }
-                if (help) {
-                    list_commands();
+                if (confused) {
+                    error("type \"help\" for help");
                 }
             }
         } catch (Exception e) {
