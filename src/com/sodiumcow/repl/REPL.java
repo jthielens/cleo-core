@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeMap;
@@ -124,6 +125,7 @@ public class REPL {
         // calculate widths
         int[]     widths = new int[columns.length];
         boolean[] digits = new boolean[columns.length];
+        int[]     depths = new int[values.length];
         for (int c=0; c<columns.length; c++) {
             widths[c] = columns[c].length();
             digits[c] = true;
@@ -131,13 +133,14 @@ public class REPL {
                 String x = values[r][c];
                 if (x==null) {
                     values[r][c] = "";
+                    depths[r] = 1;
                 } else {
-                    if (x.length() > widths[c]) {
-                        widths[c] = x.length();
+                    String[] xxs = x.split("\n");
+                    depths[r] = xxs.length;
+                    for (String xx : xxs) {
+                        if (xx.length() > widths[c]) widths[c] = xx.length();
                     }
-                    if (!x.matches("\\s*\\d*")) {
-                        digits[c] = false;
-                    }
+                    if (!x.matches("\\s*\\d*"))      digits[c] = false;
                 }
             }
         }
@@ -160,7 +163,15 @@ public class REPL {
         report(String.format(f, (Object[]) columns));
         report(line.toString());
         for (int r=0; r<values.length; r++) {
-            report(String.format(f, (Object[]) values[r]));
+            String[][] split_values = new String[depths[r]][columns.length];
+            for (int d=0; d<depths[r]; d++) Arrays.fill(split_values[d], "");
+            for (int c=0; c<columns.length; c++) {
+                String[] xxs = values[r][c].split("\n");
+                for (int x=0; x<xxs.length; x++) split_values[x][c]=xxs[x];
+            }
+            for (int d=0; d<depths[r]; d++) {
+                report(String.format(f, (Object[]) split_values[d]));
+            }
         }
     }
 
@@ -394,7 +405,7 @@ public class REPL {
                     commands.add(command.toArray(new String[command.size()]));
                     command.clear();
                 }
-            } else if (arg.length()>0) {
+            } else {  //  if (arg.length()>0) { // don't skip empty strings
                 command.add(arg);
             }
         }
@@ -412,6 +423,21 @@ public class REPL {
         int  hex_count = -1;
         int  hex_value = 0;
         for (char c : s.toCharArray()) {
+            if (hex_count >= 0) {
+                int value = Character.digit(c, 16);
+                if (hex_count==2 || value<0) {
+                    sb.appendCodePoint(hex_value);
+                    hex_count = -1;
+                    if (mode=='\\') {
+                        mode = '.';
+                    } else {
+                        mode--; // back to ' or "
+                    }
+                } else {
+                    hex_value += value;
+                    continue;
+                }
+            }
             switch (mode) {
             case ' ': // skipping whitespace, anything interesting starts a token
                 if (!isWhitespace(c)) {
@@ -426,25 +452,11 @@ public class REPL {
             case '\\': // append quoted c and go back to collecting a token
             case '(':  // hack for \ inside '
             case '#':  // hack for \ inside "
-                if (hex_count >= 0) {
-                    int value = Character.digit(c, 16);
-                    hex_value *= 16;
-                    if (value > 0) { // treat non-hex as 0
-                        hex_value += value;
-                    }
-                    hex_count++;
-                    if (hex_count==2) {
-                        sb.appendCodePoint(hex_value);
-                        hex_count = -1;
-                        if (mode=='\\') {
-                            mode = '.';
-                        } else {
-                            mode--; // back to ' or "
-                        }
-                    }
-                } else if (c=='x'||c=='X') {
+                if (c=='x'||c=='X') {
                     hex_count = 0;
                     hex_value = 0;
+                } else if (c=='n'||c=='N') {
+                    sb.append('\n');
                 } else {
                     sb.append(c);
                     if (mode=='\\') {
@@ -458,7 +470,7 @@ public class REPL {
             case '\'':
                 if (c == mode) {
                     mode = '.';
-                } else if (c == '\\') {
+                } else if (c == '\\' && mode=='"') {
                     mode++; // '->(, "->#
                 } else {
                     sb.append(c);
@@ -481,6 +493,50 @@ public class REPL {
             strings.add(sb.toString());
         }
         return strings.toArray(new String[strings.size()]);
+    }
+
+    public static String qq(String s) {
+        if (s==null)                                  return null;        // null safe
+        if (s.isEmpty())                              return "''";        // empty string
+        if (s.matches("[\\x20-\\x7E&&[^ '\"\\\\]]*")) return s;           // nothing to quote
+        if (s.matches("[\\x20-\\x7E&&[^']]*"))        return '\''+s+'\''; // simple 's' -- no escapes
+        StringBuilder sb = new StringBuilder();
+        boolean quote    = s.contains(" ");
+        if (quote) sb.append('"');
+        for (int i=0; i<s.length(); i++) {
+            int c = s.codePointAt(i);
+            if (c=='\n') {
+                sb.append("\\n");
+            } else if (c<=0x1f || (c>=0x7f && c<=0xff)) {
+                sb.append(String.format("\\x%02x", c));
+            } else if (c>=0x100) {
+                sb.append(String.format("\\x{%x}", c));
+            } else if (c=='\\' || c=='"' || c=='\''&&!quote) {
+                sb.append('\\').appendCodePoint(c);
+            } else {
+                sb.appendCodePoint(c);
+            }
+        }
+        if (quote) sb.append('"');
+        return sb.toString();
+    }
+
+    public static String[] qq(String[] ss) {
+        String[] quoted = new String[ss.length];
+        for (int i=0; i<ss.length; i++) {
+            quoted[i] = qq(ss[i]);
+        }
+        return quoted;
+    }
+
+    public static String[] qq(Collection<String> ss) {
+        String[] quoted = new String[ss.size()];
+        int i=0;
+        for (String s : ss) {
+            quoted[i] = qq(s);
+            i++;
+        }
+        return quoted;
     }
 
     /**
