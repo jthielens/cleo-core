@@ -842,14 +842,17 @@ public class Schedule {
     private ArrayList<Calendar> calendars;
     
     public Schedule(String s) {
+        boolean putativelycontinuous = false;
         s = s.trim();
         this.onfile = s.matches("(?i)on\\s+file\\s+.*");
         if (this.onfile) {
             this.onfile = true;
             s = s.replaceFirst("^(?i)on\\s+file\\s+","");
         }
-        if (s.equalsIgnoreCase("continuously")) {
-            s = "on Su-Sa at 0-24";
+        if (s.matches("(?i)continuously\\b.*")) {
+            s = s.replaceFirst("^(?i)continuously\\s*","");
+            if (s.isEmpty()) s = "on Su-Sa at 0-24";
+            putativelycontinuous = true;
         }
         String[] cals = s.split("\\s*\\+\\s*");
         this.calendars = new ArrayList<Calendar>(cals.length);
@@ -879,6 +882,10 @@ public class Schedule {
                 }
             }
         }
+        // check putative continuosity
+        if (putativelycontinuous && !this.continuous) {
+            throw new IllegalArgumentException("must be on Su-Sa at 0-24 or equivalent to be continuous");
+        }
     }
 
     public Schedule(ISchedule.Item schedule) {
@@ -900,9 +907,10 @@ public class Schedule {
         }
         if (this.continuous) {
             sb.append("continuously ");
-        }
-        for (Calendar c : this.calendars) {
-            sb.append(c.toString()).append("+");
+        } else {
+            for (Calendar c : this.calendars) {
+                sb.append(c.toString()).append("+");
+            }
         }
         sb.setLength(sb.length()-1);
         return sb.toString();

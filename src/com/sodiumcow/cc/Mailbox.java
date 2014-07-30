@@ -15,7 +15,7 @@ import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Sort;
 import com.sodiumcow.cc.shell.Util;
 
-public class Mailbox extends Node {
+public class Mailbox extends Item {
     private IMailboxController controller = null;
     private String             lastResult = null;
 
@@ -35,7 +35,7 @@ public class Mailbox extends Node {
     }
 
     public Action[] getActions() throws Exception {
-        Node[] nodes = getChildren(PathType.ACTION);
+        Item[] nodes = getChildren(PathType.ACTION);
         return (Action[]) Arrays.copyOf(nodes, nodes.length, Action[].class);
     }
 

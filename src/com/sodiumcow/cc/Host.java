@@ -7,7 +7,7 @@ import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Protocol;
 
-public class Host extends Node {
+public class Host extends Item {
     public static final String TEMPLATE_MAILBOX = "template mailbox";
     
     private HostSource source = HostSource.NEW;
@@ -30,8 +30,8 @@ public class Host extends Node {
     }
 
     public Mailbox[] getMailboxes() throws Exception {
-        Node[] nodes = getChildren(PathType.MAILBOX);
-        return (Mailbox[]) Arrays.copyOf(nodes, nodes.length, Mailbox[].class);
+        Item[] items = getChildren(PathType.MAILBOX);
+        return (Mailbox[]) Arrays.copyOf(items, items.length, Mailbox[].class);
     }
 
     public Mailbox getMailbox(String alias) throws Exception {

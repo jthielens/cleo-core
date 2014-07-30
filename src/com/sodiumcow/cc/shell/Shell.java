@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.security.Provider;
-import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -13,15 +11,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
-
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
 
 import com.cleo.lexicom.beans.Options;
 import com.cleo.lexicom.beans.Options.DBConnection;
@@ -35,8 +34,9 @@ import com.cleo.lexicom.external.LexiComLogListener;
 import com.cleo.lexicom.external.RegistrationInfo;
 import com.sodiumcow.cc.Action;
 import com.sodiumcow.cc.Core;
+import com.sodiumcow.cc.Defaults;
 import com.sodiumcow.cc.Host;
-import com.sodiumcow.cc.LDAP;
+import com.sodiumcow.cc.Item;
 import com.sodiumcow.cc.Mailbox;
 import com.sodiumcow.cc.Path;
 import com.sodiumcow.cc.Schedule;
@@ -49,10 +49,12 @@ import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Product;
 import com.sodiumcow.cc.constant.Protocol;
 import com.sodiumcow.cc.exception.URLResolutionException;
-import com.sodiumcow.cc.shell.VLNav.Privilege;
 import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
+import com.sodiumcow.util.DB;
+import com.sodiumcow.util.LDAP;
+import com.sodiumcow.util.S;
 
 public class Shell extends REPL {
     Core             core = new Core();
@@ -108,7 +110,18 @@ public class Shell extends REPL {
 
     @Command(name="echo", args="message", comment="print message")
     public void echo(String...argv) {
-        print(Util.join(" ", argv));
+        print(S.join(" ", argv));
+    }
+
+    private static S.Formatter qqequals = new S.Formatter () {
+        public String format(Map.Entry<?,?> entry) {
+            return qq(entry.getKey().toString())+"="+qq(entry.getValue().toString());
+        }
+    };
+
+    @Command(name="quote", args="message", comment="print message")
+    public void quote(String...argv) {
+        print(S.join(" ", qq(argv)));
     }
 
     private void demo_registration(RegistrationInfo reg) {
@@ -293,7 +306,7 @@ public class Shell extends REPL {
     }
     
     private LDAP get_ldap() throws Exception {
-        return new LDAP(Util.submap(read_xml_file("Users.xml").map, "Users", "Ldapserver"), core);
+        return new LDAP(Util.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
     }
 
     private DBOptions db_set = null;
@@ -357,6 +370,9 @@ public class Shell extends REPL {
             db.disconnect();
         }
     }
+    private VLNav get_vlnav() throws Exception {
+        return new VLNav(get_db());
+    }
     @Command(name="list_certs", comment="list user certificate aliases")
     public void list_certs(String...argv) {
         if (argv.length>0) {
@@ -385,17 +401,19 @@ public class Shell extends REPL {
             try {
                 ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
                 String certPath = core.getLexiCom().getAbsolute("certs");
+                Map<String,String> cas = new TreeMap<String,String>();
                 for (File ca : new File(certPath).listFiles()) {
                     if (!ca.isFile()) continue;
                     try {
                         Collection<X509Certificate> certs = certManager.readCert(ca);
                         for (X509Certificate x : certs) {
-                            report(certManager.getFriendlyName(x));
+                            cas.put(certManager.getFriendlyName(x), "certs/"+ca.getName());
                         }
                     } catch (Exception e) {
                         error("error listing cert", e);
                     }
                 }
+                report(new String[] {"CA", "File"}, S.invert(cas));
                 /* this way doesn't work because getCAFiles seems to lowercase everything
                 for (Enumeration<String> e=certManager.getCAFiles();
                      e.hasMoreElements();) {
@@ -485,52 +503,54 @@ public class Shell extends REPL {
         }
     }
 
-    private Node subnode(String type, String name, Node node) {
-        if (node==null || node.getNodeType()!=Node.ELEMENT_NODE) return null;
-        Node find = node.getFirstChild();
-        while (find != null) {
-            NamedNodeMap attrs;
-            Node         alias = null;
-            if (find.getNodeType()==Node.ELEMENT_NODE         &&
-                find.getNodeName().equalsIgnoreCase(type)     &&
-                (attrs = find.getAttributes()) != null        &&
-                (alias = attrs.getNamedItem("alias")) != null &&
-                alias.getNodeValue().equalsIgnoreCase(name)   ) {
-                return find;
-            }
-            find = find.getNextSibling();
-        }
-        return null;
-    }
-    @Command(name="dump", args="path ...", comment="dump hosts")
-    public void dump_command(String...argv) {
+    private static final Pattern DUMP_PATTERN = Pattern.compile("(.*?)(?:,(\\d+))?(?::(.*))?");
+    @Command(name="dump", args="(type:audit|path[:props|[,depth]:table])", comment="dump types or nodes")
+    public void dump(String...argv) {
         try {
             for (String arg : argv) {
-                Path     p    = Path.parsePath(arg);
-                String[] path = p.getPath();
-                Node node = core.getHostDocument(p.getHost()).getDocumentElement();
-                switch (p.getType()) {
-                case MAILBOX:
-                    node = subnode("Mailbox",    path[1], node);
-                    break;
-                case ACTION:
-                    node = subnode("Mailbox",    path[1], node);
-                    node = subnode("Action",     path[2], node);
-                    break;
-                case HOST_ACTION:
-                    node = subnode("HostAction", path[1], node);
-                    break;
-                case SERVICE:
-                    node = subnode("Service",    path[1], node);
-                    break;
-                case TRADING_PARTNER:
-                    node = null; // no such thing any more really
-                    continue;
-                case HOST:
-                    break;
-                }
-                if (node!=null) {
-                    report(Util.xml2pp(node));
+                Matcher m = DUMP_PATTERN.matcher(arg);
+                m.matches();
+                String   name  = m.group(1);
+                int      depth = m.group(2)==null ? -1 : Integer.valueOf(m.group(2));
+                String   fmt   = m.group(3);
+                if ("audit".equalsIgnoreCase(fmt)) {
+                    if (name.equals("*")) {
+                        // usage: dump *:audit
+                        // Calculates and prints new Defaults for all types
+                        Defaults.printAllDefaults(System.out, core);
+                    } else {
+                        // usage: dump type:audit
+                        // Calculates and prints new Defaults for <type>
+                        Defaults.printDefaults(System.out, core, HostType.valueOf(name.toUpperCase()));
+                    }
+                } else {
+                    Path     path = Path.parsePath(name);
+                    Item     item = Item.getItem(core, path);
+                    HostType type = new Host(core, path.getHost()).getHostType();
+                    if ("props".equalsIgnoreCase(fmt)) {
+                        // usage: dump path:props
+                        // Dumps the non-default properties of <path>
+                        Map<String,String> props = item.getProperties();
+                        if (path.getType()==PathType.HOST) {
+                            Defaults.suppressHostDefaults(type, props);
+                        } else if (path.getType()==PathType.MAILBOX) {
+                            Defaults.suppressMailboxDefaults(type, props);
+                        }
+                        if (props!=null) {
+                            report(new String[] {"Attribute", "Value"}, S.invert(props));
+                        } else {
+                            error("not found");
+                        }
+                    } else if ("table".equalsIgnoreCase(fmt)) {
+                        // usage: dump path[,depth]:table
+                        // Dumps the segment of the XML host file for <path> [to <depth>]
+                        String[][] description = S.invert(Util.flat(Util.xml2map(item.getNode()), depth));
+                        report(new String[] {"Attribute", "Value"}, description);
+                    } else {
+                        // usage: dump path
+                        // Dumps the raw XML pretty-print of the XML host file segment for <path>
+                        report(Util.xml2pp(item.getNode()));
+                    }
                 }
             }
         } catch (Exception e) {
@@ -588,7 +608,9 @@ public class Shell extends REPL {
             try {
                 Path path = Path.parsePath(argv[0]);
                 String property = argv[1];
-                if (argv.length==3) {
+                if (argv.length==2) {
+                    core.setProperty(path, property, (String) null);
+                } else if (argv.length==3) {
                     core.setProperty(path, property, argv[2]);
                 } else {
                     core.setProperty(path, property, Arrays.copyOfRange(argv, 2, argv.length));
@@ -686,90 +708,8 @@ public class Shell extends REPL {
             }
         }
     }
-    @Command(name="schedule", args="action", comment="get action schedule")
-    public void schedule(String...argv) {
-        if (argv.length<1) {
-            error("usage: schedule action [null|schedule]");
-        } else if (argv.length==1 && argv[0].equals("*")) {
-            try {
-                for (ISchedule.Item schedule : core.getLexiCom().getSchedule().listItems()) {
-                    report(new Path(schedule.getAction()).toString()+":");
-                    report("   "+new Schedule(schedule).toString());
-                }
-            } catch (Exception e) {
-                error("error listing schedules", e);
-            }
-        } else if (argv.length==1) {
-            Path path = Path.parsePath(argv[0]);
-            if (path.getType() != PathType.ACTION && path.getType() != PathType.HOST_ACTION) {
-                error("schedule applicable for action or host action only");
-            } else {
-                try {
-                    Action action = new Action(core, path);
-                    Schedule schedule = action.getSchedule();
-                    report("   "+schedule.toString());
-                } catch (Exception e) {
-                    error("error getting schedule", e);
-                }
-            }
-        } else if (argv.length==2 && argv[1].equalsIgnoreCase("null")) {
-            Path path = Path.parsePath(argv[0]);
-            Action action = new Action(core, path);
-            try {
-                action.setSchedule(null);
-            } catch (Exception e) {
-                error("error setting schedule", e);
-            }
-        } else {
-            Path path = Path.parsePath(argv[0]);
-            Action action = new Action(core, path);
-            Schedule schedule = new Schedule(Util.join(" ",  1, argv));
-            try {
-                action.setSchedule(schedule);
-            } catch (Exception e) {
-                error("error setting schedule", e);
-            }
-        }
-    }
     @Command(name="encode", args="[reverse] string...", comment="encode string(s) [reversed]")
     public void encode(String...argv) {
-        boolean reverse = false;
-        for (String arg : argv) {
-            if (arg.equalsIgnoreCase("reverse")) {
-                reverse = true;
-            } else {
-                try {
-                    if (reverse) {
-                        arg = new StringBuilder(arg).reverse().toString();
-                    }
-                    report(arg+" => "+core.encode(arg));
-                } catch (Exception e) {
-                    error("could not encode", e);
-                }
-            }
-        }
-    }
-    @Command(name="decode", args="[reverse] string...", comment="decode string(s) [reversed]")
-    public void decode(String...argv) {
-        boolean reverse = false;
-        for (String arg : argv) {
-            if (arg.equalsIgnoreCase("reverse")) {
-                reverse = true;
-            } else {
-                try {
-                    String decoded = core.decode(arg);
-                    if (reverse) {
-                        decoded = new StringBuilder(decoded).reverse().toString();
-                    }
-                    report(arg+" => "+decoded);
-                } catch (Exception e) {
-                    error("could not decode", e);
-                }
-            }
-        }
-    }
-    @Command(name="xcode", args="[reverse] string...", comment="encode string(s) [reversed]")
-    public void xcode(String...argv) {
         boolean reverse = false;
         for (String arg : argv) {
             if (arg.equalsIgnoreCase("reverse")) {
@@ -786,8 +726,8 @@ public class Shell extends REPL {
             }
         }
     }
-    @Command(name="zcode", args="[reverse] string...", comment="decode string(s) [reversed]")
-    public void zcode(String...argv) {
+    @Command(name="decode", args="[reverse] string...", comment="decode string(s) [reversed]")
+    public void decode(String...argv) {
         boolean reverse = false;
         for (String arg : argv) {
             if (arg.equalsIgnoreCase("reverse")) {
@@ -844,7 +784,7 @@ public class Shell extends REPL {
             String src = argv[0];
             XmlReadResult xml = null;
             try {
-                xml = read_xml_file(src);
+                xml = read_xml_document(src);
                 src = xml.file.contents;
             } catch (Exception e) {
                 // not an xml filename -- just process the string
@@ -877,7 +817,24 @@ public class Shell extends REPL {
     public void url(String...argv) {
         for (String arg : argv) {
             try {
-                report(URL.parseURL(arg).dump());
+                /*Matcher m = Pattern.compile("(.*)\\?[^\\]/?]*").matcher(arg);
+                if (m.matches()) {
+                    report("matches: "+m.group(1).length());
+                } else {
+                    report("does not match: -1");
+                    report("null test: "+arg.equalsIgnoreCase(null));
+                }
+                */
+                URL url = URL.parseURL(arg);
+                if (url==null) {
+                    error("cannot parse "+arg);
+                } else if (url.getType()==null) {
+                    error("unrecognized protocol: "+arg);
+                } else {
+                    report(url.toString());
+                    report("host ", S.join(" ", url.getHostProperties(), qqequals));
+                    report("mailbox ", S.join(" ", url.getMailboxProperties(), qqequals));
+                }
             } catch (Exception e) {
                 error("parsing error", e);
             }
@@ -990,7 +947,15 @@ public class Shell extends REPL {
         public Util.ReadResult    file;
         public Map<String,Object> map;
     }
+    private XmlReadResult read_xml_document(String fn) throws Exception {
+        // returns XML file including the top-level Document
+        return read_xml(fn, true);
+    }
     private XmlReadResult read_xml_file(String fn) throws Exception {
+        // returns XML file after a getDocumentElement
+        return read_xml(fn, false);
+    }
+    private XmlReadResult read_xml(String fn, boolean document) throws Exception {
         XmlReadResult xml = new XmlReadResult();
         try {
             xml.file = Util.file2string(fn, core);
@@ -1010,7 +975,11 @@ public class Shell extends REPL {
             }
         }
         try {
-            xml.map = Util.xml2map(Util.string2xml(xml.file.contents));
+            if (document) {
+                xml.map = Util.xml2map(Util.string2xml(xml.file.contents));
+            } else {
+                xml.map = Util.xml2map(Util.string2xml(xml.file.contents).getDocumentElement());
+            }
         } catch (Exception e) {
             xml.map = null; /// must not be XML
         }
@@ -1023,7 +992,7 @@ public class Shell extends REPL {
         Util.string2file(xml.file, core);
     }
 
-    @Command(name="opts", args="[file|table[(query)] [path[=value]]]", comment="display options")
+    @Command(name="opts", args="[file|table[(query)] [path[=value]]]", comment="display/update options")
     public void opts(String...argv) {
         try {
             if (argv.length==0) {
@@ -1039,7 +1008,7 @@ public class Shell extends REPL {
                 int paren = name.indexOf('(');
                 if (paren>=0 && name.endsWith(")")) {
                     table = name.substring(0, paren);
-                    where = Util.split(name.substring(paren+1, name.length()-1),
+                    where = S.split(name.substring(paren+1, name.length()-1),
                                        Pattern.compile("[\\s,]*(\\w+)=([^,]*)[\\s,]*"));
                 }
                 table = db_table(table);
@@ -1062,9 +1031,9 @@ public class Shell extends REPL {
                         qargs = where.values().toArray();
                     }
                     boolean star = false;
-                    ArrayList<String> select_columns = new ArrayList<String>();
-                    ArrayList<String> update_columns = new ArrayList<String>();
-                    ArrayList<Object> update_values  = new ArrayList<Object>();
+                    List<String> select_columns = new ArrayList<String>();
+                    List<String> update_columns = new ArrayList<String>();
+                    List<Object> update_values  = new ArrayList<Object>();
                     for (int i=1; i<argv.length; i++) {
                         String   arg  = argv[i];
                         if (arg.equals("*")) {
@@ -1096,18 +1065,22 @@ public class Shell extends REPL {
                             updated = selection.update(update_columns, update_values);
                             if (updated==0) {
                                 // convert to insert
+                                get_db().insert(table,
+                                                S.cat(Arrays.asList(qcolumns), update_columns),
+                                                S.cat(Arrays.asList(qargs), update_values));
+                                selection = get_db().new Selection(table, columns, qcolumns, qargs);
                             }
                         }
                         DB.Selection.Result r = selection.rows();
                         if (r.count==1 && r.columns.length>4) {
-                            report(new String[] {"Column", "Value"}, Util.invert(r.columns, r.rows[0]));
+                            report(new String[] {"Column", "Value"}, S.invert(r.columns, r.rows[0]));
                         } else {
                             report(r.columns, r.rows);
                             report(r.count+" rows selected"+(updated>0 ? ", "+updated+" rows updated" : ""));
                         }
                     }
                 } else if (name.matches("(?i).*xml")) {
-                    XmlReadResult xml = read_xml_file(name);
+                    XmlReadResult xml = read_xml_document(name);
                     if (xml==null) {
                         error("file not found");
                         return;
@@ -1238,9 +1211,23 @@ public class Shell extends REPL {
     // type = ad|apache|domino|novell|dirx
     // opt  = starttls|default
     // map  = (user|mail|name|home|first|last)=attr
-    @Command(name="ldap", args="not sure", comment="not sure")
+    @Command(name="ldap", args="[url|* [user...]]", comment="ldap query")
     public void ldap(String...argv) {
-        new LDAP(argv[0]);
+        try {
+            LDAP ldap;
+            if (argv.length==0 || argv[0].equals("*")) {
+                ldap = get_ldap();
+                report(ldap.toString());
+            } else {
+                ldap = new LDAP(argv[0]);
+            }
+            for (int i=1; i<argv.length; i++) {
+                Map<LDAP.Attribute, String> found = ldap.find(argv[i]);
+                report(S.join("\n", found, "%s = %s"));
+            }
+        } catch (Exception e) {
+            error("error", e);
+        }
     }
     @Command(name="xferlog", args="off|xml|db-string", comment="transfer logging")
     public void xferlog(String...argv) {
@@ -1266,89 +1253,212 @@ public class Shell extends REPL {
             }
         }
     }
-    @Command(name="huh", args="string", comment="testing")
-    public void huh(String...argv) {
-        if (argv.length>0) {
+    @Command(name="host", args="[alias|* [url]]", comment="create a new remote host")
+    public void host(String...argv) {
+        if (argv.length<=1) {
+            // usage: host [*|alias]
+            // export [all] remote host[s]
+            // output format is the host commands to set the hosts up
             try {
-                LDAP ldap = get_ldap();
-                Map<LDAP.Attribute, String> found = ldap.find(argv[0]);
-                report(Util.join("\n", found, "%s = %s"));
-                //report("parsing "+Util.join(" ", argv));
-                //report(new Schedule(Util.join(" ", argv)).toString());
-            } catch (Exception e) {
-                error("error: ", e);
-            }
-            if (argv.length>1) {
-                try {
-                    report("group "+argv[1]+" = "+new VLNav(get_db()).find_group(argv[1]));
-                } catch (Exception e) {
-                    error("error: ", e);
-                }
-            }
-        } else {
-            for (Provider p : Security.getProviders()) {
-                report(p.getName()+" - "+p.getInfo());
-            }
-        }
-    }
-    @Command(name="new_host", args="url", comment="create a new remote host")
-    public void new_host(String...argv) {
-        if (argv.length!=1) {
-            error("usage: new host url");
-        } else {
-            String url = argv[0];
-            URL    u   = URL.parseURL(url);
-            if (u==null) {
-                error("could not parse URL: "+url);
-            } else {
-                try {
-                    u.resolve(core);
-                    Host host = u.getHost();
-                    if (host.getSource()==HostSource.ACTIVATE) {
-                        report("created host "+host.getPath());
-                        Mailbox template = host.getMailbox("myMailbox");
-                        if (template!=null) {
-                            template.setProperty("enabled", "False");
-                            template.rename(Host.TEMPLATE_MAILBOX);
-                            host.save();
-                            report("renamed template: "+template.getPath());
+                Host[] hosts = (argv.length==0 || argv[0].equals("*"))
+                               ? core.getHosts()
+                               : new Host[] {core.getHost(argv[0])};
+                for (Host h : hosts) {
+                    if (h==null) {
+                        error("host "+qq(argv[0])+" not found");
+                    } else if (!h.isLocal()) {
+                        HostType           type   = h.getHostType();
+                        Map<String,String> props  = Defaults.suppressHostDefaults(type, h.getProperties());
+                        URL                url    = new URL(type).extractHost(props);
+                        String             alias  = h.getPath().getAlias();
+                        List<String>       output = new ArrayList<String>();
+                        if (alias.equals(url.getProtocol()+"://"+url.getAddress())) {
+                            alias = "*";
                         }
-                    } else {
-                        report("reusing host "+host.getPath());
-                    }
-                    Mailbox mailbox = u.getMailbox();
-                    if (mailbox!=null) {
-                        report("mailbox exists: "+mailbox.getProperty("alias")[0]);
-                    } else {
-                        report("mailbox being created for "+u.getUser()+":"+u.getPassword());
-                        mailbox = host.cloneMailbox(u.getUser());
-                        report("protocol is "+host.getProtocol());
-                        if (host.getProtocol()==Protocol.HTTP_CLIENT) {
-                            mailbox.setProperty("Authtype", "1"); // BASIC
-                            mailbox.setProperty("Authusername", u.getUser());
-                            mailbox.setProperty("Authpassword", u.getPassword());
+                        if (props!=null && !props.isEmpty()) {
+                            output.add("host "+qq(alias)+" "+qq(url.toString())+" "+S.join(" \\\n    ", props, qqequals));
                         } else {
-                            mailbox.setProperty("Username", u.getUser());
-                            mailbox.setProperty("Password", u.getPassword());
+                            output.add("host "+qq(alias)+" "+qq(url.toString()));
                         }
-                        mailbox.setProperty("enabled", "True");
-                        host.save();
+                        for (Mailbox m : h.getMailboxes()) {
+                            if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
+                                // get the properties
+                                Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
+                                Defaults.crackPasswords(mprops);
+                                // figure out how to display alias vs. user:password
+                                url.extractMailbox(mprops);
+                                String malias = url.formatMailbox(m.getPath().getAlias());
+                                // format the remaining mailbox attributes
+                                if (mprops!=null && !mprops.isEmpty()) {
+                                    output.add("  mailbox "+qq(malias)+" "+S.join(" \\\n    ", mprops, qqequals));
+                                } else {
+                                    output.add("  mailbox "+qq(malias));
+                                }
+                                // put it all together
+                            }
+                        }
+                        report(S.join(" \\\n", output));
                     }
-                } catch (URLResolutionException e) {
-                    error(e.getMessage());
-                } catch (Exception e) {
-                    error("trouble activating host", e);
+                }
+            } catch (Exception e) {
+                error("could not list hosts", e);
+            }
+            return;
+        }
+        // usage: host alias url [property=value...] [mailbox alias[(user:password)] [property=value...]...]
+        // create new host <alias> and associated mailbox from parsed <url>
+        // add mailbox[es] with <alias> and associated properties
+        //    alias:password is acceptable shorthand for alias(user:password) when alias==user
+        // reuse existing host (if found and appropriate) and mailbox (if found)
+        if (argv.length<2) {
+            error("usage: host alias url [properties...]");
+            return;
+        }
+        // parsing command line:
+        // first, get alias and url parsed, defaulting alias if requested (*)
+        String alias = argv[0];
+        String url   = argv[1];
+        URL    u     = URL.parseURL(url);
+        if (u==null) {
+            error("could not parse URL: "+url);
+            return;
+        } else if (u.getType()==null) {
+            error("unrecognized protocol: "+url);
+            return;
+        }
+        if (alias.equals("*")) {
+            alias = u.getProtocol()+"://"+u.getAddress();
+        }
+        // second, now start collecting properties
+        // if there was a mailbox in the url, queue it up as the first mailbox
+        Map<String,String> hostProps    = u.getHostProperties();
+        Map<String,String> mailboxProps = u.getMailboxProperties();
+        Map<String,Map<String,String>> mailboxes = new HashMap<String,Map<String,String>>();
+        if (mailboxProps!=null && !mailboxProps.isEmpty()) {
+            mailboxes.put(u.getUser(), mailboxProps);
+            mailboxProps = null;
+        }
+        // now loop through the remaining properties, starting with the host properties
+        boolean hostmode = true;
+        String malias = null;
+        for (int i=2; i<argv.length; i++) {
+            if (argv[i].equalsIgnoreCase("mailbox")) {
+                // if we were collecting a mailbox, queue it up
+                // then pick off the next token as the alias and keep going
+                if (!hostmode) {
+                    mailboxes.put(malias, mailboxProps);
+                    mailboxProps = null;
+                }
+                hostmode = false;
+                i++;
+                if (i<argv.length) {
+                    mailboxProps = u.parseMailbox(argv[i]);
+                    malias = mailboxProps.remove(".alias");
+                }
+            } else {
+                String[] kv = argv[i].split("=", 2);
+                if (hostmode) {
+                    hostProps.put(kv[0], kv.length>1 ? kv[1] : null);
+                } else {
+                    mailboxProps.put(kv[0], kv.length>1 ? kv[1] : null);
                 }
             }
         }
+        // at the end, queue up the last mailbox
+        if (mailboxProps!=null && !mailboxProps.isEmpty()) {
+            mailboxes.put(malias, mailboxProps);
+        }
+        // interlude to debug this
+        if (alias.equalsIgnoreCase("test")) {
+            report("host "+alias+" "+S.join(" ", hostProps, qqequals));
+            for (Map.Entry<String,Map<String,String>> mbx : mailboxes.entrySet()) {
+                report("mailbox "+mbx.getKey()+" "+S.join(" ", mbx.getValue(), qqequals));
+            }
+            return;
+        }
+        try {
+            // create (or update) the host
+            Host host = core.getHost(alias);
+            if (host==null) {
+                host = core.activateHost(u.getType(), alias);
+                report("created new host "+alias);
+                // change "myMailbox" to "template mailbox" - just because
+                Mailbox template = host.getMailbox("myMailbox");
+                if (template!=null) {
+                    template.setProperty("enabled", "False");
+                    template.rename(Host.TEMPLATE_MAILBOX);
+                    report("renamed template: "+template.getPath());
+                }
+            } else if (host.getHostType() != u.getType()) {
+                error("you can't change the host type from "+host.getHostType()+" to "+u.getType()+" (yet)");
+            } else {
+                report("updating existing host "+alias);
+            }
+            for (Map.Entry<String, String> prop : hostProps.entrySet()) {
+                host.setProperty(prop.getKey(), prop.getValue());
+            }
+            host.save();
+            // create (or update) mailboxes
+            for (Map.Entry<String,Map<String,String>> mbx : mailboxes.entrySet()) {
+                malias = mbx.getKey();
+                Mailbox mailbox = host.getMailbox(malias);
+                if (mailbox==null) {
+                    mailbox = host.cloneMailbox(malias);
+                    report("created new mailbox "+malias);
+                } else {
+                    report("updating existig mailbox "+malias);
+                }
+                for (Map.Entry<String, String> prop : mbx.getValue().entrySet()) {
+                    mailbox.setProperty(prop.getKey(), prop.getValue());
+                }
+                mailbox.setProperty("enabled", "True");
+                host.save();
+            }
+            /* old code
+            u.resolve(core, alias);
+            Host host = u.getHost();
+            if (host.getSource()==HostSource.ACTIVATE) {
+                report("created host "+host.getPath());
+                Mailbox template = host.getMailbox("myMailbox");
+                if (template!=null) {
+                    template.setProperty("enabled", "False");
+                    template.rename(Host.TEMPLATE_MAILBOX);
+                    host.save();
+                    report("renamed template: "+template.getPath());
+                }
+            } else {
+                report("reusing host "+host.getPath());
+            }
+            Mailbox mailbox = u.getMailbox();
+            if (mailbox!=null) {
+                report("mailbox exists: "+mailbox.getSingleProperty("alias"));
+            } else {
+                report("mailbox being created for "+u.getUser()+":"+u.getPassword());
+                mailbox = host.cloneMailbox(u.getUser());
+                report("protocol is "+host.getProtocol());
+                if (host.getProtocol()==Protocol.HTTP_CLIENT) {
+                    mailbox.setProperty("Authtype", "1"); // BASIC
+                    mailbox.setProperty("Authusername", u.getUser());
+                    mailbox.setProperty("Authpassword", u.getPassword());
+                } else {
+                    mailbox.setProperty("Username", u.getUser());
+                    mailbox.setProperty("Password", u.getPassword());
+                }
+                mailbox.setProperty("enabled", "True");
+                host.save();
+            }
+            */
+        } catch (Exception e) {
+            error("trouble activating host", e);
+        }
     }
-    @Command(name="new_user", args="prot:user:pass ...", comment="create users")
-    public void new_user(String...argv) {
+    @Command(name="user", args="prot:user:pass ...", comment="create users")
+    public void user(String...argv) {
         for (String arg : argv) {
             // validate input
             String[] parts = arg.split(":", 3);
             if (parts.length != 3) {
-                error("usage: new user prot:user:pass");
+                error("usage: user prot:user:pass");
                 return;
             }
             HostType prot;
@@ -1383,62 +1493,156 @@ public class Shell extends REPL {
             }
         }
     }
-    @Command(name="new_action", args="path command...", comment="create new action")
-    public void new_action(String...argv) {
-        if (argv.length<=1) {
-            error("usage: get path property ...");
+    @Command(name="action", args="[path [command...]]", comment="export/create action(s)")
+    public void action(String...argv) {
+        if (argv.length==0 || (argv.length==1 && argv[0].equals("*"))) {
+            // usage: action [*]
+            // export all scheduled actions
+            // output format is the action commands to set the actions up
+            try {
+                for (ISchedule.Item schedule : core.getLexiCom().getSchedule().listItems()) {
+                    Path path = new Path(schedule.getAction());
+                    String[] commands = core.getProperty(path, "Commands")[0].split("\n");
+                    report("action "+qq(path.toString())+" ", S.join(" \\\n",qq(commands)));
+                }
+            } catch (Exception e) {
+                error("error listing scheduled actions", e);
+            }
+        } else if (argv.length==1) {
+            // usage: action <action>
+            // export the scheduled action <action>
+            // output format is the action command to set the action up
+            String name = argv[0];
+            try {
+                Path path = Path.parsePath(name);
+                String[] commands = core.getProperty(path, "Commands")[0].split("\n");
+                report("action "+qq(path.toString())+" ", S.join("\\\n",qq(commands)));
+            } catch (Exception e) {
+                error("error listing action commands for "+name, e);
+            }
         } else {
-            Path path = Path.parsePath(argv[0]);
+            String name = argv[0];
+            Path path = Path.parsePath(name);
             if (path.getType() != PathType.ACTION && path.getType() != PathType.HOST_ACTION) {
                 error("<action>user@host or <action>host expected: "+argv[0]);
             } else {
+                String commands = S.join("\\n", 1, argv);
                 try {
                     path = core.create(path);
-                    report("Commands", Util.join("\\n", 1, argv));
-                    core.setProperty(path, "Commands", Util.join("\\n", 1, argv));
+                    core.setProperty(path, "Commands", commands);
                     core.save(path);
+                    report(name, commands);
                 } catch (Exception e) {
-                    error("error creating action", e);
+                    error("error creating action "+name, e);
                 }
             }
         }
     }
-    @Command(name="new_group", args="name", comment="create a new VLNav group")
-    public void new_group(String...argv) {
-        if (argv.length<1) {
-            error("usage: new group name [(privilege|filter|application)=value ...]");
-        } else {
-            String group  = argv[0];
-            String privs  = "*=*";
-            String filter = null;
-            List<String> apps = new ArrayList<String>();
-            boolean      err  = false;
-            for (int i=1; i<argv.length; i++) {
-                String[] kv = argv[i].split("=", 2);
-                if (kv.length<2) {
-                    error("privilege|filter|application=value expected: "+argv[i]);
-                    err = true;
-                } else if (kv[0].equalsIgnoreCase("privilege")) {
-                    privs = kv[1];
-                } else if (kv[0].equalsIgnoreCase("filter")) {
-                    filter = kv[1];
-                } else if (kv[0].equalsIgnoreCase("application")) {
-                    for (String a : kv[1].split(",")) {
-                        apps.add(a);
-                    }
-                } else {
-                    err = true;
-                    error("privilege|filter|application expected: "+kv[0]);
+    @Command(name="schedule", args="[action [null|schedule...]]", comment="export/create action schedule(s)")
+    public void schedule(String...argv) {
+        if (argv.length==0 || (argv.length==1 && argv[0].equals("*"))) {
+            // usage: schedule [*]
+            // export all configured schedules
+            // output format is the schedule commands to set the schedules up
+            try {
+                for (ISchedule.Item schedule : core.getLexiCom().getSchedule().listItems()) {
+                    report("schedule "+qq(new Path(schedule.getAction()).toString())+" "+
+                           new Schedule(schedule).toString());
+                }
+            } catch (Exception e) {
+                error("error listing schedules", e);
+            }
+        } else if (argv.length==1) {
+            // usage: schedule <action>
+            // export schedule for <action>
+            // output format is the schedule command to set the schedule up
+            Path path = Path.parsePath(argv[0]);
+            if (path.getType() != PathType.ACTION && path.getType() != PathType.HOST_ACTION) {
+                error("schedule applicable for action or host action only");
+            } else {
+                try {
+                    Action action = new Action(core, path);
+                    Schedule schedule = action.getSchedule();
+                    report("schedule "+qq(path.toString())+" "+schedule.toString());
+                } catch (Exception e) {
+                    error("error getting schedule", e);
                 }
             }
-            if (!err) {
-                try {
-                    VLNav vln = new VLNav(get_db());
-                    vln.create_group(group, Privilege.of(privs), filter, apps);
-                    report("group "+group+" created");
-                } catch (Exception e) {
-                    error("can not create group "+group, e);
+        } else if (argv[0].equalsIgnoreCase("test")) {
+            // usage: schedule test <schedule>
+            // parse <schedule> for syntax but don't do anything with it
+            Schedule schedule = new Schedule(S.join(" ",  1, argv));
+            report(schedule.toString());
+        } else if (argv.length==2 && argv[1].equalsIgnoreCase("null")) {
+            // usage: schedule <action> null
+            // delete schedule for <action>
+            Path path = Path.parsePath(argv[0]);
+            Action action = new Action(core, path);
+            try {
+                action.setSchedule(null);
+            } catch (Exception e) {
+                error("error setting schedule", e);
+            }
+        } else {
+            // usage: schedule <action> <schedule>
+            // create new schedule for <action>
+            Schedule schedule = new Schedule(S.join(" ",  1, argv));
+            Path     path = Path.parsePath(argv[0]);
+            Action   action = new Action(core, path);
+            try {
+                action.setSchedule(schedule);
+            } catch (Exception e) {
+                error("error setting schedule", e);
+            }
+        }
+    }
+    @Command(name="group", args="[name [definition]]", comment="export/create VLNav group(s)")
+    public void group(String...argv) {
+        if (argv.length==0 || (argv.length==1 && argv[0].equals("*"))) {
+            // usage: group [*]
+            // export all user-defined groups
+            // output format is the group command to set the group up
+            try {
+                String[] groups = get_vlnav().list_groups();
+                for (String group : groups) {
+                    report("group "+group+" "+S.join(" \\\n    ", get_vlnav().find_group(group).toMap(), qqequals));
                 }
+            } catch (Exception e) {
+                error("could not list groups", e);
+            }
+        } else if (argv[0].equalsIgnoreCase("test")) {
+            // usage: group test <definition>
+            // parse <definition> for syntax but don't do anything with it
+            if (argv.length==1) {
+                error("usage: group test description");
+            } else {
+                try {
+                    VLNav.GroupDescription desc = get_vlnav().new GroupDescription("test", Arrays.copyOfRange(argv, 1, argv.length));
+                    report(desc.toString());
+                } catch (Exception e) {
+                    error("error parsing description", e);
+                }
+            }
+        } else if (argv.length==1) {
+            // usage: group <group>
+            // export definition of <group>
+            // output format is the group command to set the group up
+            try {
+                String group = argv[0];
+                report("group "+group+" = "+get_vlnav().find_group(group));
+            } catch (Exception e) {
+                error("could not list groups", e);
+            }
+        } else {
+            // usage: group <group> <definition>
+            // create new <group> with <definition>
+            String name = argv[0];
+            try {
+                VLNav.GroupDescription desc = get_vlnav().new GroupDescription(name, Arrays.copyOfRange(argv, 1, argv.length));
+                get_vlnav().create_group(desc);
+                report("group "+name+" created");
+            } catch (Exception e) {
+                error("can not create group "+name, e);
             }
         }
     }
@@ -1446,31 +1650,35 @@ public class Shell extends REPL {
     public void describe(String...argv) {
         try {
             if (argv.length>0) {
-                if (argv.length==1 && argv[0].matches(".*[\\?\\*\\[\\]].*")) {
-                    String   pattern = "(?i)"+argv[0].replaceAll("\\.", "\\.")
-                                                     .replaceAll("\\?", ".")
-                                                     .replaceAll("\\*", ".*");
-                    String[] tables = get_db().tables().keySet().toArray(new String[0]);
-                    List<String> matches = new ArrayList<String>();
-                    for (String table : tables) {
-                        if (table.matches(pattern)) matches.add(table);
+                Set<String> tables     = new TreeSet<String>();
+                Set<String> all_tables = get_db().tables().keySet();
+                for (String arg : argv) {
+                    // convert to regex pattern (at least add ?i)
+                    String   pattern = "(?i)"+arg.replaceAll("\\.", "\\.")
+                                                 .replaceAll("\\?", ".")
+                                                 .replaceAll("\\*", ".*");
+                    boolean found = false;
+                    for (String table : all_tables) {
+                        if (table.matches(pattern)) {
+                            tables.add(table);
+                            found = true;
+                        }
                     }
-                    argv = matches.toArray(new String[matches.size()]);
-                    if (argv.length==0) {
-                        error("no tables found matching "+pattern);
+                    if (!found) {
+                        error("no tables found matching "+arg);
                     }
                 }
-                for (String table : argv) {
+                for (String table : tables) {
                     try {
                         if (db_table(table)==null) {
                             error("no such table: "+table);
                             continue;
                         }
                         table = db_table(table);
-                        String[][] description = Util.invert(get_db().describe(table));
+                        String[][] description = S.invert(get_db().describe(table));
                         report(new String[] {"", table}); // blank line before
                         report(new String[] {"Column", "Type"}, description);
-                        //report(Util.col(description, 0), new String[][] {Util.col(description, 1)});
+                        //report(S.col(description, 0), new String[][] {S.col(description, 1)});
                     } catch (Exception e) {
                         error("cannot describe "+table, e);
                     }

@@ -1,4 +1,4 @@
-package com.sodiumcow.cc.shell;
+package com.sodiumcow.util;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -149,7 +149,7 @@ public class DB {
                 connect();
                 boolean star = columns==null || columns.length==0;
                 stmt = conn.prepareStatement("select "+
-                                             (star ? "*" : Util.join(",", columns))+
+                                             (star ? "*" : S.join(",", columns))+
                                              " from "+table+where(query, args));
                 setObjects(stmt, args);
                 ResultSet rs = stmt.executeQuery();
@@ -186,7 +186,7 @@ public class DB {
             PreparedStatement stmt = null;
             try {
                 connect();
-                stmt = conn.prepareStatement("update "+table+" set "+Util.join(",", Util.lam(update_columns, "%s=?"))+
+                stmt = conn.prepareStatement("update "+table+" set "+S.join(",", S.lam(update_columns, "%s=?"))+
                                              where(query, args));
                 setObjects(stmt, update_args);
                 setObjects(stmt, args, update_args.size());
@@ -209,14 +209,14 @@ public class DB {
                    ops[c] = " like ?";
                }
             }
-            return " where "+ Util.join(" and ", Util.lam(columns, ops));
+            return " where "+ S.join(" and ", S.lam(columns, ops));
         }
     }
     private static String where(String[] columns) {
         if (columns==null || columns.length==0) {
             return "";
         } else {
-            return " where "+ Util.join(" and ", Util.lam(columns, "%s=?"));
+            return " where "+ S.join(" and ", S.lam(columns, "%s=?"));
         }
     }
 
@@ -340,12 +340,15 @@ public class DB {
     }
 
     public int insert(String table, String[] columns, Object...args) throws SQLException {
+        return insert(table, Arrays.asList(columns), Arrays.asList(args));
+    }
+    public int insert(String table, List<String> columns, List<Object> args) throws SQLException {
         PreparedStatement stmt = null;
         try {
             connect();
             stmt = conn.prepareStatement("insert into "+table+
-                                          "("+Util.join(",", columns)+") "+
-                                          "values ("+Util.join(",", Util.x("?", columns.length))+")",
+                                          "("+S.join(",", columns)+") "+
+                                          "values ("+S.join(",", S.x("?", columns.size()))+")",
                                          Statement.RETURN_GENERATED_KEYS);
             setObjects(stmt, args);
             stmt.executeUpdate();
@@ -359,22 +362,17 @@ public class DB {
             if (stmt!=null) stmt.close();
         }
     }
-    public int insert(String table, List<String> columns, List<Object> args) throws SQLException {
+
+    public void delete(String table, List<String> columns, List<Object> args) throws SQLException {
+        delete(table, columns.toArray(new String[columns.size()]), args.toArray());
+    }
+    public void delete(String table, String[] columns, Object...args) throws SQLException {
         PreparedStatement stmt = null;
         try {
             connect();
-            stmt = conn.prepareStatement("insert into "+table+
-                                          "("+Util.join(",", columns)+") "+
-                                          "values ("+Util.join(",", Util.x("?", columns.size()))+")",
-                                         Statement.RETURN_GENERATED_KEYS);
+            stmt = conn.prepareStatement("delete from "+table+where(columns, args));
             setObjects(stmt, args);
             stmt.executeUpdate();
-            ResultSet rs = stmt.getGeneratedKeys();
-            int result = -1;
-            if (rs!=null && rs.next()) {
-                result = (int)rs.getLong(1);
-            }
-            return result;
         } finally {
             if (stmt!=null) stmt.close();
         }

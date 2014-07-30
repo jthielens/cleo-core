@@ -15,8 +15,6 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -44,247 +42,9 @@ import org.xml.sax.SAXException;
 import com.cleo.lexicom.external.ILicense;
 import com.sodiumcow.cc.Core;
 import com.sodiumcow.repl.REPL;
+import com.sodiumcow.util.S;
 
 public class Util {
-
-    /**
-     * Returns {@code String}s concatenated with a separator, possibly skipping
-     * some strings from the start and the end of the list.
-     * @param separator the separator
-     * @param from      the starting index in the list, inclusive starting at 0
-     * @param to        the ending index in the list, exclusive starting at 0
-     * @param a         the list of strings
-     * @return          the concatenated strings
-     */
-    public static String join(String separator, int from, int to, String...a) {
-        if (from<0     ) from=0;
-        if (to>a.length) to=a.length;
-        if (from>=to   ) return "";
-        if (a.length==0) return "";
-        StringBuilder sb = new StringBuilder();
-        for (int i=from; i<to; i++) {
-            sb.append(a[i]);
-            if (i<to-1) sb.append(separator);
-        }
-        return sb.toString();
-    }
-    /**
-     * Returns {@code String}s concatenated with a separator, possibly skipping 
-     * some strings from the start of the list.
-     * @param separator the separator
-     * @param from      the number of elements to skip from the start
-     * @param a         the list of strings
-     * @return          the concatenated strings
-     */
-    public static String join(String separator, int from, String...a) {
-        return join(separator, from, a.length, a);
-    }
-    /**
-     * Returns {@code String}s concatenated with a separator.
-     * @param separator the separator
-     * @param a         the list of strings
-     * @return          the concatenated strings
-     */
-    public static String join(String separator, String...a) {
-        return join(separator, 0, a);
-    }
-    /**
-     * Returns {@code String}s concatenated with a separator.
-     * @param separator the separator
-     * @param a         the list of strings
-     * @return          the concatenated strings
-     */
-    public static String join(String separator, List<String> a) {
-        return join(separator, 0, a.toArray(new String[a.size()]));
-    }
-
-    /**
-     * Special laminating joiner for Maps, formatting each {@code Map.Entry} using the
-     * supplied format and converting key and value to Strings with {@code toString}.
-     * @param separator the separator
-     * @param map       the map
-     * @param format    the lamination format
-     * @return          the concatenated strings
-     */
-    public static String join(String separator, Map<?,?> map, String format) {
-        StringBuilder s = new StringBuilder();
-        for (Map.Entry<?, ?> e : map.entrySet()) {
-            if (s.length()>0) s.append(separator);
-            s.append(String.format(format, e.getKey().toString(), e.getValue().toString()));
-        }
-        return s.toString();
-    }
-
-    public static Map<String,String> split(String s, Pattern format) {
-        final Map<String,String> result = new LinkedHashMap<String,String>();
-        megasplit(format, s, new Inspector<Object> () {
-            public Object inspect(String [] group) {
-                result.put(group[1], group[2]);
-                return null;
-            }
-        });
-        return result;
-    }
-
-    /**
-     * Returns a {@code List} of the same item repeated a number of times.
-     * @param item the item to repeat
-     * @param times the number of times to repeat it
-     * @return the list
-     */
-    public static <T> List<T> x(T item, int times) {
-        ArrayList<T> result = new ArrayList<T>(times);
-        for (int i=0; i<times; i++) {
-            result.add(item);
-        }
-        return result;
-    }
-
-    /**
-     * Laminates two lists together using a format string, expected to have two %s in it.
-     * Empty strings are substituted for the end of the shorter list, if the lists are
-     * not the same length.
-     * @param a the left list
-     * @param b the right list
-     * @param format the format string
-     * @return the laminated list
-     */
-    public static String[] lam(String[] a, String[] b, String format) {
-        return lam(Arrays.asList(a), Arrays.asList(b), format);
-    }
-    public static String[] lam(List<String> a, String[] b, String format) {
-        return lam(a, Arrays.asList(b), format);
-    }
-    public static String[] lam(String[] a, List<String> b, String format) {
-        return lam(Arrays.asList(a), b, format);
-    }
-    public static String[] lam(List<String> a, List<String> b, String format) {
-        int la = a.size();
-        int lb = b.size();
-        int l = Math.max(la, lb);
-        String[] result = new String[l];
-        for (int i=0; i<l; i++) {
-            String ai = i>la ? "" : a.get(i);
-            String bi = i>lb ? "" : b.get(i);
-            result[i] = String.format(format, ai, bi);
-        }
-        return result;
-    }
-
-    /**
-     * Like lam(a, new String[]{}, format) but more efficiently.  Of course
-     * laminating to nothing is like map-format, but there you go.
-     * @param a
-     * @param format
-     * @return
-     */
-    public static String[] lam(String[] a, String format) {
-        return lam(Arrays.asList(a), format);
-    }
-    public static String[] lam(List<String> a, String format) {
-        int la = a.size();
-        String[] result = new String[la];
-        for (int i=0; i<la; i++) {
-            result[i] = String.format(format, a.get(i));
-        }
-        return result;
-    }
-
-    /**
-     * Like {@code lam(a, b, "%s%s")} but more efficiently.
-     * @param a
-     * @param b
-     * @return
-     */
-    public static String[] lam(String[] a, String[] b) {
-        return lam(Arrays.asList(a), Arrays.asList(b));
-    }
-    public static String[] lam(List<String> a, String[] b) {
-        return lam(a, Arrays.asList(b));
-    }
-    public static String[] lam(String[] a, List<String> b) {
-        return lam(Arrays.asList(a), b);
-    }
-    public static String[] lam(List<String> a, List<String> b) {
-        int la = a.size();
-        int lb = b.size();
-        int l = Math.max(la, lb);
-        String[] result = new String[l];
-        for (int i=0; i<l; i++) {
-            result[i] = i>la ? b.get(i)
-                      : i>lb ? a.get(i)
-                      : a.get(i)+b.get(i);
-        }
-        return result;
-    }
-
-    public static String[] cat(List<String>...lists) {
-        int size = 0;
-        for (List<String> list : lists) size += list.size();
-        List<String> result = new ArrayList<String>(size);
-        for (List<String> list : lists) result.addAll(list);
-        return result.toArray(new String[result.size()]);
-    }
-
-    public static String[] col(String[][] matrix, int c) {
-        String[] result = new String[matrix.length];
-        for (int i=0; i<result.length; i++) {
-            String[] row = matrix[i];
-            result[i] = row.length>c ? row[c] : null;
-        }
-        return result;
-    }
-
-    public static String[][] invert(String[]...arrays) {
-        String[][] result = new String[arrays[0].length][arrays.length];
-        for (int i=0; i<arrays[0].length; i++) {
-            for (int j=0; j<arrays.length; j++) {
-                result[i][j] = arrays[j][i];
-            }
-        }
-        return result;
-    }
-    public static String[][] invert(Map<String,String> map) {
-        String[][] result = new String[map.size()][2];
-        int i = 0;
-        for (Map.Entry<String, String> e : map.entrySet()) {
-            result[i][0] = e.getKey();
-            result[i][1] = e.getValue();
-            i++;
-        }
-        return result;
-    }
-
-    public interface Inspector<T> {
-        public T inspect(String[] group) throws IllegalArgumentException;
-    }
-    // Pattern.compile("(?i)\\s*(!)?\\s*(\\w+)\\s*(?:([><])=\\s*(\\d+)\\s*)?");
-    public static <T> List<T> megasplit(Pattern clause, String s, Inspector<T> inspector) {
-        ArrayList<T> result = new ArrayList<T>();
-        if (s!=null) {
-            Matcher m   = clause.matcher(s);
-            int     i   = 0;
-            String  err = null;
-            while (err==null && m.find() && m.start()==i) {
-                String[] group = new String[m.groupCount()+1];
-                for (i=0; i<group.length; i++) {
-                    group[i] = m.group(i);
-                }
-                try {
-                    result.add(inspector.inspect(group));
-                } catch (IllegalArgumentException e) {
-                    err = e.getMessage();
-                }
-                i = m.end();
-            }
-            if (i<s.length() || err!=null) {
-                // we didn't make it cleanly to the end
-                if (err==null) err="parsing error";
-                throw new IllegalArgumentException(err+": "+s.substring(0,i)+"-->"+s.substring(i));
-            }
-        }
-        return result;
-    }
 
     public static String licensed_features(ILicense license) {
         ArrayList<String> features = new ArrayList<String>();
@@ -294,7 +54,7 @@ public class Util {
         if (license.isApiLicensed())        features.add("api");
         if (license.isFipsLicensed())       features.add("fips");
         if (license.isSecureEmailLicensed())features.add("secure-email");
-        return join(", ", features);
+        return S.join(", ", features);
     }
 
     public static String licensed_hosts(int[] hosts) {
@@ -312,7 +72,7 @@ public class Util {
                 default:                list.add("Unknown("+host+")");
             }
         }
-        return join(", ", list);
+        return S.join(", ", list);
     }
 
     public static String licensed_platform(int platform) {
@@ -321,7 +81,7 @@ public class Util {
         if ((platform&ILicense.AS400  ) != 0) platforms.add("AS400");
         if ((platform&ILicense.UNIX   ) != 0) platforms.add("UNIX");
         if ((platform&ILicense.WINDOWS) != 0) platforms.add("WINDOWS");
-        return join(", ", platforms);
+        return S.join(", ", platforms);
     }
 
     public static String licensed_product(int product) {
@@ -368,6 +128,35 @@ public class Util {
         return map;
     }
 
+    private static void flat(Map<String,String> result, String prefix, Map<String,Object> map, int depth) {
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            Object v = e.getValue();
+            if (v instanceof String) {
+                result.put(prefix+"."+e.getKey(), (String)v);
+            } else if (depth!=0) {
+                @SuppressWarnings({"unchecked"})
+                Map<String,Object> m = (Map<String,Object>) v;
+                flat(result, prefix+"."+e.getKey(), m, depth-1);
+            }
+        }
+    }
+    public static Map<String,String> flat(Map<String,Object> map) {
+        return flat(map, -1);
+    }
+    public static Map<String,String> flat(Map<String,Object> map, int depth) {
+        Map<String,String> result = new TreeMap<String,String>();
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            Object v = e.getValue();
+            if (v instanceof String) {
+                result.put(e.getKey(), (String)v);
+            } else if (depth!=0) {
+                @SuppressWarnings({"unchecked"})
+                Map<String,Object> m = (Map<String,Object>) v;
+                flat(result, e.getKey(), m, depth-1);
+            }
+        }
+        return result;
+    }
     public static Map<String,Object> xml2map(Node e) {
         Map<String,Object> map = new TreeMap<String,Object>();
         // e represents <foo attr=value ...>contents</foo>
@@ -398,7 +187,31 @@ public class Util {
                     // <parameter>value</parameter>
                     String text = child.getNodeValue().trim();
                     if (!text.isEmpty()) {
-                        map.put(p.getNodeName(), text);
+                        String name = p.getNodeName();
+                        if (name.equalsIgnoreCase("Advanced")) {
+                            String[] kv = text.split("=", 2);
+                            name = name+"."+kv[0];
+                            text = kv.length>1 ? kv[1] : "";
+                        } else if (name.equalsIgnoreCase("Syntax") || name.equalsIgnoreCase("Header")) {
+                            // <Syntax (or Header)>GET stuff</Syntax>
+                            String[] kv = text.split(" ", 2);
+                            name = name+"["+kv[0]+"]";
+                            text = kv.length>1 ? kv[1] : "";
+                        } else if (name.equalsIgnoreCase("Contenttypedirs")) {
+                            // <Contenttypedirs>type=type</Contenttypedirs>
+                            String[] kv = text.split("=", 2);
+                            name = name+"["+kv[0]+"]";
+                            text = kv.length>1 ? kv[1] : "";
+                        }
+                        if (map.containsKey(name+"[0]")) {
+                            int i;
+                            for (i=2; map.containsKey(name+"["+i+"]"); i++);
+                            name = name+"["+i+"]";
+                        } else if (map.containsKey(name)) {
+                            map.put(name+"[0]", map.remove(name));
+                            name = name+"[1]";
+                        }
+                        map.put(name, text);
                     }
                 } else {
                     // <bar ...>
@@ -498,6 +311,8 @@ public class Util {
         return s.toString();
     }
 
+    private static final Pattern KEY_INDEX = Pattern.compile("(\\w+)(?:\\[(.+)\\]|\\.(.+))?");
+    // word (alone), or word[index] (group(2) is index), or word.index (group(3) is index)
     @SuppressWarnings("unchecked")
     public static Document map2xml(Map<String,Object> map) throws ParserConfigurationException {
         Document doc = DocumentBuilderFactory.newInstance()
@@ -509,13 +324,32 @@ public class Util {
         Iterator<Entry<String,Object>> i = map.entrySet().iterator();
         while (i.hasNext()) {
             Entry<String,Object> e = i.next();
-            String key = e.getKey().replaceFirst("\\[.+\\]$", "");
+            String key = e.getKey();
             if (e.getValue() instanceof String) {
-                if (e.getKey().startsWith(".")) {
-                    elem.setAttribute(e.getKey().substring(1), (String)e.getValue());
+                if (key.startsWith(".")) {
+                    elem.setAttribute(key.substring(1), (String)e.getValue());
                 } else {
+                    Matcher m = KEY_INDEX.matcher(key);
+                    m.matches();
+                    key = m.group(1);
+                    String index = m.group(2)!=null ? m.group(2) : m.group(3);
+                    String text = (String)e.getValue();
+                    if (index!=null) {
+                        // Advanced.key          = value --> Advanced        key=value
+                        // Contenttypedirs[type] = value --> Contenttypedirs type=value
+                        // Syntax|Header[verb]   = value --> Syntax|Header   verb value
+                        if (key.equalsIgnoreCase("Advanced") || key.equalsIgnoreCase("Contenttypedirs")) {
+                            text = index + "=" + text;
+                        } else if (key.equalsIgnoreCase("Syntax") || key.equalsIgnoreCase("Header")) {
+                            if (text.isEmpty()) {
+                                text = index;
+                            } else {
+                                text = index + " " + text;
+                            }
+                        }
+                    }
                     Element param = doc.createElement(key);
-                    param.appendChild(doc.createTextNode((String)e.getValue()));
+                    param.appendChild(doc.createTextNode(text));
                     elem.appendChild(param);
                 }
             } else {
@@ -628,10 +462,11 @@ public class Util {
         for (Method method : o.getClass().getMethods()) {
             name = method.getName();
             if ((name.startsWith("get")||name.startsWith("is")) && method.getParameterTypes().length==0) {
-                char[] attr = Arrays.copyOf((name.substring(3,4).toLowerCase()+
-                                             name.substring(4)).toCharArray(),
-                                            max-2);  // -2 = -"get" + " "
-                Arrays.fill(attr, name.length()-3, attr.length, ' ');
+                int drop = name.startsWith("get") ? "get".length() : "is".length();
+                char[] attr = Arrays.copyOf((name.substring(drop,drop+1).toLowerCase()+
+                                             name.substring(drop+1)).toCharArray(),
+                                            max-drop+1);  // -("get"|"is") + " "
+                Arrays.fill(attr, name.length()-drop, attr.length, ' ');
                 String prefix = new String(attr);
                               
                 try {
@@ -894,6 +729,7 @@ public class Util {
     * @return the encoded string
     */
     public static String encode(String s) {
+        if (s==null) return null;
         if (s.startsWith(BEAN_PREFIX+".")) {
             s = new StringBuilder(s.substring(BEAN_PREFIX.length())).reverse().toString();
         }
@@ -910,6 +746,7 @@ public class Util {
      * @return the decoded string, or s unchanged if it doesn't look encoded
      */
     public static String decode(String s) {
+        if (s==null) return null;
         if (s.startsWith("*")) {
             try {
                 byte[] b = DatatypeConverter.parseBase64Binary(s.substring(1).replace("*", "="));

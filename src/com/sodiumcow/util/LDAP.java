@@ -1,4 +1,4 @@
-package com.sodiumcow.cc;
+package com.sodiumcow.util;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -18,7 +18,7 @@ import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 
-import com.sodiumcow.cc.shell.Util;
+import com.sodiumcow.cc.Core; // for encrypt/decrypt -- convert to callback
 
 public class LDAP {
 
@@ -233,7 +233,7 @@ public class LDAP {
         }
         if (!list.isEmpty()) {
             s.append('(')
-             .append(Util.join(",", list))
+             .append(S.join(",", list))
              .append(')');
         }
         s.append("://");

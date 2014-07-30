@@ -126,6 +126,7 @@ public class REPL {
         int[]     widths = new int[columns.length];
         boolean[] digits = new boolean[columns.length];
         int[]     depths = new int[values.length];
+        Arrays.fill(depths, 1);
         for (int c=0; c<columns.length; c++) {
             widths[c] = columns[c].length();
             digits[c] = true;
@@ -133,10 +134,9 @@ public class REPL {
                 String x = values[r][c];
                 if (x==null) {
                     values[r][c] = "";
-                    depths[r] = 1;
                 } else {
                     String[] xxs = x.split("\n");
-                    depths[r] = xxs.length;
+                    if (xxs.length > depths[r]) depths[r] = xxs.length;
                     for (String xx : xxs) {
                         if (xx.length() > widths[c]) widths[c] = xx.length();
                     }
@@ -149,8 +149,11 @@ public class REPL {
         StringBuilder line   = new StringBuilder();
         for (int c=0; c<columns.length; c++) {
             format.append('%');
-            if (!digits[c]) format.append('-');
-            format.append(widths[c]).append("s ");
+            if (digits[c] || c<columns.length-1) {
+                if (!digits[c]) format.append('-');
+                format.append(widths[c]);
+            }
+            format.append("s ");
             for (int x=0; x<widths[c]; x++) line.append('-');
             line.append(' ');
         }

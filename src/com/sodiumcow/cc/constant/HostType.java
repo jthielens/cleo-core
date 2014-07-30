@@ -20,7 +20,7 @@ public enum HostType {
     WS         (Protocol.HTTP_CLIENT,   Packaging.WS,    ".DG", "WS"),
     RNIF       (Protocol.HTTP_CLIENT,   Packaging.RNIF,  "...", "RNIF"),
     EBICS      (Protocol.HTTP_CLIENT,   Packaging.EBICS, "..G", "EBICS"),
-    FASP       (Protocol.FASP_CLIENT,   Packaging.NONE,  ".DG", "fasp"),
+    FASP       (Protocol.FASP_CLIENT,   Packaging.NONE,  ".DG", "fasp",    "Generic fasp"),
     LOCAL_FTP  (Protocol.FTP_SERVER,    Packaging.NONE,  "L..", "FTP listener",     "Local FTP Users"),
     LOCAL_HTTP (Protocol.HTTP_SERVER,   Packaging.NONE,  "L..", "HTTP listener",    "Local HTTP Users"),
     LOCAL_SFTP (Protocol.SSHFTP_SERVER, Packaging.NONE,  "L..", "SSH FTP listener", "Local SSH FTP Users");

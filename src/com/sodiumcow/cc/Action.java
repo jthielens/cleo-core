@@ -3,7 +3,7 @@ package com.sodiumcow.cc;
 import com.cleo.lexicom.external.ISchedule;
 import com.sodiumcow.cc.constant.PathType;
 
-public class Action extends Node {
+public class Action extends Item {
     public Action(Core core, Path path) {
         super(core, path);
         if (path.getType() != PathType.ACTION) {

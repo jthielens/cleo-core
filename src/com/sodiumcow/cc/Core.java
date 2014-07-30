@@ -1,8 +1,12 @@
 package com.sodiumcow.cc;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.w3c.dom.Document;
 
@@ -117,16 +121,21 @@ public class Core {
         return null;
     }
 
-    public Host findHost(HostType type, String address, int port) throws Exception {
+    public Host[] findHosts(HostType type, String address, int port) throws Exception {
+        ArrayList<Host> hosts = new ArrayList<Host>();
         for (Host h : getHosts()) {
             if (h.getHostType()==type &&
                 h.matchPropertyIgnoreCase("Address", address) &&
                 (port<0 || h.matchProperty("Port", String.valueOf(port)))) {
                 h.setSource(HostSource.FIND);
-                return h;
+                hosts.add(h);
             }
         }
-        return null;
+        if (hosts.isEmpty()) {
+            return null;
+        } else {
+            return hosts.toArray(new Host[hosts.size()]);
+        }
     }
 
     public Document getHostDocument(Path path) throws Exception {
@@ -146,82 +155,160 @@ public class Core {
         }
     }
 
-    public boolean hasProperty(Path path, String property) throws Exception {
-        connect();
-        return lexicom.hasProperty(path.getType().id, path.getPath(), property);
-    }
-    public String[] getProperty(Path path, String property) throws Exception {
-        connect();
-        if (property.equalsIgnoreCase("id")) {
-            return lexicom.getID(path.getType().id, path.getPath());
-        } else {
-            return lexicom.getProperty(path.getType().id, path.getPath(), property);
+    private static final Pattern KEY_INDEX = Pattern.compile("(\\.?\\w+)(?:\\[(.+)\\]|\\.(.+))?");
+    private static class Property {
+        public String name;
+        public String index          = null;
+        public String separator      = null;
+        public boolean isIndexed     = false;
+        public boolean isMultiValued = false;
+        public Property (String property) {
+            Matcher m = KEY_INDEX.matcher(property);
+            m.matches();
+            this.name      = m.group(1);
+            this.index     = m.group(2)!=null ? m.group(2) : m.group(3);
+            this.isIndexed = this.index!=null;
+            if (this.name.equalsIgnoreCase("Advanced") || this.name.equalsIgnoreCase("Contenttypedirs")) {
+                this.separator = "=";
+                this.isMultiValued = true;
+            } else if (this.name.equalsIgnoreCase("Syntax") || this.name.equalsIgnoreCase("Header")) {
+                this.separator = " ";
+                this.isMultiValued = true;
+            } else if (this.name.equalsIgnoreCase("id")) {
+                this.isMultiValued = true;
+            } else if (this.name.startsWith(".")) {
+                // ILexiCom handles XML attribute properties the same as nest element ones
+                this.name = property.substring(1);
+            } else {
+                this.name = property;
+            }
         }
     }
-    private String[] editProperties(String[] original, String[] edits) {
+    private static class Attribute implements Comparable<Attribute> {
+        public String name;
+        public String value;
+        public int    index;
+        public Attribute(String attribute, Property property, int index) {
+            String[] pair = attribute.split(property.separator, 2);
+            this.name  = pair[0];
+            this.value = pair.length==2 ? pair[1] : null;
+            this.index = index;
+        }
+        public Attribute(String name, String value, int index) {
+            this.name  = name;
+            this.value = value;
+            this.index = index;
+        }
+        @Override
+        public int compareTo(Attribute arg0) {
+            return this.index-arg0.index;
+        }
+    }
+    private static Map<String,Attribute> valuesToIndex(Property property, String[] values) {
+        HashMap<String,Attribute> index = new HashMap<String,Attribute>(values.length);
+        for (String value : values) {
+            Attribute a = new Attribute(value, property, index.size());
+            index.put(a.name.toLowerCase(), a);
+        }
+        return index;
+    }
+    private static String[] indexToValues(Property property, Map<String,Attribute> index) {
+        Attribute[] attrs = index.values().toArray(new Attribute[index.size()]);
+        Arrays.sort(attrs);
+        String[] values = new String[index.size()];
+        for (int i=0; i<values.length; i++) {
+            if (attrs[i].value!=null) {
+                values[i] = attrs[i].name+property.separator+attrs[i].value;
+            } else {
+                values[i] = attrs[i].name;
+            }
+        }
+        return values;
+    }
+    @SuppressWarnings("unused")
+    private static String[] editProperties(Property property, String[] original, String[] edits) {
         // need special handling for multi-valued advanced properties
         // first, build a dictionary of the existing attributes
-        class Attribute implements Comparable<Attribute> {
-            public String name;
-            public String value;
-            public int    index;
-            public Attribute(String attribute, int index) {
-                String[] pair = attribute.split("=", 2);
-                this.name  = pair[0];
-                this.value = pair.length==2 ? pair[1] : null;
-                this.index = index;
-            }
-            @Override
-            public int compareTo(Attribute arg0) {
-                return this.index-arg0.index;
-            }
-        }
-        HashMap<String,Attribute> dictionary = new HashMap<String,Attribute>(original.length);
-        int counter;
-        for (counter=0; counter<original.length; counter++) {
-            Attribute a = new Attribute(original[counter], counter);
-            dictionary.put(a.name.toLowerCase(), a);
-        }
+        Map<String,Attribute> index = valuesToIndex(property, original);
+        int counter = index.size();
         // now update the list with edits
         //    attr=value is an addition or replacement
         //    attr=      is too, with a value of ""
         //    attr       means remove the attribute altogether (noop if it doesn't exist)
         for (String edit : edits) {
-            String[]  pair     = edit.split("=", 2);
-            Attribute existing = dictionary.get(pair[0].toLowerCase());
+            String[]  pair     = edit.split(property.separator, 2);
+            Attribute existing = index.get(pair[0].toLowerCase());
             if (existing!=null) {
                 // edit, either replace or remove the value
                 if (pair.length==2) {
                     existing.value = pair[1];
                 } else {
-                    dictionary.remove(pair[0].toLowerCase());
+                    index.remove(pair[0].toLowerCase());
                 }
             } else if (pair.length==2) {
                 // add a new one at the end
-                Attribute a = new Attribute(edit, counter++);
-                dictionary.put(a.name.toLowerCase(), a);
+                Attribute a = new Attribute(edit, property, counter++);
+                index.put(a.name.toLowerCase(), a);
             }
         }
         // Now turn it back into a list
-        Attribute[] edited = dictionary.values().toArray(new Attribute[dictionary.size()]);
-        Arrays.sort(edited);
-        String[] values = new String[edited.length];
-        for (int i=0; i<edited.length; i++) {
-            if (edited[i].value != null) {
-                values[i] = edited[i].name+"="+edited[i].value;
-            } else {
-                values[i] = edited[i].name;
-            }
-        }
-        return values;
+        return indexToValues(property, index);
     }
-    public void setProperty(Path path, String property, String value) throws Exception {
+    public boolean hasProperty(Path path, String property) throws Exception {
         connect();
-        if (property.equalsIgnoreCase("id") || property.equalsIgnoreCase("advanced")) {
-            String[] values = {value};
-            setProperty(path, property, values);
+        return lexicom.hasProperty(path.getType().id, path.getPath(), property);
+    }
+    public String[] getProperty(Path path, String name) throws Exception {
+        connect();
+        Property property = new Property(name);
+        if (property.name.equalsIgnoreCase("id")) {
+            return lexicom.getID(path.getType().id, path.getPath());
+        } else if (property.isIndexed) {
+            String[] values = lexicom.getProperty(path.getType().id, path.getPath(), property.name);
+            Map<String,Attribute> index = valuesToIndex(property, values);
+            Attribute a = index.get(property.index.toLowerCase());
+            return a==null ? null : new String[] {a.value};
         } else {
-            lexicom.setProperty(path.getType().id, path.getPath(), property, value);
+            return lexicom.getProperty(path.getType().id, path.getPath(), property.name);
+        }
+    }
+    public String getSingleProperty(Path path, String property) throws Exception {
+        String[] values = getProperty(path, property);
+        if (values!=null) return values[0];
+        return null;
+    }
+    public void setProperty(Path path, String name, String value) throws Exception {
+        connect();
+        Property property = new Property(name);
+        if (property.isIndexed) {
+            // special handling for well-known multi-valued properties to harmonize with Util.xml2map/map2xml
+            // set(advanced.index, value)         => set(advanced,        {index=value})
+            // set(syntax[index], value)          => set(syntax,          {index value})
+            // set(header[index], value)          => set(header,          {index value})
+            // set(contenttypedirs[index], value) => set(contenttypedirs, {index=value})
+            String[] values = lexicom.getProperty(path.getType().id, path.getPath(), property.name);
+            Map<String,Attribute> index = valuesToIndex(property, values);
+            Attribute a = index.get(property.index.toLowerCase());
+            if (a==null && value!=null) {
+                // add new
+                a = new Attribute(property.index, value, index.size());
+                index.put(property.index, a);
+            } else if (a!=null && value!=null){
+                // overwrite
+                a.value = value;
+                index.put(a.name.toLowerCase(), a);
+            } else if (a!=null && value==null){
+                // delete
+                index.remove(a.name.toLowerCase());
+            } else {
+                // nothing to do
+                return;
+            }
+            lexicom.setProperty(path.getType().id, path.getPath(), property.name, indexToValues(property, index));
+        } else if (property.isMultiValued) {
+            setProperty(path, property.name, new String[] {value});
+        } else {
+            lexicom.setProperty(path.getType().id, path.getPath(), property.name, value);
         }
     }
     public void setProperty(Path path, String property, String[] value) throws Exception {
@@ -247,10 +334,6 @@ public class Core {
             } else {
                 throw new Exception("ID supported for HOST and MAILBOX only");
             }
-        } else if (property.equalsIgnoreCase("advanced")) {
-            String[] advanced = lexicom.getProperty(path.getType().id, path.getPath(), property);
-            String[] update   = editProperties(advanced, value);
-            lexicom.setProperty(path.getType().id, path.getPath(), property, update);
         } else {
             lexicom.setProperty(path.getType().id, path.getPath(), property, value);
         }
