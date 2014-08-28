@@ -353,6 +353,7 @@ public class Util {
                     elem.appendChild(param);
                 }
             } else {
+                key = key.split("\\[", 2)[0];  // split off key[index] to just key
                 Element newelem = doc.createElement(key);
                 if (elem==null) {
                     doc.appendChild(newelem);
