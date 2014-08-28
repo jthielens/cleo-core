@@ -35,7 +35,8 @@ public class Defaults {
         ".type",
         "licensed",
         "notes",
-        "origin"
+        "origin",
+        "passworddate"
         }));
 
     private static final Map<HostType,Map<String,String>> hostmap = new HashMap<HostType,Map<String,String>>();

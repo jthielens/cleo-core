@@ -1406,7 +1406,7 @@ public class Shell extends REPL {
                     mailbox = host.cloneMailbox(malias);
                     report("created new mailbox "+malias);
                 } else {
-                    report("updating existig mailbox "+malias);
+                    report("updating existing mailbox "+malias);
                 }
                 for (Map.Entry<String, String> prop : mbx.getValue().entrySet()) {
                     mailbox.setProperty(prop.getKey(), prop.getValue());
@@ -1454,43 +1454,89 @@ public class Shell extends REPL {
     }
     @Command(name="user", args="prot:user:pass ...", comment="create users")
     public void user(String...argv) {
-        for (String arg : argv) {
-            // validate input
-            String[] parts = arg.split(":", 3);
-            if (parts.length != 3) {
-                error("usage: user prot:user:pass");
-                return;
-            }
-            HostType prot;
+        if (argv.length<=1 && (argv.length==0 || !argv[0].contains(":"))) {
+            // usage: user [*|user]
+            // export [all] user[s]
+            // output format is the user commands to set the users up
             try {
-                prot = HostType.valueOf("LOCAL_"+parts[0].toUpperCase());
-            } catch (IllegalArgumentException e) {
-                error("protcol must be ftp, http, or sftp");
-                return;
+                String user = (argv.length==0 || argv[0].equals("*"))
+                              ? null : argv[0];
+                for (Host h : core.getHosts()) {
+                    if (h.isLocal()) {
+                        HostType type = h.getHostType();
+                        for (Mailbox m : h.getMailboxes()) {
+                            String malias = m.getPath().getAlias();
+                            if (m.getSingleProperty("enabled").equalsIgnoreCase("True") && (user==null || malias.matches(user))) {
+                                Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
+                                Defaults.crackPasswords(mprops);
+                                if (malias.equals(mprops.get("Homedirectory"))) {
+                                    mprops.remove("Homedirectory");
+                                }
+                                String password = mprops.remove("Password");
+                                String userpass = qq(malias) + (password!=null ? ":"+qq(password) : "");
+                                String typename = type.name().substring("LOCAL_".length()).toLowerCase();
+                                report("  user "+userpass+" "+typename+" "+S.join(" \\\n    ", mprops, qqequals));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                error("error listing users", e);
             }
-            String username = parts[1];
-            String password = parts[2];
-            try {
-                // valid input -- find "host"
-                Host host = core.getHost(prot.template);
-                if (host==null) {
-                    host = core.activateHost(prot, prot.template);
+            return;
+        }
+        // now in create user mode
+        // user name[:password] type {property=value ...}
+        String[] userpass = argv[0].split(":", 2);
+        String username = userpass[0];
+        String password = userpass.length>1 ? userpass[1] : null;
+        
+        String typename = argv[1];
+        HostType type;
+        try {
+            type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            error("protcol must be ftp, http, or sftp");
+            return;
+        }
+        try {
+            // valid input -- find "host"
+            Host host = core.getHost(type.template);
+            if (host==null) {
+                host = core.activateHost(type, type.template);
+                Mailbox template = host.getMailbox("myTradingPartner");
+                if (template!=null) {
+                    template.setProperty("enabled", "False");
+                    template.rename(Host.TEMPLATE_MAILBOX);
+                    report("renamed template: "+template.getPath());
                 }
-                // got host -- find "mailbox"
-                Mailbox mailbox = host.findMailbox(username, password);
-                if (mailbox!=null) {
-                    report("user "+username+" already exists");
-                } else {
-                    mailbox = host.createMailbox(username);
-                    mailbox.setProperty("Homedirectory", username);
-                    report("user "+username+" created");
-                }
+            }
+            // got host -- find "mailbox"
+            Mailbox mailbox = host.findMailbox(username, password);
+            if (mailbox==null) {
+                mailbox = host.cloneMailbox(username);
+                report("created new mailbox "+username);
+            } else {
+                report("updating existing mailbox "+username);
+            }
+            if (password!=null) {
                 mailbox.setProperty("Password", password);
                 report("user "+username+" password set");
-                host.save();
-            } catch (Exception e) {
-                error("error creating "+username, e);
             }
+            boolean homeset = false;
+            for (int i=2; i<argv.length; i++) {
+                String[] av = argv[i].split("=", 2);
+                mailbox.setProperty(av[0], av.length>1 ? av[1] : "");
+                if (av[0].equalsIgnoreCase("Homedirectory")) {
+                    homeset = true;
+                }
+            }
+            if (!homeset) {
+                mailbox.setProperty("Homedirectory", username);
+            }
+            host.save();
+        } catch (Exception e) {
+            error("error creating "+username, e);
         }
     }
     @Command(name="action", args="[path [command...]]", comment="export/create action(s)")

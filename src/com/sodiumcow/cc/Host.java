@@ -89,6 +89,10 @@ public class Host extends Item {
         return Protocol.valueOf(core.getLexiCom().getHostProtocol(path.getPath()[0]));
     }
     public HostType getHostType() throws Exception {
-        return HostType.fromTransport(getProperty("transport")[0]);
+        if (isLocal()) {
+            return HostType.fromTransport(getSingleProperty("transport")+" listener");
+        } else {
+            return HostType.fromTransport(getSingleProperty("transport"));
+        }
     }
 }
