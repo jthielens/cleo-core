@@ -14,6 +14,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -53,6 +54,7 @@ import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
 import com.sodiumcow.util.DB;
+import com.sodiumcow.util.F;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
 
@@ -113,6 +115,10 @@ public class Shell extends REPL {
         print(S.join(" ", argv));
     }
 
+    /**
+     * Canned formatter that produces a key=value string, quoting both key and
+     * value independently, i.e. qq(key)=qq(value).
+     */
     private static S.Formatter qqequals = new S.Formatter () {
         public String format(Map.Entry<?,?> entry) {
             return qq(entry.getKey().toString())+"="+qq(entry.getValue().toString());
@@ -127,7 +133,7 @@ public class Shell extends REPL {
     private void demo_registration(RegistrationInfo reg) {
         reg.setFirstName("Cleo");
         reg.setLastName("Demonstration");
-        reg.setTitle("Employee");
+        reg.setTitle("Demonstration");
         reg.setCompany("Cleo");
         reg.setAddress1("4203 Galleria Dr");
         reg.setCity("Loves Park");
@@ -312,6 +318,12 @@ public class Shell extends REPL {
     private DBOptions db_set = null;
     private DB db = null;
     private Map<String,Map<String,Integer>> db_tables = null;
+    /**
+     * Converts a table name from case-insensitive to case-sensitive.
+     * @param table the case-insensitive table name
+     * @return the tble name in its proper case-sensitive form
+     * @throws Exception
+     */
     private String db_table(String table) throws Exception {
         get_db();
         if (db_tables!=null) {
@@ -323,6 +335,12 @@ public class Shell extends REPL {
         }
         return null;
     }
+    /**
+     * Converts table.column from case-insensitive to case-sensitive.
+     * @param table the table
+     * @param column the case-insensitive column name
+     * @return the column name in its proper case-sensitive form
+     */
     private String db_column(String table, String column) {
         if (db_tables!=null) {
             Map<String,Integer> columns = db_tables.get(table);
@@ -334,6 +352,12 @@ public class Shell extends REPL {
         }
         return null;
     }
+    /**
+     * Returns true if table.column has a string type.
+     * @param table
+     * @param column
+     * @return true if table.column has a string type (VARCHAR)
+     */
     private boolean db_string(String table, String column) {
         if (db_tables!=null && db_tables.get(table)!=null && db_tables.get(table).get(column)!=null) {
             int type = db_tables.get(table).get(column);
@@ -341,6 +365,21 @@ public class Shell extends REPL {
         }
         return false;
     }
+    /**
+     * If the DB connection is not yet established, attempts to connect
+     * to the database last set.  If none has been set, retrieves the DB
+     * connection string from the transfer logging configuration.
+     * <p>
+     * If a successful connection is established, the schema is pulled and
+     * cached in db_tables (table names, column names and types).  This
+     * allows case-insensitive queries and auto conversion of string/integer
+     * types.
+     * <p>
+     * If the DB connection was already established, the cached db connection
+     * is returned.
+     * @return
+     * @throws Exception
+     */
     private DB get_db() throws Exception {
         if (db==null) {
             if (db_set==null) {
@@ -477,6 +516,86 @@ public class Shell extends REPL {
             } catch (Exception e) {
                 error("error importing key", e);
             }
+        }
+    }
+
+    @Command(name="uri_list", args="[id ...]", comment="install URI drivers")
+    public void uri_list(String...argv) {
+        try {
+            Properties props = URI.load(core.getHome());
+            Map<String,URI> uris = new HashMap<String,URI>();
+            for (URI uri : URI.getSchemes(props)) {
+                uris.put(uri.id, uri);
+                if (argv.length==0) {
+                    report(uri.id+" ("+S.join(File.pathSeparator, uri.classPath)+")");
+                }
+            }
+            for (String arg : argv) {
+                if (uris.containsKey(arg)) {
+                    URI uri = uris.get(arg);
+                    report(new String[] {
+                        uri.id+":",
+                       "cleo.uri."+uri.id+".file="+uri.file,
+                       "cleo.uri."+uri.id+".inputstream="+uri.inputStream,
+                       "cleo.uri."+uri.id+".outputStream="+uri.outputStream,
+                       "cleo.uri."+uri.id+".classpath="+S.join(File.pathSeparator, uri.classPath)});
+                } else {
+                    error("uri not installed: "+arg);
+                }
+            }
+        } catch (Exception e) {
+            error("error listing URIs", e);
+        }
+    }
+    @Command(name="uri_install", args="file.jar ...", comment="install URI drivers")
+    public void uri_install(String...argv) {
+        if (argv.length < 1) {
+            error("usage: uri install file.jar ...");
+        } else {
+            try {
+                URI  scheme = new URI(core.getHome(), argv);
+                File lib    = new File(core.getHome(), "lib/uri");
+                for (int i=0; i<argv.length; i++) {
+                    argv[i] = F.copy(new File(argv[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
+                }
+                scheme = new URI(core.getHome(), argv);
+                Properties props = URI.load(core.getHome());
+                URI.setScheme(props, scheme);
+                URI.store(core.getHome(), props);
+                report(new String[] {
+                        scheme.id+":",
+                       "cleo.uri."+scheme.id+".file="+scheme.file,
+                       "cleo.uri."+scheme.id+".inputstream="+scheme.inputStream,
+                       "cleo.uri."+scheme.id+".outputStream="+scheme.outputStream,
+                       "cleo.uri."+scheme.id+".classpath="+S.join(File.pathSeparator, scheme.classPath)});
+            } catch (Exception e) {
+                error("error installing URI", e);
+            }
+        }
+    }
+    @Command(name="uri_remove", args="id ...", comment="remove URI drivers")
+    public void uri_remove(String...argv) {
+        if (argv.length<1) {
+            error("usage: uri remove id ...");
+            return;
+        }
+        try {
+            Properties props = URI.load(core.getHome());
+            Map<String,URI> uris = new HashMap<String,URI>();
+            for (URI uri : URI.getSchemes(props)) {
+                uris.put(uri.id, uri);
+            }
+            for (String arg : argv) {
+                if (uris.containsKey(arg)) {
+                    URI.removeScheme(props, arg);
+                    // remove files?
+                } else {
+                    error("uri not installed: "+arg);
+                }
+            }
+            URI.store(core.getHome(), props);
+        } catch (Exception e) {
+            error("error listing URIs", e);
         }
     }
 
