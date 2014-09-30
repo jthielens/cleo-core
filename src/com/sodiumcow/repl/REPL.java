@@ -246,7 +246,7 @@ public class REPL {
             String[] buf = new String[6];
             if (ic.hasNext()) {
                 Command c = ic.next();
-                buf[0] = c.name();
+                buf[0] = c.name().replace('_', ' ');
                 buf[1] = c.args();
                 buf[2] = c.comment();
             } else {
