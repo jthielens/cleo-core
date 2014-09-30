@@ -20,12 +20,13 @@ public class Action extends Item {
     }
 
     public void setSchedule(Schedule schedule) throws Exception {
+        ISchedule scheduler = core.getLexiCom().getSchedule();
         if (schedule==null) {
-            core.getLexiCom().getSchedule().removeItem(getPath().getPath(), true);
+            scheduler.removeItem(getPath().getPath(), true);
         } else {
-            ISchedule.Item item = core.getLexiCom().getSchedule().newItem(getPath().getPath());
+            ISchedule.Item item = scheduler.newItem(getPath().getPath());
             schedule.transcribe(item);
-            core.getLexiCom().getSchedule().updateItem(item, true);
+            scheduler.updateItem(item, true);
         }
     }
 }
