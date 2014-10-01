@@ -918,9 +918,11 @@ public class Schedule {
 
     public void transcribe(ISchedule.Item item) throws Exception {
         item.setOnlyIfFile(this.onfile, this.continuous);
-        item.setPeriod(this.type.id);
-        for (Calendar c : this.calendars) {
-            c.transcribe(item.addCalendar());
+        if (!this.continuous) { // setOnlyIfFile auto-creates the calendar if continuous
+            item.setPeriod(this.type.id);
+            for (Calendar c : this.calendars) {
+                c.transcribe(item.addCalendar());
+            }
         }
     }
 }
