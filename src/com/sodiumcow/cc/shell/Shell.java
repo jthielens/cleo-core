@@ -746,7 +746,7 @@ public class Shell extends REPL {
     public void exists(String...argv) {
         for (String arg : argv) {
             try {
-                boolean exists = core.exists(new Path(arg));
+                boolean exists = core.exists(Path.parsePath(arg));
                 report(arg+(exists?" exists":" doesn't exist"));
             } catch (Exception e) {
                 error("error checking "+arg, e);
@@ -1221,8 +1221,14 @@ public class Shell extends REPL {
                                 LDAP ldap = new LDAP(kv[1]);
                                 Util.setmap(xml.map, path, ldap.toMap(core));
                             } catch (Exception e) {
-                                // no big deal -- not LDAP
-                                Util.setmap(xml.map, path, kv[1]);
+                                // no big deal -- not LDAP, but see if it's DB
+                                try {
+                                    DBOptions dbo = new DBOptions(kv[1]);
+                                    Util.setmap(xml.map, path, dbo.connection);
+                                } catch (Exception f) {
+                                    // no big deal -- not LDAP or DB -- just a String
+                                    Util.setmap(xml.map, path, kv[1]);
+                                }
                             }
                         } else {
                             Object o = Util.subobj(xml.map, path);
@@ -1253,21 +1259,81 @@ public class Shell extends REPL {
             error("error getting options", e);
         }
     }
-    static final Pattern DB_PATTERN = Pattern.compile("(.*):(.*)@(.*)/(.*)");
     public static class DBOptions {
-        public String connection;
+        public enum Vendor { MYSQL, ORACLE, SQLSERVER, DB2; }
+        public Vendor vendor;
         public String user;
         public String password;
-        public DBOptions (String connection, String user, String password) {
-            this.connection = connection;
+        public String db;
+        public String driver;
+        public String type;
+        public String rawconnection;
+        public String connection;
+        public void init(String vendor, String user, String password, String host, String port, String db) {
+            this.vendor     = Vendor.valueOf(vendor.toUpperCase());
             this.user       = user;
             this.password   = password;
+            this.db         = db;
+            switch (this.vendor) {
+            case MYSQL:
+                if (port==null) port = "3306";
+                this.driver        = "com.mysql.jdbc.Driver";
+                this.type          = DBConnection.DB_CONTYPE_MYSQL;
+                this.rawconnection = "jdbc:mysql://"+host+":"+port;
+                this.connection    = this.rawconnection+"/"+this.db;
+                break;
+            case ORACLE:
+                if (port==null) port = "1521";
+                this.driver        = "oracle.jdbc.driver.OracleDriver";
+                this.type          = DBConnection.DB_CONTYPE_OTHER;
+                this.rawconnection = "jdbc:oracle:thin:@"+host+":"+port;
+                this.connection    = this.rawconnection+":"+this.db;
+                break;
+            case SQLSERVER:
+                if (port==null) port = "1433";
+                this.driver        = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+                this.type          = DBConnection.DB_CONTYPE_OTHER;
+                this.rawconnection = "jdbc:sqlserver://"+host+":"+port;
+                this.connection    = this.rawconnection+";databaseName="+this.db;
+                break;
+            case DB2:
+                if (port==null) port = "5000";
+                this.driver        = "com.ibm.db2.jcc.DB2Driver";
+                this.type          = DBConnection.DB_CONTYPE_OTHER;
+                this.rawconnection = "jdbc:db2://"+host+":"+port;
+                this.connection    = this.rawconnection+"/"+this.db;
+                break;
+            }
+        }
+        // vendor:user:pass@host[:port]/database
+        static final Pattern DB_PATTERN = Pattern.compile("(\\w+):(.*):(.*)@(.*?)(?::(\\d+))?/(.*)");
+        public DBOptions(String string) {
+            Matcher m = DB_PATTERN.matcher(string);
+            if (m.matches()) {
+                this.init(m.group(1), m.group(2), m.group(3), m.group(4), m.group(5), m.group(6));
+            } else {
+                throw new IllegalArgumentException("invalid database descriptor: "+string);
+            }
         }
         public DBOptions (DBConnection c) {
-            this(c.getConnectionString(), c.getUserName(), Util.decode(c.getPassword()));
+            this.connection = c.getConnectionString();
+            this.driver     = c.getDriverString();
+            this.type       = c.getConnectionType();
+            this.user       = c.getUserName();
+            this.password   = Util.decode(c.getPassword());
+            this.vendor     = Vendor.valueOf(this.connection.split(":")[1].toUpperCase()); // jdbc:vendor:stuff
+        }
+        public Options.DBConnection getDBConnection(Core core) throws Exception {
+            Options.DBConnection c = core.getLexiCom().getOptions().new DBConnection(); 
+            c.setConnectionType(this.type);
+            c.setConnectionString(this.connection);
+            c.setDriverString(this.driver);
+            c.setUserName(this.user);
+            c.setPassword(this.password);
+            return c;
         }
     }
-    @Command(name="db", args="find|set|remove|create string", comment="find/set db connection")
+    @Command(name="db", args="find|set|remove|create|drop string", comment="find/set db connection")
     public void db(String...argv) {
         if (argv.length!=2) {
             error("usage: db find|set string");
@@ -1285,37 +1351,31 @@ public class Shell extends REPL {
                         Util.report_bean(this, c);
                     }
                 } else if (command.equalsIgnoreCase("set")) {
-                    Matcher m = DB_PATTERN.matcher(string);
-                    if (m.matches()) {
-                        Options.DBConnection c = o.new DBConnection();
-                        c.setConnectionType(Options.DBConnection.DB_CONTYPE_MYSQL);
-                        db_set = new DBOptions("jdbc:mysql://"+m.group(3)+"/"+m.group(4), m.group(1), m.group(2));
-                        c.setConnectionString(db_set.connection);
-                        c.setDriverString("com.mysql.jdbc.Driver");
-                        c.setUserName(db_set.user);
-                        c.setPassword(db_set.password);
+                    try {
+                        db_set = new DBOptions(string);
+                        Options.DBConnection c = db_set.getDBConnection(core);
                         o.updateDBConnection(c);
                         o.save();
                         c = o.findDBConnection(db_set.connection);
                         Util.report_bean(this, c);
-                    } else {
-                        error("usage: db set user:password@host/database");
+                    } catch (Exception e) {
+                        error("usage: db set type:user:password@host[:port]/database");
                     }
                 } else if (command.equalsIgnoreCase("remove")) {
                     o.removeDBConnection(string);
                     o.save();
                 } else if (command.equalsIgnoreCase("create") || command.equalsIgnoreCase("drop")) {
-                    Matcher m = DB_PATTERN.matcher(string);
-                    if (m.matches()) {
+                    try {
+                        DBOptions dbo = new DBOptions(string);
                         try {
-                            DB db = new DB("jdbc:mysql://"+m.group(3), m.group(1), m.group(2));
-                            db.execute(command+" database "+m.group(4));
-                            report("database "+m.group(4)+" "+(command.equalsIgnoreCase("create")?"created":"dropped"));
+                            DB db = new DB(dbo.rawconnection, dbo.user, dbo.password);
+                            db.execute(command+" database "+dbo.db);
+                            report("database "+dbo.db+" "+(command.equalsIgnoreCase("create")?"created":"dropped"));
                         } catch (SQLException e) {
-                            error("can not "+command+" database "+m.group(4), e);
+                            error("can not "+command+" database "+dbo.db, e);
                         }
-                    } else {
-                        error("usage: db create user:password@host/database");
+                    } catch (Exception e) {
+                        error("usage: db (create|drop) type:user:password@host[:port]/database");
                     }
                 } else {
                     error("usage: db find|set string");
@@ -1325,7 +1385,6 @@ public class Shell extends REPL {
             }
         }
     }
-    static final Pattern LDAP_PATTERN = Pattern.compile("");
     // ldap[s][(type|opt|map...)]://[user:pass@]host[:port]/basedn[?filter]
     // type = ad|apache|domino|novell|dirx
     // opt  = starttls|default
@@ -1362,9 +1421,14 @@ public class Shell extends REPL {
                     o.setTransferLogging(Options.TRANSFER_LOG_XML);
                     o.setTransferLoggingEnabled(true);
                 } else {
-                    o.setTransferLogging(Options.TRANSFER_LOG_DATABASE);
-                    o.setTransferLoggingDBConnectionStr(argv[0]);
-                    o.setTransferLoggingEnabled(true);
+                    try {
+                        DBOptions dbo = new DBOptions(argv[0]);
+                        o.setTransferLogging(Options.TRANSFER_LOG_DATABASE);
+                        o.setTransferLoggingDBConnectionStr(dbo.connection);
+                        o.setTransferLoggingEnabled(true);
+                    } catch (Exception e) {
+                        error("usage: xferlog type:user:password@host[:port]/database");
+                    }
                 }
                 o.save();
             } catch (Exception e) {
@@ -1653,6 +1717,7 @@ public class Shell extends REPL {
             if (!homeset) {
                 mailbox.setProperty("Homedirectory", username);
             }
+            mailbox.setProperty("Enabled", "True");
             host.save();
         } catch (Exception e) {
             error("error creating "+username, e);
@@ -1691,9 +1756,11 @@ public class Shell extends REPL {
             if (path.getType() != PathType.ACTION && path.getType() != PathType.HOST_ACTION) {
                 error("<action>user@host or <action>host expected: "+argv[0]);
             } else {
-                String commands = S.join("\\n", 1, argv);
+                String commands = S.join("\n", 1, argv);
                 try {
-                    path = core.create(path);
+                    if (!core.exists(path)) {
+                        path = core.create(path);
+                    }
                     core.setProperty(path, "Commands", commands);
                     core.save(path);
                     report(name, commands);
@@ -1728,7 +1795,7 @@ public class Shell extends REPL {
                 try {
                     Action action = new Action(core, path);
                     Schedule schedule = action.getSchedule();
-                    report("schedule "+qq(path.toString())+" "+schedule.toString());
+                    report("schedule "+qq(path.toString())+" "+schedule);
                 } catch (Exception e) {
                     error("error getting schedule", e);
                 }
@@ -1759,6 +1826,28 @@ public class Shell extends REPL {
             } catch (Exception e) {
                 error("error setting schedule", e);
             }
+        }
+    }
+    @Command(name="scheduler", args="(autostart [on|off] | start)", comment="scheduler control")
+    public void scheduler(String...argv) {
+        try {
+            if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("on")) {
+                core.getLexiCom().getSchedule().setAutoStartup(true);
+                core.getLexiCom().getSchedule().save();
+                report("scheduler autostart set to on");
+            } else if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("off")) {
+                core.getLexiCom().getSchedule().setAutoStartup(false);
+                report("scheduler autostart set to off");
+                core.getLexiCom().getSchedule().save();
+            } else if (argv.length==1 && argv[0].equalsIgnoreCase("autostart")) {
+                report("scheduler autostart is "+(core.getLexiCom().getSchedule().isAutoStartup()?"on":"off"));
+            } else if (argv.length==1 && argv[0].equalsIgnoreCase("start")) {
+                core.getLexiCom().startService();
+            } else {
+                error("usage: scheduler (autostart [on|off] | start)");
+            }
+        } catch (Exception e) {
+            error("error managing scheduler", e);
         }
     }
     @Command(name="group", args="[name [definition]]", comment="export/create VLNav group(s)")
