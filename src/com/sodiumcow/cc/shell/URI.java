@@ -2,7 +2,9 @@ package com.sodiumcow.cc.shell;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,11 +78,17 @@ public class URI {
         return uris;
     }
 
-    public static Properties load(File home) throws Exception {
+    public static Properties load(File home) throws IOException {
         Properties props = new Properties();
-        FileInputStream in = new FileInputStream(new File(home, "conf/system.properties"));
-        props.load(in);
-        in.close();
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(new File(home, "conf/system.properties"));
+            props.load(in);
+        } catch (FileNotFoundException e) {
+            // that's ok -- otherwise let it bubble up
+        } finally {
+            if (in!=null) in.close();
+        }
         return props;
     }
 
