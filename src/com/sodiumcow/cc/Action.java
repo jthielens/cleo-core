@@ -16,7 +16,12 @@ public class Action extends Item {
     }
     
     public Schedule getSchedule() throws Exception {
-        return new Schedule(core.getLexiCom().getSchedule().findItem(getPath().getPath()));
+        ISchedule.Item s = core.getLexiCom().getSchedule().findItem(getPath().getPath());
+        if (s==null) {
+            return null;
+        } else {
+            return new Schedule(s);
+        }
     }
 
     public void setSchedule(Schedule schedule) throws Exception {
