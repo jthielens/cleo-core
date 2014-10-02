@@ -18,8 +18,6 @@ import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 
-import com.sodiumcow.cc.Core; // for encrypt/decrypt -- convert to callback
-
 public class LDAP {
 
     public enum Type {
@@ -119,7 +117,18 @@ public class LDAP {
         static { for (Attribute a : Attribute.values()) index.put(a.tag.toLowerCase(), a); }
         public static Attribute lookup(String name) { return index.get(name.toLowerCase()); }
     }
-    
+
+    public interface Crypt {
+        public String encrypt(String s) throws Exception;
+        public String decrypt(String s) throws Exception;
+    }
+
+    public static class NoCrypt implements Crypt {
+        public String encrypt(String s) { return s; }
+        public String decrypt(String s) { return s; }
+    }
+    public static final NoCrypt nocrypt = new NoCrypt();
+
     private SecurityMode getMode()            { return SecurityMode.lookup(attrs.get(Attribute.MODE)); }
     private boolean      getBool(Attribute a) { return attrs.get(a).equalsIgnoreCase(Boolean.toString(true)); }
     private void         setBool(Attribute a, boolean b) { attrs.put(a, b?"True":"False"); }
@@ -250,13 +259,16 @@ public class LDAP {
         return s.toString();
     }
 
-    public Map<String,Object> toMap(Core core) throws Exception {
+    public Map<String,Object> toMap() throws Exception {
+        return toMap(nocrypt);
+    }
+    public Map<String,Object> toMap(Crypt crypt) throws Exception {
         Map<String,Object> map = new TreeMap<String,Object>();
         for (Attribute a : Attribute.values()) {
             if (attrs.containsKey(a)) {
                 String value = attrs.get(a);
                 if (a==Attribute.PASSWORD) {
-                    value = "#"+core.encrypt(value)+"#";
+                    value = "#"+crypt.encrypt(value)+"#";
                 }
                 map.put(a.tag, value);
             } else {
@@ -266,7 +278,10 @@ public class LDAP {
         return map;
     }
 
-    public LDAP (Map<String,Object> map, Core core) throws Exception {
+    public LDAP (Map<String,Object> map) throws Exception {
+        this(map, nocrypt);
+    }
+    public LDAP (Map<String,Object> map, Crypt crypt) throws Exception {
         // set up defaults
         this();
         // walk the map
@@ -282,7 +297,7 @@ public class LDAP {
             if (a==Attribute.PASSWORD && value.matches("#.*#")) {
                 StringBuffer sb = new StringBuffer(value.subSequence(1, value.length()-1));
                 while (sb.length()%4 > 0) sb.append('=');
-                value = core.decrypt(sb.toString());
+                value = crypt.decrypt(sb.toString());
             }
             attrs.put(a, value);
         }

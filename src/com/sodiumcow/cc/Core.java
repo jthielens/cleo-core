@@ -20,7 +20,7 @@ import com.sodiumcow.cc.constant.Mode;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Product;
 
-public class Core {
+public class Core implements com.sodiumcow.util.LDAP.Crypt {
     private Product  product;
     private Mode     mode;
     private File     home;
