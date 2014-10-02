@@ -10,7 +10,7 @@ import org.w3c.dom.Node;
 import com.cleo.lexicom.external.LexiComLogListener;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.PathType;
-import com.sodiumcow.cc.shell.Util;
+import com.sodiumcow.util.X;
 
 public class Item {
 
@@ -134,7 +134,7 @@ public class Item {
     public Map<String, String> getProperties() throws Exception {
         Node node = getNode();
         if (node!=null) {
-            return Util.flat(Util.xml2map(node), 0);
+            return X.flat(X.xml2map(node), 0);
         }
         return null;
     }
@@ -147,9 +147,9 @@ public class Item {
                 for (File f : preconfigured.listFiles()) {
                     if (f.isFile() && f.getName().endsWith(".xml")) {
                         try {
-                            Node node = Util.file2xml(f).getDocumentElement();
+                            Node node = X.file2xml(f).getDocumentElement();
                             String alias = node.getAttributes().getNamedItem("alias").getNodeValue();
-                            Map<String,String> map = Util.flat(Util.xml2map(node), 0);
+                            Map<String,String> map = X.flat(X.xml2map(node), 0);
                             defaults.put(alias, map);
                         } catch (Exception e) {
                             // skip it

@@ -13,7 +13,7 @@ import com.cleo.lexicom.external.LexiComOutgoing;
 import com.cleo.lexicom.external.RemoteLexiComOutgoing;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Sort;
-import com.sodiumcow.cc.shell.Util;
+import com.sodiumcow.util.X;
 
 public class Mailbox extends Item {
     private IMailboxController controller = null;
@@ -72,7 +72,7 @@ public class Mailbox extends Item {
         LexiComOutgoing tx = new LexiComOutgoing(fis);
         tx.setFilename(as!=null?as:f.getName());
         boolean result = controller.send(new RemoteLexiComOutgoing(tx), props, false);
-        lastResult = Util.xml2string(controller.getLastResult());
+        lastResult = X.xml2string(controller.getLastResult());
         if (listener!=null) {
             action.removeLogListener(listener);
         }
@@ -88,7 +88,7 @@ public class Mailbox extends Item {
         }
         IActionController actionController = controller.getActionController(action.getPath().getPath());
         DirectoryEntry[]  files = actionController.getDirectoryController().list(path, false, null, Sort.NONE.id);
-        lastResult = Util.xml2string(controller.getLastResult());
+        lastResult = X.xml2string(controller.getLastResult());
         if (listener!=null) {
             action.removeLogListener(listener);
         }

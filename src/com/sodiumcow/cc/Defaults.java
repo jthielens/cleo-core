@@ -11,7 +11,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import com.sodiumcow.cc.constant.HostType;
-import com.sodiumcow.cc.shell.Util;
 
 public class Defaults {
     // these are all .toLowerCase for case insensitive lookup
@@ -1318,19 +1317,6 @@ public class Defaults {
                 if (ignore.contains(e.getKey().toLowerCase()) ||
                     e.getValue().equalsIgnoreCase(defaults.get(e.getKey()))) {
                     i.remove();
-                }
-            }
-        }
-        return props;
-    }
-
-    public static Map<String,String> crackPasswords(Map<String,String> props) {
-        if (props!=null) {
-            Iterator<Map.Entry<String,String>> i = props.entrySet().iterator();
-            while (i.hasNext()) {
-                Map.Entry<String,String> e = i.next();
-                if (e.getKey().matches("(?i).*password")) {
-                    props.put(e.getKey(), Util.decode(e.getValue()));
                 }
             }
         }

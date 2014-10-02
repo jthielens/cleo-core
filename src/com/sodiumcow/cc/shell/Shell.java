@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -57,6 +58,7 @@ import com.sodiumcow.util.DB;
 import com.sodiumcow.util.F;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
+import com.sodiumcow.util.X;
 
 public class Shell extends REPL {
     Core             core = new Core();
@@ -308,7 +310,7 @@ public class Shell extends REPL {
     }
     
     private LDAP get_ldap() throws Exception {
-        return new LDAP(Util.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
+        return new LDAP(X.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
     }
 
     private DBOptions db_set = null;
@@ -611,7 +613,7 @@ public class Shell extends REPL {
                     } else if ("table".equalsIgnoreCase(fmt)) {
                         // usage: dump path[,depth]:table
                         // Dumps the segment of the XML host file for <path> [to <depth>]
-                        String[][] description = S.invert(Util.flat(Util.xml2map(item.getNode()), depth));
+                        String[][] description = S.invert(X.flat(X.xml2map(item.getNode()), depth));
                         report(new String[] {"Attribute", "Value"}, description);
                     } else {
                         // usage: dump path
@@ -827,8 +829,8 @@ public class Shell extends REPL {
             if (argv.length>1) {
                 Util.string2file(argv[1], src);
             } else if (xml!=null) {
-                report(Util.map2tree(xml.map));
-                Map<String,Object> ldapmap = Util.submap(xml.map, "Users", "Ldapserver");
+                report(X.map2tree(xml.map));
+                Map<String,Object> ldapmap = X.submap(xml.map, "Users", "Ldapserver");
                 if (ldapmap!=null) {
                     LDAP ldap = new LDAP(ldapmap, core);
                     report(ldap.toString());
@@ -1003,9 +1005,9 @@ public class Shell extends REPL {
         }
         try {
             if (document) {
-                xml.map = Util.xml2map(Util.string2xml(xml.file.contents));
+                xml.map = X.xml2map(X.string2xml(xml.file.contents));
             } else {
-                xml.map = Util.xml2map(Util.string2xml(xml.file.contents).getDocumentElement());
+                xml.map = X.xml2map(X.string2xml(xml.file.contents).getDocumentElement());
             }
         } catch (Exception e) {
             xml.map = null; /// must not be XML
@@ -1014,7 +1016,7 @@ public class Shell extends REPL {
     }
     private void write_xml_file(XmlReadResult xml) throws Exception {
         if (xml.map!=null) {
-            xml.file.contents = Util.xml2string(Util.map2xml(xml.map));
+            xml.file.contents = X.xml2string(Util.map2xml(xml.map));
         }
         Util.string2file(xml.file, core);
     }
@@ -1127,23 +1129,23 @@ public class Shell extends REPL {
                             updated=true;
                             try {
                                 LDAP ldap = new LDAP(kv[1]);
-                                Util.setmap(xml.map, path, ldap.toMap(core));
+                                X.setmap(xml.map, path, ldap.toMap(core));
                             } catch (Exception e) {
                                 // no big deal -- not LDAP, but see if it's DB
                                 try {
                                     DBOptions dbo = new DBOptions(kv[1]);
-                                    Util.setmap(xml.map, path, dbo.connection);
+                                    X.setmap(xml.map, path, dbo.connection);
                                 } catch (Exception f) {
                                     // no big deal -- not LDAP or DB -- just a String
-                                    Util.setmap(xml.map, path, kv[1]);
+                                    X.setmap(xml.map, path, kv[1]);
                                 }
                             }
                         } else {
-                            Object o = Util.subobj(xml.map, path);
+                            Object o = X.subobj(xml.map, path);
                             if (o instanceof Map) {
                                 @SuppressWarnings("unchecked")
                                 Map<String,Object> out = (Map<String,Object>)o;
-                                report(Util.map2tree(out));
+                                report(X.map2tree(out));
                             } else {
                                 String out = (String)o;
                                 report(out);
@@ -1154,8 +1156,8 @@ public class Shell extends REPL {
                         write_xml_file(xml);
                         report("file "+xml.file.file.getPath()+" updated");
                     } else if (argv.length<=1) {
-                        report(Util.map2tree(xml.map));
-                        //report(Util.xml2string(Util.map2xml(xml.map)));
+                        report(X.map2tree(xml.map));
+                        //report(X.xml2string(Util.map2xml(xml.map)));
                     }
                 } else {
                     report(Util.file2string(name, null).contents);
@@ -1338,6 +1340,19 @@ public class Shell extends REPL {
         o.setTransferLoggingEnabled(true);
         o.save();
     }
+
+    private static Map<String,String> crackPasswords(Map<String,String> props) {
+        if (props!=null) {
+            Iterator<Map.Entry<String,String>> i = props.entrySet().iterator();
+            while (i.hasNext()) {
+                Map.Entry<String,String> e = i.next();
+                if (e.getKey().matches("(?i).*password")) {
+                    props.put(e.getKey(), Util.decode(e.getValue()));
+                }
+            }
+        }
+        return props;
+    }
     @Command(name="host", args="[alias|* [url]]", comment="create a new remote host")
     public void host(String...argv) {
         if (argv.length<=1) {
@@ -1369,7 +1384,7 @@ public class Shell extends REPL {
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
                                 // get the properties
                                 Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
-                                Defaults.crackPasswords(mprops);
+                                crackPasswords(mprops);
                                 // figure out how to display alias vs. user:password
                                 url.extractMailbox(mprops);
                                 String malias = url.formatMailbox(m.getPath().getAlias());
@@ -1553,7 +1568,7 @@ public class Shell extends REPL {
                             String malias = m.getPath().getAlias();
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True") && (user==null || malias.matches(user))) {
                                 Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
-                                Defaults.crackPasswords(mprops);
+                                crackPasswords(mprops);
                                 if (malias.equals(mprops.get("Homedirectory"))) {
                                     mprops.remove("Homedirectory");
                                 }
