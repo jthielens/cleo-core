@@ -293,22 +293,18 @@ public class Shell extends REPL {
     }
 
     @Command(name="list_types", comment="list host types")
-    public void list_types(String...argv) {
-        try {
-            for (com.cleo.lexicom.external.HostType t : core.getLexiCom().listHostTypes()) {
-                Protocol  prot = Protocol.valueOf(t.getHostProtocol());
-                Packaging pack = Packaging.valueOf(t.getMailboxPackaging());
-                report(t.getName()+":"+
-                       " protocol="+prot+
-                       " packaging="+pack+
-                       " local="+t.isLocal());
-                if (pack==null) {
-                    report("   packaging="+t.getMailboxPackaging());
-                }
-            }
-        } catch (Exception e) {
-            error("could not list host types", e);
+    public void list_types() throws Exception {
+        com.cleo.lexicom.external.HostType[] types = core.getLexiCom().listHostTypes();
+        String[] columns = new String[] {"Type", "Protocol", "Packaging", "Local"};
+        String[][] values = new String[types.length][4];
+        for (int i=0; i<types.length; i++) {
+            com.cleo.lexicom.external.HostType t = types[i];
+            values[i][0] = t.getName();
+            values[i][1] = Protocol.valueOf(t.getHostProtocol()).name();
+            values[i][2] = Packaging.valueOf(t.getMailboxPackaging()).name();
+            values[i][3] = String.valueOf(t.isLocal());
         }
+        report(columns, values);
     }
     
     private LDAP get_ldap() throws Exception {
@@ -413,61 +409,45 @@ public class Shell extends REPL {
         return new VLNav(get_db());
     }
     @Command(name="list_certs", comment="list user certificate aliases")
-    public void list_certs(String...argv) {
-        if (argv.length>0) {
-            error("usage: list certs");
-        } else {
-            try {
-                ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
-                for (@SuppressWarnings("unchecked")
-                     Enumeration<String> e=certManager.getUserAliases();
-                     e.hasMoreElements();) {
-                    String alias = e.nextElement();
-                    report(alias);
-                }
-            } catch (Exception e) {
-                error("error listing certs", e);
-            }
+    public void list_certs() throws Exception {
+        ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
+        for (@SuppressWarnings("unchecked")
+             Enumeration<String> e=certManager.getUserAliases();
+             e.hasMoreElements();) {
+            String alias = e.nextElement();
+            report(alias);
         }
     }
 
     @SuppressWarnings("unchecked")
     @Command(name="list_cas", comment="list certificate authority aliases")
-    public void list_cas(String...argv) {
-        if (argv.length>0) {
-            error("usage: list cas");
-        } else {
+    public void list_cas() throws Exception {
+        ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
+        String certPath = core.getLexiCom().getAbsolute("certs");
+        Map<String,String> cas = new TreeMap<String,String>();
+        for (File ca : new File(certPath).listFiles()) {
+            if (!ca.isFile()) continue;
             try {
-                ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
-                String certPath = core.getLexiCom().getAbsolute("certs");
-                Map<String,String> cas = new TreeMap<String,String>();
-                for (File ca : new File(certPath).listFiles()) {
-                    if (!ca.isFile()) continue;
-                    try {
-                        Collection<X509Certificate> certs = certManager.readCert(ca);
-                        for (X509Certificate x : certs) {
-                            cas.put(certManager.getFriendlyName(x), "certs/"+ca.getName());
-                        }
-                    } catch (Exception e) {
-                        error("error listing cert", e);
-                    }
+                Collection<X509Certificate> certs = certManager.readCert(ca);
+                for (X509Certificate x : certs) {
+                    cas.put(certManager.getFriendlyName(x), "certs/"+ca.getName());
                 }
-                report(new String[] {"CA", "File"}, S.invert(cas));
-                /* this way doesn't work because getCAFiles seems to lowercase everything
-                for (Enumeration<String> e=certManager.getCAFiles();
-                     e.hasMoreElements();) {
-                    String ca = e.nextElement();
-                    report(ca);
-                    Collection<X509Certificate> certs = certManager.readCert(certPath+"/"+ca);
-                    for (X509Certificate x : certs) {
-                        report(". ", certManager.getFriendlyName(x));
-                    }
-                }
-                */
             } catch (Exception e) {
-                error("error listing certs", e);
+                error("error listing cert", e);
             }
         }
+        report(new String[] {"CA", "File"}, S.invert(cas));
+        /* this way doesn't work because getCAFiles seems to lowercase everything
+        for (Enumeration<String> e=certManager.getCAFiles();
+             e.hasMoreElements();) {
+            String ca = e.nextElement();
+            report(ca);
+            Collection<X509Certificate> certs = certManager.readCert(certPath+"/"+ca);
+            for (X509Certificate x : certs) {
+                report(". ", certManager.getFriendlyName(x));
+            }
+        }
+        */
     }
     @Command(name="trust", args="file...", comment="trust CA(s)")
     public void trust(String...argv) {
@@ -495,50 +475,39 @@ public class Shell extends REPL {
         }
     }
     @Command(name="import_key", args="alias key cert password", comment="import key")
-    public void import_key(String...argv) {
-        if (argv.length != 4) {
-            error("usage: import key alias key cert password");
+    public void import_key(String alias, String key, String cert, String password) throws Exception {
+        File keyf  = new File(key);
+        File certf = new File(cert);
+        alias = alias.toUpperCase();
+        if (!keyf.isFile()) {
+            error("key file not found: "+key);
+        } else if (!certf.isFile()) {
+            error("cert file not found: "+cert);
         } else {
-            try {
-                String alias    = argv[0].toUpperCase();
-                File   key      = new File(argv[1]);
-                File   cert     = new File(argv[2]);
-                String password = argv[3];
-                if (!key.isFile()) {
-                    error("key file not found: "+argv[1]);
-                } else if (!cert.isFile()) {
-                    error("cert file not found: "+argv[2]);
-                } else {
-                    ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
-                    certManager.importUserCertKey(alias, cert, key, password, true/*replace*/, false/*addPassword*/);
-                    report("key \""+alias+"\" imported");
-                }
-            } catch (Exception e) {
-                error("error importing key", e);
-            }
+            ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
+            certManager.importUserCertKey(alias, certf, keyf, password, true/*replace*/, false/*addPassword*/);
+            report("key \""+alias+"\" imported");
         }
     }
 
-    @Command(name="uri_list", args="[id ...]", comment="install URI drivers")
+    @Command(name="uri_list", args="[id ...]", comment="list URI drivers")
     public void uri_list(String...argv) {
         try {
+            // build a dictionary of installed URIs
             Properties props = URI.load(core.getHome());
             Map<String,URI> uris = new HashMap<String,URI>();
             for (URI uri : URI.getSchemes(props)) {
                 uris.put(uri.id, uri);
                 if (argv.length==0) {
+                    // sneaky cheat: no arguments means print an abbreviated index
                     report(uri.id+" ("+S.join(File.pathSeparator, uri.classPath)+")");
                 }
             }
+            // report on URIs matching argv
             for (String arg : argv) {
                 if (uris.containsKey(arg)) {
                     URI uri = uris.get(arg);
-                    report(new String[] {
-                        uri.id+":",
-                       "cleo.uri."+uri.id+".file="+uri.file,
-                       "cleo.uri."+uri.id+".inputstream="+uri.inputStream,
-                       "cleo.uri."+uri.id+".outputStream="+uri.outputStream,
-                       "cleo.uri."+uri.id+".classpath="+S.join(File.pathSeparator, uri.classPath)});
+                    report(uri.id, uri.toStrings());
                 } else {
                     error("uri not installed: "+arg);
                 }
@@ -547,56 +516,35 @@ public class Shell extends REPL {
             error("error listing URIs", e);
         }
     }
-    @Command(name="uri_install", args="file.jar ...", comment="install URI drivers")
-    public void uri_install(String...argv) {
-        if (argv.length < 1) {
-            error("usage: uri install file.jar ...");
-        } else {
-            try {
-                URI  scheme = new URI(core.getHome(), argv);
-                File lib    = new File(core.getHome(), "lib/uri");
-                for (int i=0; i<argv.length; i++) {
-                    argv[i] = F.copy(new File(argv[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
-                }
-                scheme = new URI(core.getHome(), argv);
-                Properties props = URI.load(core.getHome());
-                URI.setScheme(props, scheme);
-                URI.store(core.getHome(), props);
-                report(new String[] {
-                        scheme.id+":",
-                       "cleo.uri."+scheme.id+".file="+scheme.file,
-                       "cleo.uri."+scheme.id+".inputstream="+scheme.inputStream,
-                       "cleo.uri."+scheme.id+".outputStream="+scheme.outputStream,
-                       "cleo.uri."+scheme.id+".classpath="+S.join(File.pathSeparator, scheme.classPath)});
-            } catch (Exception e) {
-                error("error installing URI", e);
-            }
+    @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
+    public void uri_install(String...jars) throws Exception {
+        URI  scheme = new URI(core.getHome(), jars);
+        File lib    = new File(core.getHome(), "lib/uri");
+        for (int i=0; i<jars.length; i++) {
+            jars[i] = F.copy(new File(jars[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
         }
+        scheme = new URI(core.getHome(), jars);
+        Properties props = URI.load(core.getHome());
+        URI.setScheme(props, scheme);
+        URI.store(core.getHome(), props);
+        report(scheme.id, scheme.toStrings());
     }
-    @Command(name="uri_remove", args="id ...", comment="remove URI drivers")
-    public void uri_remove(String...argv) {
-        if (argv.length<1) {
-            error("usage: uri remove id ...");
-            return;
+    @Command(name="uri_remove", args="id ...", min=1, comment="remove URI drivers")
+    public void uri_remove(String...argv) throws Exception {
+        Properties props = URI.load(core.getHome());
+        Map<String,URI> uris = new HashMap<String,URI>();
+        for (URI uri : URI.getSchemes(props)) {
+            uris.put(uri.id, uri);
         }
-        try {
-            Properties props = URI.load(core.getHome());
-            Map<String,URI> uris = new HashMap<String,URI>();
-            for (URI uri : URI.getSchemes(props)) {
-                uris.put(uri.id, uri);
+        for (String arg : argv) {
+            if (uris.containsKey(arg)) {
+                URI.removeScheme(props, arg);
+                // remove files?
+            } else {
+                error("uri not installed: "+arg);
             }
-            for (String arg : argv) {
-                if (uris.containsKey(arg)) {
-                    URI.removeScheme(props, arg);
-                    // remove files?
-                } else {
-                    error("uri not installed: "+arg);
-                }
-            }
-            URI.store(core.getHome(), props);
-        } catch (Exception e) {
-            error("error listing URIs", e);
         }
+        URI.store(core.getHome(), props);
     }
 
     @Command(name="list_nodes", args="path with a *", comment="list objects")
@@ -677,69 +625,50 @@ public class Shell extends REPL {
         }
     }
     
-    @Command(name="has", args="path property ...", comment="does path have property...")
-    public void has(String...argv) {
-        if (argv.length<=1) {
-            error("usage: has path property ...");
-        } else {
-            Path path = Path.parsePath(argv[0]);
-            for (int i=1; i<argv.length; i++) {
-                String  prop = argv[i];
-                boolean has;
-                try {
-                    has = core.hasProperty(path, prop);
-                    report(path+(has?" has    ":" has no ")+prop);
-                } catch (Exception e) {
-                    error("error checking "+prop, e);
-                }
+    @Command(name="has", args="path property ...", min=1, comment="does path have property...")
+    public void has(String pathname, String...props) throws Exception {
+        Path path = Path.parsePath(pathname);
+        for (String prop : props) {
+            boolean has;
+            try {
+                has = core.hasProperty(path, prop);
+                report(qq(pathname)+(has?" has    ":" has no ")+prop);
+            } catch (Exception e) {
+                report(qq(pathname)+" error  "+prop+": "+e.getMessage());
             }
         }
     }
-    @Command(name="get", args="path property ...", comment="get property...")
-    public void get(String...argv) {
-        if (argv.length<=1) {
-            error("usage: get path property ...");
-        } else {
-            Path path = Path.parsePath(argv[0]);
-            for (int i=1; i<argv.length; i++) {
-                String   prop = argv[i];
-                String[] values;
-                try {
-                    values = core.getProperty(path, prop);
-                    if (values==null) {
-                        report(path+"."+prop+" not found");
-                    } else if (values.length==1) {
-                        report(path+"."+prop+"=", values[0]);
-                    } else {
-                        report(path+"."+prop+"=", values);
-                    }
-                } catch (Exception e) {
-                    error("error getting "+prop, e);
+    @Command(name="get", args="path property ...", min=1, comment="get property...")
+    public void get(String pathname, String...props) {
+        Path path = Path.parsePath(pathname);
+        for (String prop : props) {
+            String[] values;
+            try {
+                values = core.getProperty(path, prop);
+                if (values==null) {
+                    report(path+"."+prop+" not found");
+                } else if (values.length==1) {
+                    report(path+"."+prop+"=", values[0]);
+                } else {
+                    report(path+"."+prop+"=", values);
                 }
+            } catch (Exception e) {
+                error("error getting "+prop, e);
             }
         }
     }
     @Command(name="set", args="path property [value...]", comment="set value(s)")
-    public void set(String...argv) {
-        if (argv.length<2) {
-            error("usage: set path property [value ...]");
+    public void set(String pathname, String property, String...value) throws Exception {
+        Path path = Path.parsePath(pathname);
+        if (value.length==0) {
+            core.setProperty(path, property, (String) null);
+        } else if (value.length==1) {
+            core.setProperty(path, property, value[0]);
         } else {
-            try {
-                Path path = Path.parsePath(argv[0]);
-                String property = argv[1];
-                if (argv.length==2) {
-                    core.setProperty(path, property, (String) null);
-                } else if (argv.length==3) {
-                    core.setProperty(path, property, argv[2]);
-                } else {
-                    core.setProperty(path, property, Arrays.copyOfRange(argv, 2, argv.length));
-                }
-                if (autosave) {
-                    core.save(path);
-                }
-            } catch (Exception e) {
-                error("could not set property", e);
-            }
+            core.setProperty(path, property, value);
+        }
+        if (autosave) {
+            core.save(path);
         }
     }
     @Command(name="exists", args="path...", comment="check for object")
@@ -754,47 +683,26 @@ public class Shell extends REPL {
         }
     }
     @Command(name="rename", args="path alias", comment="rename object")
-    public void rename(String...argv) {
-        if (argv.length!=2) {
-            error("usage: rename path alias");
+    public void rename(String pathname, String alias) throws Exception {
+        Path path = Path.parsePath(pathname);
+        core.rename(path, alias);
+    }
+    @Command(name="lookup_host", args="id", comment="lookup host by id")
+    public void lookup_host(String id) throws Exception {
+        Path found = core.lookup(PathType.HOST, id);
+        if (found==null) {
+            error("lookup["+id+"] not found");
         } else {
-            try {
-                Path path = Path.parsePath(argv[0]);
-                String alias = argv[1];
-                core.rename(path, alias);
-            } catch (Exception e) {
-                error("could not rename", e);
-            }
+            report("lookup["+id+"]=", found.toString());
         }
     }
-    @Command(name="lookup", args="(host|mailbox) id", comment="lookup by id")
-    public void lookup(String...argv) {
-        if (argv.length!=2) {
-            error("usage: lookup (host|mailbox) id");
-        } else if (argv[0].equalsIgnoreCase("host")) {
-            try {
-                Path found = core.lookup(PathType.HOST,  argv[1]);
-                if (found==null) {
-                    error("lookup["+argv[1]+"] not found");
-                } else {
-                    report("lookup["+argv[1]+"]=", found.toString());
-                }
-            } catch (Exception e) {
-                error("error looking up mailbox", e);
-            }
-        } else if (argv[0].equalsIgnoreCase("mailbox")) {
-            try {
-                Path found = core.lookup(PathType.MAILBOX,  argv[1]);
-                if (found==null) {
-                    error("lookup["+argv[1]+"] not found");
-                } else {
-                    report("lookup["+argv[1]+"]=", found.toString());
-                }
-            } catch (Exception e) {
-                error("error looking up mailbox", e);
-            }
+    @Command(name="lookup_mailbox", args="id", comment="lookup mailbox by id")
+    public void lookup_mailbox(String id) throws Exception {
+        Path found = core.lookup(PathType.MAILBOX, id);
+        if (found==null) {
+            error("lookup["+id+"] not found");
         } else {
-            error("usage: lookup (host|mailbox) id");
+            report("lookup["+id+"]=", found.toString());
         }
     }
     private boolean autosave = false;
@@ -1407,34 +1315,28 @@ public class Shell extends REPL {
             error("error", e);
         }
     }
-    @Command(name="xferlog", args="off|xml|db-string", comment="transfer logging")
-    public void xferlog(String...argv) {
-        if (argv.length>1) {
-            error("usage: xferlog off|xml|db-string");
-        } else {
-            try {
-                Options o = core.getLexiCom().getOptions();
-                if (argv[0].equalsIgnoreCase("off")) {
-                    o.setTransferLogging(Options.TRANSFER_LOG_OFF);
-                    o.setTransferLoggingEnabled(false);
-                } else if (argv[0].equalsIgnoreCase("xml")) {
-                    o.setTransferLogging(Options.TRANSFER_LOG_XML);
-                    o.setTransferLoggingEnabled(true);
-                } else {
-                    try {
-                        DBOptions dbo = new DBOptions(argv[0]);
-                        o.setTransferLogging(Options.TRANSFER_LOG_DATABASE);
-                        o.setTransferLoggingDBConnectionStr(dbo.connection);
-                        o.setTransferLoggingEnabled(true);
-                    } catch (Exception e) {
-                        error("usage: xferlog type:user:password@host[:port]/database");
-                    }
-                }
-                o.save();
-            } catch (Exception e) {
-                error("error setting options", e);
-            }
-        }
+    @Command(name="xferlog_off", comment="disable transfer logging")
+    public void xferlog_off() throws Exception {
+        Options o = core.getLexiCom().getOptions();
+        o.setTransferLogging(Options.TRANSFER_LOG_OFF);
+        o.setTransferLoggingEnabled(false);
+        o.save();
+    }
+    @Command(name="xferlog_xml", comment="log transfers to XML")
+    public void xferlog_xml() throws Exception {
+        Options o = core.getLexiCom().getOptions();
+        o.setTransferLogging(Options.TRANSFER_LOG_XML);
+        o.setTransferLoggingEnabled(true);
+        o.save();
+    }
+    @Command(name="xferlog", args="type:user:password@host[:port]/database", comment="log transfers to database")
+    public void xferlog(String db) throws Exception {
+        Options o = core.getLexiCom().getOptions();
+        DBOptions dbo = new DBOptions(db);
+        o.setTransferLogging(Options.TRANSFER_LOG_DATABASE);
+        o.setTransferLoggingDBConnectionStr(dbo.connection);
+        o.setTransferLoggingEnabled(true);
+        o.save();
     }
     @Command(name="host", args="[alias|* [url]]", comment="create a new remote host")
     public void host(String...argv) {

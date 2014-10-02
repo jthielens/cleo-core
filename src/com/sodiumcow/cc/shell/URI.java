@@ -182,4 +182,15 @@ public class URI {
     public URI(File home, final String...jars) throws Exception {
         inspectJars(home, jars);
     }
+
+    public String[] toStrings() {
+        return new String[] {
+               "cleo.uri."+this.id+".file="+this.file,
+               "cleo.uri."+this.id+".inputstream="+this.inputStream,
+               "cleo.uri."+this.id+".outputStream="+this.outputStream,
+               "cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath)};
+    }
+    public String toString() {
+        return S.join("\n", this.toStrings());
+    }
 }

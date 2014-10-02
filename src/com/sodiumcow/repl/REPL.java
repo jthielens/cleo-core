@@ -372,16 +372,33 @@ public class REPL {
             }
             method = find_command(cmd.toString());
             if (method != null && !confused) {
-                // ok -- pass the rest as arguments
-                String[] arguments = new String[argv.length-i];
-                for (int j=0; j<arguments.length; j++) {
-                    arguments[j] = argv[i+j];
-                }
                 try {
-                    method.invoke(this, new Object[] {arguments});
+                    // ok -- pass the rest as arguments
+                    // we expect 0 or more String arguments, optionally followed by a String[] (String...)
+                    Class<?>[] types = method.getParameterTypes();
+                    Object[]   args  = new Object[types.length];
+                    boolean    dots  = types.length>0 && types[types.length-1].equals(String[].class);
+                    int        min   = method.getAnnotation(Command.class).min();
+                    if (argv.length-i < types.length-(dots?1-min:0) || // too few arguments
+                        !dots && argv.length-i > types.length) {   // too many arguments
+                        throw new IllegalArgumentException();
+                    }
+                    if (dots) {
+                        args[args.length-1] = Arrays.copyOfRange(argv, i+types.length-1, argv.length);
+                    }
+                    for (int j=0; j<types.length-(dots?1:0); j++) {
+                        args[j] = argv[i+j];
+                    }
+                    method.invoke(this, args);
                 } catch (InvocationTargetException e) {
-                    error(e);
-                    error("caused by", e.getCause());
+                    if (e.getCause() instanceof IllegalArgumentException) {
+                        error("usage: "+cmd.toString().replace('_', ' ')+" "+method.getAnnotation(Command.class).args());
+                    } else {
+                        error(e);
+                        error("caused by", e.getCause());
+                    }
+                } catch (IllegalArgumentException e) {
+                    error("usage: "+cmd.toString().replace('_', ' ')+" "+method.getAnnotation(Command.class).args());
                 } catch (Exception e) {
                     error(e);
                 }
