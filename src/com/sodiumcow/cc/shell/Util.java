@@ -88,7 +88,65 @@ public class Util {
         }
     }
     
-    private static final Pattern KEY_INDEX = Pattern.compile("(\\w+)(?:\\[(.+)\\]|\\.(.+))?");
+    public static void report_bean(REPL repl, Object o) {
+        // pass 1: calculate max
+        int max = 1;
+        String name;
+        for (Method method : o.getClass().getMethods()) {
+            name = method.getName();
+            if ((name.startsWith("get")||name.startsWith("is")) && method.getParameterTypes().length==0) {
+                if (name.length()>max) max=name.length();
+            }
+        }
+        // pass 2: report
+        for (Method method : o.getClass().getMethods()) {
+            name = method.getName();
+            if ((name.startsWith("get")||name.startsWith("is")) && method.getParameterTypes().length==0) {
+                int drop = name.startsWith("get") ? "get".length() : "is".length();
+                char[] attr = Arrays.copyOf((name.substring(drop,drop+1).toLowerCase()+
+                                             name.substring(drop+1)).toCharArray(),
+                                            max-drop+1);  // -("get"|"is") + " "
+                Arrays.fill(attr, name.length()-drop, attr.length, ' ');
+                String prefix = new String(attr);
+                              
+                try {
+                    if (method.getReturnType().equals(String.class)) {
+                        String value = (String) method.invoke(o);
+                        repl.report(prefix, value);
+                    } else if (method.getReturnType().equals(String[].class)) {
+                        String[] value = (String[]) method.invoke(o);
+                        repl.report(prefix, value);
+                    } else if (method.getReturnType().equals(Integer.TYPE)) {
+                        int value = (Integer) method.invoke(o);
+                        repl.report(prefix, String.valueOf(value));
+                    } else if (method.getReturnType().equals(Boolean.TYPE)) {
+                        boolean value = (Boolean) method.invoke(o);
+                        repl.report(prefix, String.valueOf(value));
+                    } else if (method.getReturnType().equals(Properties.class)) {
+                        Properties value  = (Properties) method.invoke(o);
+                        String[]   values = new String[value.size()];
+                        int        i      = 0;
+                        for (Entry<Object,Object> v : value.entrySet()) {
+                            values[i++] = (String)v.getKey()+"="+(String)v.getValue();
+                        }
+                        repl.report(prefix, values);
+                    } else if (method.getReturnType().equals(Object.class)) {
+                        Object value = method.invoke(o);
+                        if (value==null) {
+                            repl.report(prefix, ": null");
+                        } else {
+                            repl.report(prefix, ": ("+value.getClass().getName()+")");
+                            report_bean(repl, value);
+                        }
+                    }
+                } catch (Exception e) {
+                    repl.error("error invoking "+method.getName(), e);
+                }
+            }
+        }
+    }
+
+   private static final Pattern KEY_INDEX = Pattern.compile("(\\w+)(?:\\[(.+)\\]|\\.(.+))?");
     // word (alone), or word[index] (group(2) is index), or word.index (group(3) is index)
     @SuppressWarnings("unchecked")
     public static Document map2xml(Map<String,Object> map) throws ParserConfigurationException {
@@ -224,64 +282,6 @@ public class Util {
             }
         } while (p != null);
         return s.toString();
-    }
-
-    public static void report_bean(REPL repl, Object o) {
-        // pass 1: calculate max
-        int max = 1;
-        String name;
-        for (Method method : o.getClass().getMethods()) {
-            name = method.getName();
-            if ((name.startsWith("get")||name.startsWith("is")) && method.getParameterTypes().length==0) {
-                if (name.length()>max) max=name.length();
-            }
-        }
-        // pass 2: report
-        for (Method method : o.getClass().getMethods()) {
-            name = method.getName();
-            if ((name.startsWith("get")||name.startsWith("is")) && method.getParameterTypes().length==0) {
-                int drop = name.startsWith("get") ? "get".length() : "is".length();
-                char[] attr = Arrays.copyOf((name.substring(drop,drop+1).toLowerCase()+
-                                             name.substring(drop+1)).toCharArray(),
-                                            max-drop+1);  // -("get"|"is") + " "
-                Arrays.fill(attr, name.length()-drop, attr.length, ' ');
-                String prefix = new String(attr);
-                              
-                try {
-                    if (method.getReturnType().equals(String.class)) {
-                        String value = (String) method.invoke(o);
-                        repl.report(prefix, value);
-                    } else if (method.getReturnType().equals(String[].class)) {
-                        String[] value = (String[]) method.invoke(o);
-                        repl.report(prefix, value);
-                    } else if (method.getReturnType().equals(Integer.TYPE)) {
-                        int value = (Integer) method.invoke(o);
-                        repl.report(prefix, String.valueOf(value));
-                    } else if (method.getReturnType().equals(Boolean.TYPE)) {
-                        boolean value = (Boolean) method.invoke(o);
-                        repl.report(prefix, String.valueOf(value));
-                    } else if (method.getReturnType().equals(Properties.class)) {
-                        Properties value  = (Properties) method.invoke(o);
-                        String[]   values = new String[value.size()];
-                        int        i      = 0;
-                        for (Entry<Object,Object> v : value.entrySet()) {
-                            values[i++] = (String)v.getKey()+"="+(String)v.getValue();
-                        }
-                        repl.report(prefix, values);
-                    } else if (method.getReturnType().equals(Object.class)) {
-                        Object value = method.invoke(o);
-                        if (value==null) {
-                            repl.report(prefix, ": null");
-                        } else {
-                            repl.report(prefix, ": ("+value.getClass().getName()+")");
-                            report_bean(repl, value);
-                        }
-                    }
-                } catch (Exception e) {
-                    repl.error("error invoking "+method.getName(), e);
-                }
-            }
-        }
     }
 
    public static String[] xml2pp (Document doc) {
