@@ -22,6 +22,13 @@ public class DB {
     private String     user;
     private String     password;
 
+    public DB() {
+        this.conn       = null;
+        this.connection = null;
+        this.user       = null;
+        this.password   = null;
+    }
+
     public DB(String connection, String user, String password) throws SQLException {
         this.conn       = null;
         this.connection = connection;
@@ -30,12 +37,28 @@ public class DB {
         connect();
     }
 
-    public void connect() throws SQLException {
-        if (conn==null) {
+    public boolean connected() {
+        return conn!=null;
+    }
+
+    private final void _connect() throws SQLException {
+        if (!connected()) {
             Properties props = new Properties();
             props.put("user", user);
             props.put("password", password);
             conn = DriverManager.getConnection(connection, props);
+        }
+    }
+    public void connect(String connection, String user, String password) throws SQLException {
+        this.connection = connection;
+        this.user       = user;
+        this.password   = password;
+        _connect();
+    }
+
+    public void connect() throws SQLException {
+        if (!connected()) {
+            _connect();
         }
     }
 

@@ -41,7 +41,7 @@ public class Util {
         if (license.isWebBrowserLicensed()) features.add("browser");
         if (license.isApiLicensed())        features.add("api");
         if (license.isFipsLicensed())       features.add("fips");
-        if (license.isSecureEmailLicensed())features.add("secure-email");
+    //  if (license.isSecureEmailLicensed())features.add("secure-email");
         return S.join(", ", features);
     }
 

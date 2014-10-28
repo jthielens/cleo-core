@@ -54,7 +54,6 @@ import com.sodiumcow.cc.exception.URLResolutionException;
 import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
-import com.sodiumcow.util.DB;
 import com.sodiumcow.util.F;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
@@ -105,13 +104,66 @@ public class Shell extends REPL {
     @Override
     public void disconnect() {
         try {
-            disconnect_db();
+            vldb.disconnect();
+            h2db.disconnect();
             core.disconnect();
         } catch (Exception e) {
             error("error disconnecting", e);
         }
     }
 
+    // echo x string pattern replacement --> string.replaceAll(pattern, replacement)
+    // echo x string pattern             --> string.matches(pattern) and print match groups
+    @Command(name="echo_x", args="string pattern replacement", comment="test regex")
+    public void echox(String s, String p, String...r) throws Exception {
+        if (r!=null && r.length>0) {
+            print(s.replaceAll(p, S.join(" ", r)));
+        } else {
+            Matcher m = Pattern.compile(p).matcher(s);
+            if (m.matches()) {
+                ArrayList<String> groups = new ArrayList<String>();
+                for (int i=1; true; i++) {
+                    try {
+                        groups.add(m.group(i));
+                    } catch (Exception e) {
+                        break;
+                    }
+                }
+                print(S.join(" ", qq(groups)));
+            } else {
+                error("no match");
+            }
+        }
+    }
+    // echo d string --> decodes %xx and re-encodes canonically
+    @Command(name="echo_d", args="string", comment="decode %xx")
+    public void echod(String s) throws Exception {
+        Matcher m = Pattern.compile("%([0-9a-fA-f]{2})").matcher(s.replace('+', ' '));
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            m.appendReplacement(sb, new String(new char[]{(char)Byte.parseByte(m.group(1), 16)}));
+        }
+        m.appendTail(sb);
+        s = sb.toString();
+        report(s);
+        Matcher me = Pattern.compile("([^-\\w\\.\\* ])").matcher(s);
+        StringBuffer sbe = new StringBuffer();
+        while (me.find()) {
+            me.appendReplacement(sbe, String.format("%%%2X", me.group(1).codePointAt(0)));
+        }
+        me.appendTail(sbe);
+        s = sbe.toString().replace(' ', '+');
+        report(s);
+    }
+    // echo s string pattern --> string.split(p)
+    @Command(name="echo_s", args="string pattern", comment="split on regex")
+    public void echos(String s, String p) throws Exception {
+        print(S.join(" ", qq(s.split(p))));
+    }
+    @Command(name="echo_file", args="filename", comment="print filename")
+    public void echof(String fn) throws Exception {
+        print(new File(fn).getCanonicalPath());
+    }
     @Command(name="echo", args="message", comment="print message")
     public void echo(String...argv) {
         print(S.join(" ", argv));
@@ -313,102 +365,104 @@ public class Shell extends REPL {
         return new LDAP(X.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
     }
 
-    private DBOptions db_set = null;
-    private DB db = null;
-    private Map<String,Map<String,Integer>> db_tables = null;
-    /**
-     * Converts a table name from case-insensitive to case-sensitive.
-     * @param table the case-insensitive table name
-     * @return the tble name in its proper case-sensitive form
-     * @throws Exception
-     */
-    private String db_table(String table) throws Exception {
-        get_db();
-        if (db_tables!=null) {
-            for (String t : db_tables.keySet()) {
-                if (t.equalsIgnoreCase(table)) {
-                    return t;
-                }
-            }
+    private class DB extends com.sodiumcow.util.DB {
+        private DBOptions                       options = null;
+        private Map<String,Map<String,Integer>> tables  = null;
+
+        public DB() {
+            super();
         }
-        return null;
-    }
-    /**
-     * Converts table.column from case-insensitive to case-sensitive.
-     * @param table the table
-     * @param column the case-insensitive column name
-     * @return the column name in its proper case-sensitive form
-     */
-    private String db_column(String table, String column) {
-        if (db_tables!=null) {
-            Map<String,Integer> columns = db_tables.get(table);
-            for (String c : columns.keySet()) {
-                if (c.equalsIgnoreCase(column)) {
-                    return c;
-                }
-            }
+        public DB(String connection, String user, String password) throws SQLException {
+            super(connection, user, password);
         }
-        return null;
-    }
-    /**
-     * Returns true if table.column has a string type.
-     * @param table
-     * @param column
-     * @return true if table.column has a string type (VARCHAR)
-     */
-    private boolean db_string(String table, String column) {
-        if (db_tables!=null && db_tables.get(table)!=null && db_tables.get(table).get(column)!=null) {
-            int type = db_tables.get(table).get(column);
-            return type==Types.VARCHAR;
-        }
-        return false;
-    }
-    /**
-     * If the DB connection is not yet established, attempts to connect
-     * to the database last set.  If none has been set, retrieves the DB
-     * connection string from the transfer logging configuration.
-     * <p>
-     * If a successful connection is established, the schema is pulled and
-     * cached in db_tables (table names, column names and types).  This
-     * allows case-insensitive queries and auto conversion of string/integer
-     * types.
-     * <p>
-     * If the DB connection was already established, the cached db connection
-     * is returned.
-     * @return
-     * @throws Exception
-     */
-    private DB get_db() throws Exception {
-        if (db==null) {
-            if (db_set==null) {
-                try {
-                    Options o = core.getLexiCom().getOptions();
-                    DBConnection c = o.getTransferLoggingDBConnection();
-                    if (c!=null) {
-                        db_set = new DBOptions(c);
+
+        @Override
+        public void connect() throws SQLException {
+            if (!connected()) {
+                if (options==null) {
+                    try {
+                        Options o = core.getLexiCom().getOptions();
+                        DBConnection c = o.getTransferLoggingDBConnection();
+                        if (c!=null) {
+                            options = new DBOptions(c);
+                        }
+                    } catch (Exception e) {
+                        // error will fall out
                     }
-                } catch (Exception e) {
-                    // error will fall out
+                }
+                if (options==null) {
+                    throw new SQLException("use db set or db find first");
+                } else {
+                    connect(options.connection, options.user, options.password);
+                }
+                if (tables==null || tables.isEmpty()) {
+                    tables = tables();
                 }
             }
-            if (db_set==null) {
-                throw new Exception("use db set or db find first");
-            } else {
-                db = new DB(db_set.connection, db_set.user, db_set.password);
+        }
+
+        public DBOptions getOptions() {
+            return this.options;
+        }
+        public DB setOptions(DBOptions options) {
+            this.options = options;
+            return this;
+        }
+
+        /**
+         * Converts a table name from case-insensitive to case-sensitive.
+         * @param table the case-insensitive table name
+         * @return the tble name in its proper case-sensitive form
+         * @throws Exception
+         */
+        public String table(String table) throws Exception {
+            connect();
+            if (tables!=null) {
+                for (String t : tables.keySet()) {
+                    if (t.equalsIgnoreCase(table)) {
+                        return t;
+                    }
+                }
             }
+            return null;
         }
-        if (db_tables==null || db_tables.isEmpty()) {
-            db_tables = db.tables();
+        /**
+         * Converts table.column from case-insensitive to case-sensitive.
+         * @param table the table
+         * @param column the case-insensitive column name
+         * @return the column name in its proper case-sensitive form
+         */
+        public String column(String table, String column) throws SQLException {
+            connect();
+            if (tables!=null) {
+                Map<String,Integer> columns = tables.get(table);
+                for (String c : columns.keySet()) {
+                    if (c.equalsIgnoreCase(column)) {
+                        return c;
+                    }
+                }
+            }
+            return null;
         }
-        return db;
+        /**
+         * Returns true if table.column has a string type.
+         * @param table
+         * @param column
+         * @return true if table.column has a string type (VARCHAR)
+         */
+        public boolean string(String table, String column) throws SQLException {
+            connect();
+            if (tables!=null && tables.get(table)!=null && tables.get(table).get(column)!=null) {
+                int type = tables.get(table).get(column);
+                return type==Types.VARCHAR;
+            }
+            return false;
+        }
     }
-    private void disconnect_db() {
-        if (db!=null) {
-            db.disconnect();
-        }
-    }
+    private DB vldb = new DB();
+    private DB h2db = new DB().setOptions(new DBOptions("h2:viewonly:VersaLex@127.0.0.1:9092/data/hibernate"));
     private VLNav get_vlnav() throws Exception {
-        return new VLNav(get_db());
+        return new VLNav(vldb);
     }
     @Command(name="list_certs", comment="list user certificate aliases")
     public void list_certs() throws Exception {
@@ -492,6 +546,15 @@ public class Shell extends REPL {
         }
     }
 
+    @Command(name="uri_parse", args="uri", comment="parse URI")
+    public void uri(String s) {
+        try {
+            java.net.URI u = new java.net.URI(s);
+            Util.report_bean(this, u);
+        } catch (Exception e) {
+            error("error parsing uri", e);
+        }
+    }
     @Command(name="uri_list", args="[id ...]", comment="list URI drivers")
     public void uri_list(String...argv) {
         try {
@@ -523,7 +586,9 @@ public class Shell extends REPL {
         URI  scheme = new URI(core.getHome(), jars);
         File lib    = new File(core.getHome(), "lib/uri");
         for (int i=0; i<jars.length; i++) {
-            jars[i] = F.copy(new File(jars[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
+            if (!jars[i].contains("=")) {
+                jars[i] = F.copy(new File(jars[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
+            }
         }
         scheme = new URI(core.getHome(), jars);
         Properties props = URI.load(core.getHome());
@@ -1024,6 +1089,11 @@ public class Shell extends REPL {
     @Command(name="opts", args="[file|table[(query)] [path[=value]]]", comment="display/update options")
     public void opts(String...argv) {
         try {
+            DB db = vldb;
+            if (argv.length>0 && argv[0].equalsIgnoreCase("h2")) {
+                db = h2db;
+                argv = Arrays.copyOfRange(argv, 1, argv.length);
+            }
             if (argv.length==0) {
                 // usage: opts
                 // just dumps out core iLexCom options
@@ -1040,7 +1110,7 @@ public class Shell extends REPL {
                     where = S.split(name.substring(paren+1, name.length()-1),
                                        Pattern.compile("[\\s,]*(\\w+)=([^,]*)[\\s,]*"));
                 }
-                table = db_table(table);
+                table = db.table(table);
                 if (table!=null) {
                     // usage: opts table[(query)] [column...]
                     //   runs query and lists selected columns.  * or empty means all columns
@@ -1054,7 +1124,7 @@ public class Shell extends REPL {
                         qcolumns = new String[where.keySet().size()];
                         int i = 0;
                         for (String c : where.keySet()) {
-                            qcolumns[i] = db_column(table, c);
+                            qcolumns[i] = db.column(table, c);
                             i++;
                         }
                         qargs = where.values().toArray();
@@ -1069,7 +1139,7 @@ public class Shell extends REPL {
                             star = true;
                         } else {
                             String[] kv   = arg.split("=", 2);
-                            String column = db_column(table, kv[0]);
+                            String column = db.column(table, kv[0]);
                             if (column==null) {
                                 error("no such column "+table+"."+kv[0]);
                                 err=true;
@@ -1077,7 +1147,7 @@ public class Shell extends REPL {
                             }
                             if (kv.length>1) {
                                 update_columns.add(column);
-                                if (db_string(table, column)) {
+                                if (db.string(table, column)) {
                                     update_values.add(kv[1]);
                                 } else {
                                     update_values.add(Integer.valueOf(kv[1]));
@@ -1088,16 +1158,16 @@ public class Shell extends REPL {
                     }
                     if (!err) {
                         String[] columns = star ? null : select_columns.toArray(new String[select_columns.size()]);
-                        DB.Selection selection = get_db().new Selection(table, columns, qcolumns, qargs);
+                        DB.Selection selection = db.new Selection(table, columns, qcolumns, qargs);
                         int updated = 0;
                         if (update_columns.size()>0) {
                             updated = selection.update(update_columns, update_values);
                             if (updated==0) {
                                 // convert to insert
-                                get_db().insert(table,
-                                                S.cat(Arrays.asList(qcolumns), update_columns),
-                                                S.cat(Arrays.asList(qargs), update_values));
-                                selection = get_db().new Selection(table, columns, qcolumns, qargs);
+                                db.insert(table,
+                                            S.cat(Arrays.asList(qcolumns), update_columns),
+                                            S.cat(Arrays.asList(qargs), update_values));
+                                selection = db.new Selection(table, columns, qcolumns, qargs);
                             }
                         }
                         DB.Selection.Result r = selection.rows();
@@ -1170,7 +1240,7 @@ public class Shell extends REPL {
         }
     }
     public static class DBOptions {
-        public enum Vendor { MYSQL, ORACLE, SQLSERVER, DB2; }
+        public enum Vendor { MYSQL, ORACLE, SQLSERVER, DB2, H2; }
         public Vendor vendor;
         public String user;
         public String password;
@@ -1211,6 +1281,13 @@ public class Shell extends REPL {
                 this.driver        = "com.ibm.db2.jcc.DB2Driver";
                 this.type          = DBConnection.DB_CONTYPE_OTHER;
                 this.rawconnection = "jdbc:db2://"+host+":"+port;
+                this.connection    = this.rawconnection+"/"+this.db;
+                break;
+            case H2:
+                if (port==null) port = "9092";
+                this.driver        = "org.h2.Driver";
+                this.type          = DBConnection.DB_CONTYPE_OTHER;
+                this.rawconnection = "jdbc:h2:tcp://"+host+":"+port;
                 this.connection    = this.rawconnection+"/"+this.db;
                 break;
             }
@@ -1257,16 +1334,16 @@ public class Shell extends REPL {
                     if (c==null) {
                         error("not found");
                     } else {
-                        db_set = new DBOptions(c);
+                        vldb.setOptions(new DBOptions(c));
                         Util.report_bean(this, c);
                     }
                 } else if (command.equalsIgnoreCase("set")) {
                     try {
-                        db_set = new DBOptions(string);
-                        Options.DBConnection c = db_set.getDBConnection(core);
+                        vldb.setOptions(new DBOptions(string));
+                        Options.DBConnection c = vldb.getOptions().getDBConnection(core);
                         o.updateDBConnection(c);
                         o.save();
-                        c = o.findDBConnection(db_set.connection);
+                        c = o.findDBConnection(vldb.getOptions().connection);
                         Util.report_bean(this, c);
                     } catch (Exception e) {
                         error("usage: db set type:user:password@host[:port]/database");
@@ -1331,7 +1408,7 @@ public class Shell extends REPL {
         o.setTransferLoggingEnabled(true);
         o.save();
     }
-    @Command(name="xferlog", args="type:user:password@host[:port]/database", comment="log transfers to database")
+    @Command(name="xferlog", args="type:user:password@host[:port]/db", comment="log transfers to database")
     public void xferlog(String db) throws Exception {
         Options o = core.getLexiCom().getOptions();
         DBOptions dbo = new DBOptions(db);
@@ -1820,9 +1897,14 @@ public class Shell extends REPL {
     @Command(name="describe", args="tables", comment="describe tables")
     public void describe(String...argv) {
         try {
+            DB db = vldb;
+            if (argv.length>0 && argv[0].equalsIgnoreCase("h2")) {
+                db = h2db;
+                argv = Arrays.copyOfRange(argv, 1, argv.length);
+            }
             if (argv.length>0) {
                 Set<String> tables     = new TreeSet<String>();
-                Set<String> all_tables = get_db().tables().keySet();
+                Set<String> all_tables = db.tables().keySet();
                 for (String arg : argv) {
                     // convert to regex pattern (at least add ?i)
                     String   pattern = "(?i)"+arg.replaceAll("\\.", "\\.")
@@ -1841,12 +1923,12 @@ public class Shell extends REPL {
                 }
                 for (String table : tables) {
                     try {
-                        if (db_table(table)==null) {
+                        if (db.table(table)==null) {
                             error("no such table: "+table);
                             continue;
                         }
-                        table = db_table(table);
-                        String[][] description = S.invert(get_db().describe(table));
+                        table = db.table(table);
+                        String[][] description = S.invert(db.describe(table));
                         report(new String[] {"", table}); // blank line before
                         report(new String[] {"Column", "Type"}, description);
                         //report(S.col(description, 0), new String[][] {S.col(description, 1)});
@@ -1855,7 +1937,7 @@ public class Shell extends REPL {
                     }
                 }
             } else {
-                Map<String,Map<String,Integer>> t = get_db().tables();
+                Map<String,Map<String,Integer>> t = db.tables();
                 for (Map.Entry<String,Map<String,Integer>> e : t.entrySet()) {
                     for (Map.Entry<String,Integer> f : e.getValue().entrySet()) {
                         report(e.getKey()+"."+f.getKey()+" : "+f.getValue());
@@ -1863,7 +1945,7 @@ public class Shell extends REPL {
                 }
             }
         } catch (Exception e) {
-            error("can connect to database");
+            error("cannot connect to database", e);
         }
     }
     public static void main(String[] argv) {
