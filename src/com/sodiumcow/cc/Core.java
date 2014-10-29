@@ -121,6 +121,16 @@ public class Core implements com.sodiumcow.util.LDAP.Crypt {
         return null;
     }
 
+    public Host findLocalHost(HostType type, String root) throws Exception {
+        for (Host h : getHosts()) {
+            if (h.getHostType()==type &&
+                (root==null || h.getSingleProperty("Ftprootpath").equals(root))) {
+                return h;
+            }
+        }
+        return null;
+    }
+
     public Host[] findHosts(HostType type, String address, int port) throws Exception {
         ArrayList<Host> hosts = new ArrayList<Host>();
         for (Host h : getHosts()) {

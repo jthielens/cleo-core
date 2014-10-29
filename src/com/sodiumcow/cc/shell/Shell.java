@@ -961,7 +961,7 @@ public class Shell extends REPL {
                     // Now setup mailbox
                     Mailbox mailbox = u.getMailbox();
                     if (mailbox!=null) {
-                        report("mailbox exists: "+mailbox.getProperty("alias")[0]);
+                        report("mailbox exists: "+mailbox.getSingleProperty("alias"));
                     } else {
                         report("mailbox being created for "+u.getUser()+":"+u.getPassword());
                         mailbox = host.createMailbox(u.getUser());
@@ -1652,6 +1652,10 @@ public class Shell extends REPL {
                                 String password = mprops.remove("Password");
                                 String userpass = qq(malias) + (password!=null ? ":"+qq(password) : "");
                                 String typename = type.name().substring("LOCAL_".length()).toLowerCase();
+                                String root     = h.getSingleProperty("Ftprootpath");
+                                if (!root.equals(Defaults.getHostDefaults(type).get("Ftprootpath"))) {
+                                    typename += ":"+root;
+                                }
                                 report("  user "+userpass+" "+typename+" "+S.join(" \\\n    ", mprops, qqequals));
                             }
                         }
@@ -1669,6 +1673,12 @@ public class Shell extends REPL {
         String password = userpass.length>1 ? userpass[1] : null;
         
         String typename = argv[1];
+        String root     = null;
+        if (typename.contains(":")) {
+            String[] tr = typename.split(":", 2);
+            typename = tr[0];
+            root     = tr[1];
+        }
         HostType type;
         try {
             type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
@@ -1678,15 +1688,23 @@ public class Shell extends REPL {
         }
         try {
             // valid input -- find "host"
-            Host host = core.getHost(type.template);
+            Host host = core.findLocalHost(type, root); // core.getHost(type.template);
             if (host==null) {
                 host = core.activateHost(type, type.template);
-                Mailbox template = host.getMailbox("myTradingPartner");
-                if (template!=null) {
-                    template.setProperty("enabled", "False");
-                    template.rename(Host.TEMPLATE_MAILBOX);
-                    report("renamed template: "+template.getPath());
+                if (root!=null) {
+                    host.rename(typename+":"+root);
+                    host.setProperty("Ftprootpath", root);
                 }
+                for (Mailbox m : host.getMailboxes()) {
+                    String alias = m.getSingleProperty("alias");
+                    if (alias.startsWith("myTradingPartner")) {
+                        m.setProperty("enabled", "False");
+                        m.rename(Host.TEMPLATE_MAILBOX);
+                        report("renamed template "+alias+": "+m.getPath());
+                        break;
+                    }
+                }
+                host.save();
             }
             // got host -- find "mailbox"
             Mailbox mailbox = host.findMailbox(username, password);
