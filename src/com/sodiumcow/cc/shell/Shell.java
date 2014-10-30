@@ -160,6 +160,11 @@ public class Shell extends REPL {
     public void echos(String s, String p) throws Exception {
         print(S.join(" ", qq(s.split(p))));
     }
+    // echo f pattern strings... --> filtered list
+    @Command(name="echo_f", args="string pattern", comment="split on regex")
+    public void echof(String p, String...s) throws Exception {
+        print(S.join(" ", S.filter(s, new S.GlobFilter<String>(p))));
+    }
     @Command(name="echo_file", args="filename", comment="print filename")
     public void echof(String fn) throws Exception {
         print(new File(fn).getCanonicalPath());
@@ -1212,13 +1217,18 @@ public class Shell extends REPL {
                             }
                         } else {
                             Object o = X.subobj(xml.map, path);
-                            if (o instanceof Map) {
-                                @SuppressWarnings("unchecked")
-                                Map<String,Object> out = (Map<String,Object>)o;
-                                report(X.map2tree(out));
-                            } else {
-                                String out = (String)o;
-                                report(out);
+                            if (o==null) {
+                                o = X.subprune(xml.map, path);
+                            }
+                            if (o!=null) {
+                                if (o instanceof Map) {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String,Object> out = (Map<String,Object>)o;
+                                    report(X.map2tree(out));
+                                } else {
+                                    //String out = (String)o;
+                                    report(o.toString());
+                                }
                             }
                         }
                     }
@@ -1925,9 +1935,7 @@ public class Shell extends REPL {
                 Set<String> all_tables = db.tables().keySet();
                 for (String arg : argv) {
                     // convert to regex pattern (at least add ?i)
-                    String   pattern = "(?i)"+arg.replaceAll("\\.", "\\.")
-                                                 .replaceAll("\\?", ".")
-                                                 .replaceAll("\\*", ".*");
+                    String   pattern = S.glob2re(arg);
                     boolean found = false;
                     for (String table : all_tables) {
                         if (table.matches(pattern)) {

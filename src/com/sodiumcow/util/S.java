@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -321,5 +322,72 @@ public class S {
             result[i] = row.length>c ? row[c] : null;
         }
         return result;
+    }
+
+    public interface Filter<T> {
+        public boolean accept(T object);
+    }
+
+    public static class PatternFilter<T> implements Filter<T> {
+        private Pattern pattern;
+        public PatternFilter(Pattern pattern) {
+            this.pattern = pattern;
+        }
+        public boolean accept(T object) {
+            return pattern.matcher(object.toString()).matches();
+        }
+    }
+
+    public static class RegexFilter<T> extends PatternFilter<T> {
+        public RegexFilter(String regex) {
+            super(Pattern.compile(regex));
+        }
+    }
+
+    public static String glob2re(String glob) {
+        return "(?i)"+glob.replaceAll("\\.", "\\.")
+                          .replaceAll("\\?", ".")
+                          .replaceAll("\\*", ".*");
+    }
+
+    public static class GlobFilter<T> extends RegexFilter<T> {
+        public GlobFilter(String glob) {
+            super(glob2re(glob));
+        }
+    }
+
+    public static <T> List<T> filter(T[] list, Filter<T> filter) {
+        if (list==null || filter==null) return null;
+        List<T> filtered = new ArrayList<T>(list.length);
+        for (T item : list) {
+            if (filter.accept(item)) {
+                filtered.add(item);
+            }
+        }
+        return filtered;
+    }
+
+    public static <V> Map<String,V> filter(Map<String,V> map, Filter<String> filter) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String,V> filtered = map.getClass().newInstance();
+            for (Map.Entry<String,V> e : map.entrySet()) {
+                if (filter.accept(e.getKey())) {
+                    filtered.put(e.getKey(), e.getValue());
+                }
+            }
+            return filtered;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    public static <V> Map<String,V> prune(Map<String,V> map, Filter<String> filter) {
+        for (Iterator<Map.Entry<String,V>> i=map.entrySet().iterator(); i.hasNext();) {
+            Map.Entry<String,V> e = i.next();
+            if (!filter.accept(e.getKey())) {
+                i.remove();
+            }
+        }
+        return map;
     }
 }

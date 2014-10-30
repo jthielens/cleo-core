@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -198,6 +199,51 @@ public class X {
             o = x.get(step);
         }
         return o;
+    }
+    public static Object[] submatch(Map<String,Object>map, String...steps) {
+        ArrayList<Object> matches = new ArrayList<Object>();
+        matches.add(map);
+        for (String step :steps) {
+            ArrayList<Object> next = new ArrayList<Object>();
+            S.Filter<String> filter = new S.GlobFilter<String>(step);
+            for (Object o : matches) {
+                if (o instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String,Object> x = S.filter((Map<String,Object>) o, filter);
+                    if (x!=null) {
+                        next.addAll(x.values());
+                    }
+                }
+            }
+            if (next.isEmpty()) {
+                return null;
+            }
+            matches = next;
+        }
+        return matches.toArray(new Object[matches.size()]);
+    }
+    public static Map<String,Object> subprune(Map<String,Object>map, String...steps) {
+        ArrayList<Object> matches = new ArrayList<Object>();
+        matches.add(map);
+        for (String step :steps) {
+            ArrayList<Object> next = new ArrayList<Object>();
+            S.Filter<String> filter = new S.GlobFilter<String>(step);
+            for (Object o : matches) {
+                if (o instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String,Object> x = (Map<String,Object>) o;
+                    S.prune(x, filter);
+                    if (!x.isEmpty()) {
+                        next.addAll(x.values());
+                    }
+                }
+            }
+            if (next.isEmpty()) {
+                return null;
+            }
+            matches = next;
+        }
+        return map;
     }
 
     @SuppressWarnings("unchecked")
