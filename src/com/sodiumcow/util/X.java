@@ -82,45 +82,29 @@ public class X {
         // Step 2: walk the child nodes
         for (Node p = e.getFirstChild(); p!=null; p=p.getNextSibling()) {
             Node child = p.getFirstChild();
-            if (child!=null) {
-                if (child.getNodeType()==Node.TEXT_NODE &&
-                    child.getNextSibling() == null) {
-                    // <parameter>value</parameter>
-                    String text = child.getNodeValue().trim();
-                    if (!text.isEmpty()) {
-                        String name = p.getNodeName();
-                        if (name.equalsIgnoreCase("Advanced")) {
-                            String[] kv = text.split("=", 2);
-                            name = name+"."+kv[0];
-                            text = kv.length>1 ? kv[1] : "";
-                        } else if (name.equalsIgnoreCase("Syntax") || name.equalsIgnoreCase("Header")) {
-                            // <Syntax (or Header)>GET stuff</Syntax>
-                            String[] kv = text.split(" ", 2);
-                            name = name+"["+kv[0]+"]";
-                            text = kv.length>1 ? kv[1] : "";
-                        } else if (name.equalsIgnoreCase("Contenttypedirs")) {
-                            // <Contenttypedirs>type=type</Contenttypedirs>
-                            String[] kv = text.split("=", 2);
-                            name = name+"["+kv[0]+"]";
-                            text = kv.length>1 ? kv[1] : "";
-                        }
-                        if (map.containsKey(name+"[0]")) {
-                            int i;
-                            for (i=2; map.containsKey(name+"["+i+"]"); i++);
-                            name = name+"["+i+"]";
-                        } else if (map.containsKey(name)) {
-                            map.put(name+"[0]", map.remove(name));
-                            name = name+"[1]";
-                        }
-                        map.put(name, text);
-                    }
-                } else {
-                    // <bar ...>
+            if (child!=null &&
+                child.getNodeType()==Node.TEXT_NODE &&
+                child.getNextSibling() == null) {
+                // <parameter>value</parameter>
+                String text = child.getNodeValue().trim();
+                if (!text.isEmpty()) {
                     String name = p.getNodeName();
-                    Map<String,Object> pmap = xml2map(p);
-                    if (pmap.containsKey(".alias")) {
-                        name = name+"["+pmap.get(".alias")+"]";
-                    } else if (map.containsKey(name+"[0]")) {
+                    if (name.equalsIgnoreCase("Advanced")) {
+                        String[] kv = text.split("=", 2);
+                        name = name+"."+kv[0];
+                        text = kv.length>1 ? kv[1] : "";
+                    } else if (name.equalsIgnoreCase("Syntax") || name.equalsIgnoreCase("Header")) {
+                        // <Syntax (or Header)>GET stuff</Syntax>
+                        String[] kv = text.split(" ", 2);
+                        name = name+"["+kv[0]+"]";
+                        text = kv.length>1 ? kv[1] : "";
+                    } else if (name.equalsIgnoreCase("Contenttypedirs")) {
+                        // <Contenttypedirs>type=type</Contenttypedirs>
+                        String[] kv = text.split("=", 2);
+                        name = name+"["+kv[0]+"]";
+                        text = kv.length>1 ? kv[1] : "";
+                    }
+                    if (map.containsKey(name+"[0]")) {
                         int i;
                         for (i=2; map.containsKey(name+"["+i+"]"); i++);
                         name = name+"["+i+"]";
@@ -128,8 +112,23 @@ public class X {
                         map.put(name+"[0]", map.remove(name));
                         name = name+"[1]";
                     }
-                    map.put(name, pmap);
+                    map.put(name, text);
                 }
+            } else if (p.getNodeType()!=Node.TEXT_NODE) {
+                // <bar ...>
+                String name = p.getNodeName();
+                Map<String,Object> pmap = xml2map(p);
+                if (pmap.containsKey(".alias")) {
+                    name = name+"["+pmap.get(".alias")+"]";
+                } else if (map.containsKey(name+"[0]")) {
+                    int i;
+                    for (i=2; map.containsKey(name+"["+i+"]"); i++);
+                    name = name+"["+i+"]";
+                } else if (map.containsKey(name)) {
+                    map.put(name+"[0]", map.remove(name));
+                    name = name+"[1]";
+                }
+                map.put(name, pmap);
             }
         }
     
