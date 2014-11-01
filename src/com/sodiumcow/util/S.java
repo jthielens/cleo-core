@@ -196,6 +196,8 @@ public class S {
         return s.toString();
     }
 
+    public static final Pattern COMMA_EQUALS = Pattern.compile("[\\s,]*(\\w+)=([^,]*)[\\s,]*");
+
     public static Map<String,String> split(String s, Pattern format) {
         final Map<String,String> result = new LinkedHashMap<String,String>();
         megasplit(format, s, new Inspector<Object> () {
@@ -345,7 +347,7 @@ public class S {
     }
 
     public static String glob2re(String glob) {
-        return "(?i)"+glob.replaceAll("\\.", "\\.")
+        return "(?i)"+glob.replaceAll("([\\.\\[\\]\\(\\)])", "\\\\$1")
                           .replaceAll("\\?", ".")
                           .replaceAll("\\*", ".*");
     }
