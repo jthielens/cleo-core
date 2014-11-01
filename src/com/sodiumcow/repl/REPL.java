@@ -379,8 +379,9 @@ public class REPL {
                     Object[]   args  = new Object[types.length];
                     boolean    dots  = types.length>0 && types[types.length-1].equals(String[].class);
                     int        min   = method.getAnnotation(Command.class).min();
+                    int        max   = method.getAnnotation(Command.class).max();
                     if (argv.length-i < types.length-(dots?1-min:0) || // too few arguments
-                        !dots && argv.length-i > types.length) {   // too many arguments
+                        argv.length-i-types.length>(dots&&max>0?max-1:0)) {   // too many arguments
                         throw new IllegalArgumentException();
                     }
                     if (dots) {
