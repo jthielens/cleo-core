@@ -85,7 +85,8 @@ public class X {
             Node child = p.getFirstChild();
             if (child!=null &&
                 child.getNodeType()==Node.TEXT_NODE &&
-                child.getNextSibling() == null) {
+                child.getNextSibling() == null &&
+                !p.hasAttributes()) {
                 // <parameter>value</parameter>
                 String text = child.getNodeValue().trim();
                 if (!text.isEmpty()) {
@@ -119,8 +120,10 @@ public class X {
                 // <bar ...>
                 String name = p.getNodeName();
                 Map<String,Object> pmap = xml2map(p);
-                if (pmap.containsKey(".alias")) {
+                if (pmap.containsKey(".alias")) { // VersaLex uses alias
                     name = name+"["+pmap.get(".alias")+"]";
+                } else if (pmap.containsKey(".key")) { // ST exports use key
+                    name = name+"["+pmap.get(".key")+"]";
                 } else if (map.containsKey(name+"[0]")) {
                     int i;
                     for (i=2; map.containsKey(name+"["+i+"]"); i++);
