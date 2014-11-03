@@ -12,7 +12,11 @@ import java.util.regex.Pattern;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
@@ -32,7 +36,7 @@ public class LDAP {
             this.tag = tag;
         }
 
-        private static final HashMap<String,Type> index = new HashMap<String,Type>();
+        private static final Map<String,Type> index = new HashMap<String,Type>();
         static { for (Type t : Type.values()) index.put(t.tag.toLowerCase(), t); }
         public static Type lookup(String name) { return index.get(name.toLowerCase()); }
     }
@@ -55,12 +59,12 @@ public class LDAP {
             this.tag = tag;
         }
 
-        private static final HashMap<String,SecurityMode> index = new HashMap<String,SecurityMode>();
+        private static final Map<String,SecurityMode> index = new HashMap<String,SecurityMode>();
         static { for (SecurityMode s : SecurityMode.values()) index.put(s.tag.toLowerCase(), s); }
         public static SecurityMode lookup(String name) { return index.get(name.toLowerCase()); }
     }
 
-    public enum Attribute {
+    public enum Attr {
         // these are for mapping LDAP attributes
         USER    ("Attribute"),
         MAIL    ("Emailaddressattribute"),
@@ -68,6 +72,7 @@ public class LDAP {
         NAME    ("Fullnameattribute"),
         FIRST   ("Firstnameattribute"),
         LAST    ("Lastnameattribute"),
+        PASS    (null, "userPassword", false, true),
         // these are for AD password checking
         DAYS    ("Warningdays",    "7"),
         TIME    ("Checktimeidx",   "0"), // # of 30 minute ticks since midnight :-(
@@ -94,28 +99,34 @@ public class LDAP {
         public final boolean indirect;
         public final boolean mapped;
         
-        private Attribute (String tag) {
+        private Attr (String tag) {
             this.tag      = tag;
             this.dflt     = "";
             this.indirect = false;
             this.mapped   = true;
         }
-        private Attribute (String tag, String dflt) {
+        private Attr (String tag, String dflt) {
             this.tag      = tag;
             this.dflt     = dflt;
             this.indirect = false;
             this.mapped   = false;
         }
-        private Attribute (String tag, String dflt, boolean indirect) {
+        private Attr (String tag, String dflt, boolean indirect) {
             this.tag      = tag;
             this.dflt     = dflt;
             this.indirect = indirect;
             this.mapped   = false;
         }
+        private Attr (String tag, String dflt, boolean indirect, boolean mapped) {
+            this.tag      = tag;
+            this.dflt     = dflt;
+            this.indirect = indirect;
+            this.mapped   = mapped;
+        }
 
-        private static final HashMap<String,Attribute> index = new HashMap<String,Attribute>();
-        static { for (Attribute a : Attribute.values()) index.put(a.tag.toLowerCase(), a); }
-        public static Attribute lookup(String name) { return index.get(name.toLowerCase()); }
+        private static final Map<String,Attr> index = new HashMap<String,Attr>();
+        static { for (Attr a : Attr.values()) if (a.tag!=null) index.put(a.tag.toLowerCase(), a); }
+        public static Attr lookup(String name) { return index.get(name.toLowerCase()); }
     }
 
     public interface Crypt {
@@ -129,19 +140,19 @@ public class LDAP {
     }
     public static final NoCrypt nocrypt = new NoCrypt();
 
-    private SecurityMode getMode()            { return SecurityMode.lookup(attrs.get(Attribute.MODE)); }
-    private boolean      getBool(Attribute a) { return attrs.get(a).equalsIgnoreCase(Boolean.toString(true)); }
-    private void         setBool(Attribute a, boolean b) { attrs.put(a, b?"True":"False"); }
-    private void         setIf  (Attribute a, String s)  { if (s!=null && !s.isEmpty()) attrs.put(a,  s); }
+    private SecurityMode getMode()            { return SecurityMode.lookup(attrs.get(Attr.MODE)); }
+    private boolean      getBool(Attr a) { return attrs.get(a).equalsIgnoreCase(Boolean.toString(true)); }
+    private void         setBool(Attr a, boolean b) { attrs.put(a, b?"True":"False"); }
+    private void         setIf  (Attr a, String s)  { if (s!=null && !s.isEmpty()) attrs.put(a,  s); }
 
     /*------------------------*
      * LDAP Server Definition *
      *------------------------*/
-    private EnumMap<Attribute,String> attrs       = new EnumMap<Attribute,String>(Attribute.class);
+    private EnumMap<Attr,String> attrs       = new EnumMap<Attr,String>(Attr.class);
 
     public LDAP () {
         // set up defaults
-        for (Attribute attr : Attribute.values()) {
+        for (Attr attr : Attr.values()) {
             this.attrs.put(attr, attr.dflt);
         }
     }
@@ -166,13 +177,13 @@ public class LDAP {
             String basedn   = m.group(7);
             String filter   = m.group(8);
             // set simple ones
-            setIf(Attribute.USERNAME, user);
-            setIf(Attribute.PASSWORD, password);
-            setIf(Attribute.HOST,     host);
-            setIf(Attribute.PORT,     port);
-            setIf(Attribute.BASEDN,   basedn);
-            setIf(Attribute.DOMAIN,   basedn); // dupe of basedn
-            setIf(Attribute.FILTER,   filter);
+            setIf(Attr.USERNAME, user);
+            setIf(Attr.PASSWORD, password);
+            setIf(Attr.HOST,     host);
+            setIf(Attr.PORT,     port);
+            setIf(Attr.BASEDN,   basedn);
+            setIf(Attr.DOMAIN,   basedn); // dupe of basedn
+            setIf(Attr.FILTER,   filter);
             // process opts into options and attributes
             EnumSet<Option> options = EnumSet.noneOf(Option.class);
             if (opts!=null && !opts.isEmpty()) {
@@ -180,23 +191,23 @@ public class LDAP {
                     String[] kv = opt.split("\\s*=\\s*", 2);
                     if (kv.length==2) {
                         // attribute=value: look it up
-                        Attribute attr;
+                        Attr attr;
                         try {
-                            attr = Attribute.valueOf(kv[0].toUpperCase());
+                            attr = Attr.valueOf(kv[0].toUpperCase());
                         } catch (IllegalArgumentException e) {
                             throw new IllegalArgumentException("unrecognized attribute: "+kv[0]);
                         }
                         if (attr.indirect) {
                             throw new IllegalArgumentException("unrecognized attribute: "+kv[0]);
                         }
-                        this.attrs.put(Attribute.valueOf(kv[0].toUpperCase()), kv[1]);
+                        this.attrs.put(Attr.valueOf(kv[0].toUpperCase()), kv[1]);
                     } else if (!opt.isEmpty()) {
                         // option: look it up as an Option or a Type
                         try {
                             options.add(Option.valueOf(opt.toUpperCase()));
                         } catch (IllegalArgumentException e) {
                             try {
-                                this.attrs.put(Attribute.TYPE, Type.valueOf(opt.toUpperCase()).tag);
+                                this.attrs.put(Attr.TYPE, Type.valueOf(opt.toUpperCase()).tag);
                             } catch (IllegalArgumentException f) {
                                 throw new IllegalArgumentException("unrecognized option: "+opt);
                             }
@@ -206,18 +217,18 @@ public class LDAP {
             }
             // figure out if this should be disabled
             if (options.contains(Option.DISABLED)) {
-                setBool(Attribute.ENABLED, false);
+                setBool(Attr.ENABLED, false);
             }
             // figure out if mode should be set differently from default
             if (options.contains(Option.STARTTLS)) {
-                this.attrs.put(Attribute.MODE, SecurityMode.STARTTLS.tag);
+                this.attrs.put(Attr.MODE, SecurityMode.STARTTLS.tag);
             } else if (ssl!=null) {
-                this.attrs.put(Attribute.MODE, SecurityMode.SSL.tag);
+                this.attrs.put(Attr.MODE, SecurityMode.SSL.tag);
             }
             // remaining straight up options
-            setBool(Attribute.CHECKPW,  options.contains(Option.CHECKPW));
-            setBool(Attribute.WARNUSER, options.contains(Option.WARNUSER));
-            setBool(Attribute.DEFAULT,  options.contains(Option.DEFAULT));
+            setBool(Attr.CHECKPW,  options.contains(Option.CHECKPW));
+            setBool(Attr.WARNUSER, options.contains(Option.WARNUSER));
+            setBool(Attr.DEFAULT,  options.contains(Option.DEFAULT));
         } else {
             throw new IllegalArgumentException("can not parse LDAP string: "+s);
         }
@@ -229,13 +240,13 @@ public class LDAP {
         s.append("ldap");
         if (getMode()==SecurityMode.SSL) s.append('s');
         ArrayList<String> list = new ArrayList<String>();
-        if (!getBool(Attribute.ENABLED)     ) list.add(Option.DISABLED.name().toLowerCase());
-        list.add(Type.lookup(attrs.get(Attribute.TYPE)).name().toLowerCase());
+        if (!getBool(Attr.ENABLED)     ) list.add(Option.DISABLED.name().toLowerCase());
+        list.add(Type.lookup(attrs.get(Attr.TYPE)).name().toLowerCase());
         if (getMode()==SecurityMode.STARTTLS) list.add(Option.STARTTLS.name().toLowerCase());
-        if (getBool(Attribute.DEFAULT)      ) list.add(Option.DEFAULT.name().toLowerCase());
-        if (getBool(Attribute.CHECKPW)      ) list.add(Option.CHECKPW.name().toLowerCase());
-        if (getBool(Attribute.WARNUSER)     ) list.add(Option.WARNUSER.name().toLowerCase());
-        for (Map.Entry<Attribute,String> e : attrs.entrySet()) {
+        if (getBool(Attr.DEFAULT)      ) list.add(Option.DEFAULT.name().toLowerCase());
+        if (getBool(Attr.CHECKPW)      ) list.add(Option.CHECKPW.name().toLowerCase());
+        if (getBool(Attr.WARNUSER)     ) list.add(Option.WARNUSER.name().toLowerCase());
+        for (Map.Entry<Attr,String> e : attrs.entrySet()) {
             if (!e.getKey().indirect && !e.getValue().equals(e.getKey().dflt)) {
                 list.add(e.getKey().name().toLowerCase()+"="+e.getValue());
             }
@@ -246,16 +257,16 @@ public class LDAP {
              .append(')');
         }
         s.append("://");
-        if (!attrs.get(Attribute.USERNAME).isEmpty() || !attrs.get(Attribute.PASSWORD).isEmpty()) {
-            s.append(attrs.get(Attribute.USERNAME));
-            if (!attrs.get(Attribute.PASSWORD).isEmpty()) s.append(':').append(attrs.get(Attribute.PASSWORD));
+        if (!attrs.get(Attr.USERNAME).isEmpty() || !attrs.get(Attr.PASSWORD).isEmpty()) {
+            s.append(attrs.get(Attr.USERNAME));
+            if (!attrs.get(Attr.PASSWORD).isEmpty()) s.append(':').append(attrs.get(Attr.PASSWORD));
             s.append('@');
         }
-        s.append(attrs.get(Attribute.HOST));
-        if (!attrs.get(Attribute.PORT).equals(Attribute.PORT.dflt)) s.append(':').append(attrs.get(Attribute.PORT));
+        s.append(attrs.get(Attr.HOST));
+        if (!attrs.get(Attr.PORT).equals(Attr.PORT.dflt)) s.append(':').append(attrs.get(Attr.PORT));
         s.append('/');
-        s.append(attrs.get(Attribute.BASEDN));
-        if (!attrs.get(Attribute.FILTER).isEmpty()) s.append('?').append(attrs.get(Attribute.FILTER));
+        s.append(attrs.get(Attr.BASEDN));
+        if (!attrs.get(Attr.FILTER).isEmpty()) s.append('?').append(attrs.get(Attr.FILTER));
         return s.toString();
     }
 
@@ -264,15 +275,17 @@ public class LDAP {
     }
     public Map<String,Object> toMap(Crypt crypt) throws Exception {
         Map<String,Object> map = new TreeMap<String,Object>();
-        for (Attribute a : Attribute.values()) {
-            if (attrs.containsKey(a)) {
-                String value = attrs.get(a);
-                if (a==Attribute.PASSWORD) {
-                    value = "#"+crypt.encrypt(value)+"#";
+        for (Attr a : Attr.values()) {
+            if (a.tag!=null) {
+                if (attrs.containsKey(a)) {
+                    String value = attrs.get(a);
+                    if (a==Attr.PASSWORD) {
+                        value = "#"+crypt.encrypt(value)+"#";
+                    }
+                    map.put(a.tag, value);
+                } else {
+                    map.put(a.tag, a.dflt);
                 }
-                map.put(a.tag, value);
-            } else {
-                map.put(a.tag, a.dflt);
             }
         }
         return map;
@@ -286,7 +299,7 @@ public class LDAP {
         this();
         // walk the map
         for (Map.Entry<String,Object> e : map.entrySet()) {
-            Attribute a = Attribute.lookup(e.getKey());
+            Attr a = Attr.lookup(e.getKey());
             if (a==null) {
                 throw new IllegalArgumentException("unrecognized attribute: "+e.getKey());
             }
@@ -294,7 +307,7 @@ public class LDAP {
                 throw new IllegalArgumentException("String value expected for attribute: "+e.getKey());
             }
             String value = (String)e.getValue();
-            if (a==Attribute.PASSWORD && value.matches("#.*#")) {
+            if (a==Attr.PASSWORD && value.matches("#.*#")) {
                 StringBuffer sb = new StringBuffer(value.subSequence(1, value.length()-1));
                 while (sb.length()%4 > 0) sb.append('=');
                 value = crypt.decrypt(sb.toString());
@@ -305,7 +318,7 @@ public class LDAP {
 
     public String[] attributes() {
         ArrayList<String> list = new ArrayList<String>();
-        for (Attribute a : Attribute.values()) {
+        for (Attr a : Attr.values()) {
             if (a.mapped) {
                 if (attrs.get(a)!=null && !attrs.get(a).isEmpty()) {
                     list.add(attrs.get(a));
@@ -313,6 +326,27 @@ public class LDAP {
             }
         }
         return list.toArray(new String[list.size()]);
+    }
+
+    private DirContext getContext(String admin, String password) throws NamingException {
+        Hashtable<String,Object> env = new Hashtable<String,Object>();
+        env.put(Context.SECURITY_AUTHENTICATION, "simple");
+        if (admin!=null) {
+            env.put(Context.SECURITY_PRINCIPAL, admin);
+        } else if (attrs.containsKey(Attr.USERNAME)) {
+            env.put(Context.SECURITY_PRINCIPAL, attrs.get(Attr.USER)+"="+
+                                                attrs.get(Attr.USERNAME)+","+
+                                                attrs.get(Attr.BASEDN));
+        }
+        if (password!=null) {
+            env.put(Context.SECURITY_CREDENTIALS, password);
+        } else if (attrs.containsKey(Attr.PASSWORD)) {
+            env.put(Context.SECURITY_CREDENTIALS, attrs.get(Attr.PASSWORD));
+        }
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        env.put(Context.PROVIDER_URL, "ldap://"+attrs.get(Attr.HOST)+
+                                      ":"+attrs.get(Attr.PORT));
+        return new InitialDirContext(env);
     }
 
     /**
@@ -327,49 +361,59 @@ public class LDAP {
      * @return the attributes of the entry found, organized by {@Attribute}
      * @throws Exception
      */
-    public Map<Attribute,String> find(String alias) throws Exception {
-        Map<Attribute,String> map = new TreeMap<Attribute,String>();
-        Hashtable<String,Object> env = new Hashtable<String,Object>();
-        env.put(Context.SECURITY_AUTHENTICATION, "simple");
-        if (attrs.containsKey(Attribute.USERNAME)) {
-            env.put(Context.SECURITY_PRINCIPAL, attrs.get(Attribute.USER)+"="+
-                                                attrs.get(Attribute.USERNAME)+","+
-                                                attrs.get(Attribute.BASEDN));
-        }
-        if (attrs.containsKey(Attribute.PASSWORD)) {
-            env.put(Context.SECURITY_CREDENTIALS, attrs.get(Attribute.PASSWORD));
-        }
-        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
-        env.put(Context.PROVIDER_URL, "ldap://"+attrs.get(Attribute.HOST)+
-                                      ":"+attrs.get(Attribute.PORT));
-        DirContext ctx = new InitialDirContext(env);
-        String base = attrs.get(Attribute.BASEDN);
+    public Map<Attr,String> find(String alias) throws Exception {
+        DirContext ctx = getContext(null, null);
+        Map<Attr,String> entry = new TreeMap<Attr,String>();
+        String base = attrs.get(Attr.BASEDN);
 
         SearchControls sc = new SearchControls();
         sc.setReturningAttributes(attributes());
         sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
 
-        String filter = "("+attrs.get(Attribute.USER)+"="+alias+")";
-        if (attrs.containsKey(Attribute.FILTER) && !attrs.get(Attribute.FILTER).isEmpty()) {
-            filter = "(&"+filter+attrs.get(Attribute.FILTER)+")";
+        String filter = "("+attrs.get(Attr.USER)+"="+alias+")";
+        if (attrs.containsKey(Attr.FILTER) && !attrs.get(Attr.FILTER).isEmpty()) {
+            filter = "(&"+filter+attrs.get(Attr.FILTER)+")";
         }
 
         NamingEnumeration<SearchResult> results = ctx.search(base, filter, sc);
         if (results.hasMore()) {
           SearchResult sr = results.next();
           Attributes found = sr.getAttributes();
-          for (Attribute a : Attribute.values()) {
+          for (Attr a : Attr.values()) {
               if (a.mapped) {
                   String mapped = attrs.get(a);
                   if (mapped!=null && !mapped.isEmpty()) {
                       if (found.get(mapped)!=null) {
-                          map.put(a, found.get(mapped).get().toString());
+                          entry.put(a, found.get(mapped).get().toString());
                       }
                   }
               }
           }
         }
         ctx.close();
-        return map;
+        return entry;
+    }
+
+    public void add(Map<Attr,String> entry) throws Exception {
+        add(null, null, entry);
+    }
+    public void add(String admin, String password, Map<Attr,String> entry) throws Exception {
+        DirContext ctx = getContext(admin, password);
+        Attributes attributes=new BasicAttributes();
+        Attribute objectClass=new BasicAttribute("objectClass");
+        objectClass.add("inetOrgPerson");
+        attributes.put(objectClass);
+
+        for (Map.Entry<Attr,String> e : entry.entrySet()) {
+            Attr a = e.getKey();
+            if (a.mapped) {
+                Attribute attribute = new BasicAttribute(attrs.get(a));
+                attribute.add(e.getValue());
+                attributes.put(attribute);
+            }
+            
+        }
+        String dn = "cn="+entry.get(Attr.USER)+","+attrs.get(Attr.BASEDN);
+        ctx.createSubcontext(dn, attributes);
     }
 }
