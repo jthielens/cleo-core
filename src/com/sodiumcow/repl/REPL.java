@@ -381,7 +381,7 @@ public class REPL {
                     int        min   = method.getAnnotation(Command.class).min();
                     int        max   = method.getAnnotation(Command.class).max();
                     if (argv.length-i < types.length-(dots?1-min:0) || // too few arguments
-                        argv.length-i-types.length>(dots&&max>0?max-1:0)) {   // too many arguments
+                        argv.length-i-types.length>(dots&&max>0?max-1:dots?Integer.MAX_VALUE:0)) {   // too many arguments
                         throw new IllegalArgumentException();
                     }
                     if (dots) {
