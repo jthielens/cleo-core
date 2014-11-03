@@ -121,11 +121,16 @@ public class Core implements com.sodiumcow.util.LDAP.Crypt {
         return null;
     }
 
-    public Host findLocalHost(HostType type, String root) throws Exception {
+    public Host findLocalHost(HostType type, String root, String folder) throws Exception {
+        if (folder==null) folder = "";
         for (Host h : getHosts()) {
             if (h.getHostType()==type &&
                 (root==null || h.getSingleProperty("Ftprootpath").equals(root))) {
-                return h;
+                String hostFolder = h.getSingleProperty("folder");
+                if (hostFolder==null) hostFolder = "";
+                if (hostFolder.equals(folder)) {
+                    return h;
+                }
             }
         }
         return null;

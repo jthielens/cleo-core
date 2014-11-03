@@ -58,6 +58,7 @@ import com.sodiumcow.util.F;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
 import com.sodiumcow.util.X;
+import com.sodiumcow.util.S.Inspector;
 
 public class Shell extends REPL {
     Core             core = new Core();
@@ -114,7 +115,7 @@ public class Shell extends REPL {
 
     // echo x string pattern replacement --> string.replaceAll(pattern, replacement)
     // echo x string pattern             --> string.matches(pattern) and print match groups
-    @Command(name="echo_x", args="string pattern replacement", comment="test regex")
+    @Command(name="echo_x", args="string re [replace]", comment="s.replaceAll(re, replace)")
     public void echox(String s, String p, String...r) throws Exception {
         if (r!=null && r.length>0) {
             print(s.replaceAll(p, S.join(" ", r)));
@@ -156,17 +157,17 @@ public class Shell extends REPL {
         report(s);
     }
     // echo s string pattern --> string.split(p)
-    @Command(name="echo_s", args="string pattern", comment="split on regex")
+    @Command(name="echo_s", args="string pattern", comment="string.split(pattern)")
     public void echos(String s, String p) throws Exception {
         print(S.join(" ", qq(s.split(p))));
     }
     // echo f pattern strings... --> filtered list
-    @Command(name="echo_f", args="string pattern", comment="split on regex")
-    public void echof(String p, String...s) throws Exception {
-        print(S.join(" ", S.filter(s, new S.GlobFilter<String>(p))));
+    @Command(name="echo_f", args="glob s...", comment="filter(s, glob)")
+    public void echof(String glob, String...s) throws Exception {
+        print(S.join(" ", S.filter(s, new S.GlobFilter<String>(glob))));
     }
     @Command(name="echo_file", args="filename", comment="print filename")
-    public void echof(String fn) throws Exception {
+    public void echofile(String fn) throws Exception {
         print(new File(fn).getCanonicalPath());
     }
     @Command(name="echo", args="message", comment="print message")
@@ -568,16 +569,15 @@ public class Shell extends REPL {
             Map<String,URI> uris = new HashMap<String,URI>();
             for (URI uri : URI.getSchemes(props)) {
                 uris.put(uri.id, uri);
-                if (argv.length==0) {
-                    // sneaky cheat: no arguments means print an abbreviated index
-                    report(uri.id+" ("+S.join(File.pathSeparator, uri.classPath)+")");
-                }
+            }
+            if (argv.length==0) {
+                argv = uris.keySet().toArray(new String[uris.size()]);
             }
             // report on URIs matching argv
             for (String arg : argv) {
                 if (uris.containsKey(arg)) {
                     URI uri = uris.get(arg);
-                    report(uri.id, uri.toStrings());
+                    report("uri install "+S.join(" ", uri.deconstruct()));
                 } else {
                     error("uri not installed: "+arg);
                 }
@@ -591,7 +591,7 @@ public class Shell extends REPL {
         URI  scheme = new URI(core.getHome(), jars);
         File lib    = new File(core.getHome(), "lib/uri");
         for (int i=0; i<jars.length; i++) {
-            if (!jars[i].contains("=")) {
+            if (!jars[i].contains("=") && !jars[i].endsWith(":")) {
                 jars[i] = F.copy(new File(jars[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
             }
         }
@@ -1112,8 +1112,7 @@ public class Shell extends REPL {
                 int paren = name.indexOf('(');
                 if (paren>=0 && name.endsWith(")")) {
                     table = name.substring(0, paren);
-                    where = S.split(name.substring(paren+1, name.length()-1),
-                                       Pattern.compile("[\\s,]*(\\w+)=([^,]*)[\\s,]*"));
+                    where = S.split(name.substring(paren+1, name.length()-1), S.COMMA_EQUALS);
                 }
                 table = db.table(table);
                 if (table!=null) {
@@ -1216,10 +1215,8 @@ public class Shell extends REPL {
                                 }
                             }
                         } else {
-                            Object o = X.subobj(xml.map, path);
-                            if (o==null) {
-                                o = X.subprune(xml.map, path);
-                            }
+                            Object o = X.subprune(xml.map, path);
+                            //if (o==null) o = X.subprune(xml.map, path);
                             if (o!=null) {
                                 if (o instanceof Map) {
                                     @SuppressWarnings("unchecked")
@@ -1390,18 +1387,63 @@ public class Shell extends REPL {
     public void ldap(String...argv) {
         try {
             LDAP ldap;
-            if (argv.length==0 || argv[0].equals("*")) {
+            int  start;
+            if (argv.length==0) {
+                report(get_ldap().toString());
+                return;
+            } else if (argv[0].equals("*")) {
                 ldap = get_ldap();
-                report(ldap.toString());
+                start = 1;
             } else {
-                ldap = new LDAP(argv[0]);
+                try {
+                    ldap = new LDAP(argv[0]);
+                    start = 1;
+                } catch (IllegalArgumentException e) {
+                    // treat it like implied *
+                    ldap = get_ldap();
+                    start = 0;
+                }
             }
-            for (int i=1; i<argv.length; i++) {
-                Map<LDAP.Attribute, String> found = ldap.find(argv[i]);
+            for (int i=start; i<argv.length; i++) {
+                Map<LDAP.Attr, String> found = ldap.find(argv[i]);
                 report(S.join("\n", found, "%s = %s"));
             }
         } catch (Exception e) {
             error("error", e);
+        }
+    }
+    @Command(name="ldap_add", args="[url|*] user...", min=1, comment="ldap add")
+    public void ldapadd(String...argv) {
+        try {
+            LDAP ldap;
+            int  start;
+            if (argv[0].equals("*")) {
+                ldap = get_ldap();
+                start = 1;
+            } else {
+                try {
+                    ldap = new LDAP(argv[0]);
+                    start = 1;
+                } catch (IllegalArgumentException e) {
+                    // treat it like implied *
+                    ldap = get_ldap();
+                    start = 0;
+                }
+            }
+            for (int i=start; i<argv.length; i++) {
+                String arg = argv[i];
+                final Map<LDAP.Attr,String> entry = new HashMap<LDAP.Attr,String>();
+                S.megasplit(S.COMMA_EQUALS, arg, new Inspector<Object> () {
+                    public Object inspect(String [] group) {
+                        LDAP.Attr a = LDAP.Attr.valueOf(group[1].toUpperCase());
+                        entry.put(a, group[2]);
+                        return null;
+                    }
+                });
+                ldap.add(entry);
+            }
+        } catch (Exception e) {
+            error("error adding user", e);
         }
     }
     @Command(name="xferlog_off", comment="disable transfer logging")
@@ -1440,6 +1482,16 @@ public class Shell extends REPL {
         }
         return props;
     }
+    private static String[] splitFolder(String alias) {
+        int slash = alias.lastIndexOf('/');
+        if (slash >= 0) {
+            return new String[] { alias.substring(0, slash).replace('/', '\\'),
+                                  alias.substring(slash+1) };
+        
+        } else {
+            return new String[] { null, alias };
+        }
+    }
     @Command(name="host", args="[alias|* [url]]", comment="create a new remote host")
     public void host(String...argv) {
         if (argv.length<=1) {
@@ -1458,14 +1510,18 @@ public class Shell extends REPL {
                         Map<String,String> props  = Defaults.suppressHostDefaults(type, h.getProperties());
                         URL                url    = new URL(type).extractHost(props);
                         String             alias  = h.getPath().getAlias();
+                        String             folder = props.remove(".folder");
+                        // cleanup folder: \ to / and ending in / (unless empty)
+                        folder = folder==null?"":folder.replace('\\', '/').replaceFirst("(?<=[^/])$", "/");
+                        // note: above regex adds terminal slash unless empty or already there
                         List<String>       output = new ArrayList<String>();
                         if (alias.equals(url.getProtocol()+"://"+url.getAddress())) {
                             alias = "*";
                         }
                         if (props!=null && !props.isEmpty()) {
-                            output.add("host "+qq(alias)+" "+qq(url.toString())+" "+S.join(" \\\n    ", props, qqequals));
+                            output.add("host "+qq(folder+alias)+" "+qq(url.toString())+" "+S.join(" \\\n    ", props, qqequals));
                         } else {
-                            output.add("host "+qq(alias)+" "+qq(url.toString()));
+                            output.add("host "+qq(folder+alias)+" "+qq(url.toString()));
                         }
                         for (Mailbox m : h.getMailboxes()) {
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
@@ -1492,7 +1548,7 @@ public class Shell extends REPL {
             }
             return;
         }
-        // usage: host alias url [property=value...] [mailbox alias[(user:password)] [property=value...]...]
+        // usage: host [folder/]alias url [property=value...] [mailbox alias[(user:password)] [property=value...]...]
         // create new host <alias> and associated mailbox from parsed <url>
         // add mailbox[es] with <alias> and associated properties
         //    alias:password is acceptable shorthand for alias(user:password) when alias==user
@@ -1513,6 +1569,11 @@ public class Shell extends REPL {
             error("unrecognized protocol: "+url);
             return;
         }
+        // parse folder/ off of alias
+        String[] fa = splitFolder(alias);
+        String folder = fa[0];
+        alias = fa[1];
+        // default alias if *
         if (alias.equals("*")) {
             alias = u.getProtocol()+"://"+u.getAddress();
         }
@@ -1524,6 +1585,10 @@ public class Shell extends REPL {
         if (mailboxProps!=null && !mailboxProps.isEmpty()) {
             mailboxes.put(u.getUser(), mailboxProps);
             mailboxProps = null;
+        }
+        // default in the folder property
+        if (folder!=null && !folder.isEmpty()) {
+            hostProps.put(".folder", folder);
         }
         // now loop through the remaining properties, starting with the host properties
         boolean hostmode = true;
@@ -1663,10 +1728,13 @@ public class Shell extends REPL {
                                 String userpass = qq(malias) + (password!=null ? ":"+qq(password) : "");
                                 String typename = type.name().substring("LOCAL_".length()).toLowerCase();
                                 String root     = h.getSingleProperty("Ftprootpath");
+                                String folder   = h.getSingleProperty("folder");
+                                // cleanup folder: \ to / and ending in / (unless empty)
+                                folder = folder==null?"":folder.replace('\\', '/').replaceFirst("(?<=[^/])$", "/");
                                 if (!root.equals(Defaults.getHostDefaults(type).get("Ftprootpath"))) {
                                     typename += ":"+root;
                                 }
-                                report("  user "+userpass+" "+typename+" "+S.join(" \\\n    ", mprops, qqequals));
+                                report("  user "+folder+userpass+" "+typename+" "+S.join(" \\\n    ", mprops, qqequals));
                             }
                         }
                     }
@@ -1677,10 +1745,12 @@ public class Shell extends REPL {
             return;
         }
         // now in create user mode
-        // user name[:password] type {property=value ...}
-        String[] userpass = argv[0].split(":", 2);
-        String username = userpass[0];
-        String password = userpass.length>1 ? userpass[1] : null;
+        // user [folder/]name[:password] type {property=value ...}
+        String[] folderup = splitFolder(argv[0]);
+        String   folder   = folderup[0];
+        String[] userpass = folderup[1].split(":", 2);
+        String   username = userpass[0];
+        String   password = userpass.length>1 ? userpass[1] : null;
         
         String typename = argv[1];
         String root     = null;
@@ -1698,11 +1768,27 @@ public class Shell extends REPL {
         }
         try {
             // valid input -- find "host"
-            Host host = core.findLocalHost(type, root); // core.getHost(type.template);
+            Host host = core.findLocalHost(type, root, folder);
             if (host==null) {
-                host = core.activateHost(type, type.template);
+                String hostalias = typename+(root==null?"":":"+root)+" users";
+                if (folder!=null) {
+                    String[] folders = folder.split("\\\\");
+                    hostalias = folders[folders.length-1]+"/"+hostalias;
+                }
+                if (core.exists(new Path(hostalias))) {
+                    int uniquer = 0;
+                    String test;
+                    do {
+                        uniquer++;
+                        test = hostalias+"["+uniquer+"]";
+                    } while (core.exists(new Path(test)));
+                    hostalias = test;
+                }
+                host = core.activateHost(type, hostalias);
+                if (folder!=null) {
+                    host.setProperty("folder", folder);
+                }
                 if (root!=null) {
-                    host.rename(typename+":"+root);
                     host.setProperty("Ftprootpath", root);
                 }
                 for (Mailbox m : host.getMailboxes()) {
@@ -1710,6 +1796,7 @@ public class Shell extends REPL {
                     if (alias.startsWith("myTradingPartner")) {
                         m.setProperty("enabled", "False");
                         m.rename(Host.TEMPLATE_MAILBOX);
+                        m.save();
                         report("renamed template "+alias+": "+m.getPath());
                         break;
                     }
