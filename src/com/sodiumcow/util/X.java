@@ -83,10 +83,13 @@ public class X {
         // Step 2: walk the child nodes
         for (Node p = e.getFirstChild(); p!=null; p=p.getNextSibling()) {
             Node child = p.getFirstChild();
+            String alias = p.hasAttributes() && p.getAttributes().getLength()==1
+                           ? p.getAttributes().item(0).getNodeValue()
+                           : null;
             if (child!=null &&
                 child.getNodeType()==Node.TEXT_NODE &&
                 child.getNextSibling() == null &&
-                !p.hasAttributes()) {
+                (!p.hasAttributes() || alias!=null)) {
                 // <parameter>value</parameter>
                 String text = child.getNodeValue().trim();
                 if (!text.isEmpty()) {
@@ -105,6 +108,8 @@ public class X {
                         String[] kv = text.split("=", 2);
                         name = name+"["+kv[0]+"]";
                         text = kv.length>1 ? kv[1] : "";
+                    } else if (alias != null) {
+                        name = name+"["+alias+"]";
                     }
                     if (map.containsKey(name+"[0]")) {
                         int i;
