@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +166,9 @@ public class URI {
                 String[] kv = file.split("=", 2);
                 this.properties.put(kv[0], kv[1]);
                 continue;
+            } else if (file.endsWith(":")) {
+                this.id = file.substring(0, file.length()-1);
+                continue;
             }
             // ok, it's a file
             File jarfile = homeFile(home, file);
@@ -194,9 +198,11 @@ public class URI {
                                 final Class<?> test = Class.forName(classname, true, ucl);
                                 if (com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
                                     this.file = classname;
-                                    this.id = classname.toLowerCase();
-                                    if (this.id.endsWith("file")) {
-                                        this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
+                                    if (this.id==null) {
+                                        this.id = classname.toLowerCase();
+                                        if (this.id.endsWith("file")) {
+                                            this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
+                                        }
                                     }
                                 }
                                 try {
@@ -253,5 +259,14 @@ public class URI {
     }
     public String toString() {
         return S.join("\n", this.toStrings());
+    }
+    public String[] deconstruct() {
+        List<String> list = new ArrayList<String>();
+        list.add(this.id+":");
+        list.addAll(Arrays.asList(this.classPath));
+        for (Map.Entry<String,String> e : this.properties.entrySet()) {
+            list.add(e.getKey()+"="+e.getValue());
+        }
+        return list.toArray(new String[list.size()]);
     }
 }
