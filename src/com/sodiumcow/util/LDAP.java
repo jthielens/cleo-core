@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttribute;
 import javax.naming.directory.BasicAttributes;
@@ -400,19 +399,21 @@ public class LDAP {
     public void add(String admin, String password, Map<Attr,String> entry) throws Exception {
         DirContext ctx = getContext(admin, password);
         Attributes attributes=new BasicAttributes();
-        Attribute objectClass=new BasicAttribute("objectClass");
-        objectClass.add("inetOrgPerson");
-        attributes.put(objectClass);
+        attributes.put(new BasicAttribute("objectClass", "inetOrgPerson"));
+        attributes.put(new BasicAttribute("uid", entry.get(Attr.USER)));
 
         for (Map.Entry<Attr,String> e : entry.entrySet()) {
             Attr a = e.getKey();
             if (a.mapped) {
-                Attribute attribute = new BasicAttribute(attrs.get(a));
-                attribute.add(e.getValue());
-                attributes.put(attribute);
+                String value = e.getValue();
+                if (a==Attr.PASS) {
+                    value = SSHA.hash(value);
+                }
+                attributes.put(new BasicAttribute(attrs.get(a), value));
             }
             
         }
+        // compute the dn and update
         String dn = "cn="+entry.get(Attr.USER)+","+attrs.get(Attr.BASEDN);
         ctx.createSubcontext(dn, attributes);
     }
