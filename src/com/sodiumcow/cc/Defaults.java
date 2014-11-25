@@ -37,6 +37,21 @@ public class Defaults {
         "origin",
         "passworddate"
         }));
+    private static final Map<String,String> manualhostdefaults = new HashMap<String,String>();
+    static {
+        manualhostdefaults.put("Advanced.HighPriority",                "");
+        manualhostdefaults.put("Advanced.PreferredPublicKeyAlgorithm", "");
+    }
+    private static final Map<String,String> manualmailboxdefaults = new HashMap<String,String>();
+    static {
+        manualmailboxdefaults.put("Advanced.HighPriority",            "");
+        manualmailboxdefaults.put("Advanced.PGPCompressionAlgorithm", "System Default");
+        manualmailboxdefaults.put("Advanced.PGPEncryptionAlgorithm",  "System Default");
+        manualmailboxdefaults.put("Advanced.PGPHashAlgorithm",        "System Default");
+        manualmailboxdefaults.put("Usesamecerts",                     "True");
+        manualmailboxdefaults.put(".usercert",                        "");
+        manualmailboxdefaults.put(".usercertpassword",                "");
+    }
 
     private static final Map<HostType,Map<String,String>> hostmap = new HashMap<HostType,Map<String,String>>();
     private static final Map<HostType,Map<String,String>> mailboxmap = new HashMap<HostType,Map<String,String>>();
@@ -1296,7 +1311,8 @@ public class Defaults {
             while (i.hasNext()) {
                 Map.Entry<String,String> e = i.next();
                 if (ignore.contains(e.getKey().toLowerCase()) ||
-                    e.getValue().equalsIgnoreCase(defaults.get(e.getKey()))) {
+                    e.getValue().equalsIgnoreCase(defaults.get(e.getKey())) ||
+                    e.getValue().equalsIgnoreCase(manualhostdefaults.get(e.getKey()))) {
                     i.remove();
                 }
             }
@@ -1315,7 +1331,8 @@ public class Defaults {
             while (i.hasNext()) {
                 Map.Entry<String,String> e = i.next();
                 if (ignore.contains(e.getKey().toLowerCase()) ||
-                    e.getValue().equalsIgnoreCase(defaults.get(e.getKey()))) {
+                    e.getValue().equalsIgnoreCase(defaults.get(e.getKey())) ||
+                    e.getValue().equalsIgnoreCase(manualmailboxdefaults.get(e.getKey()))) {
                     i.remove();
                 }
             }
