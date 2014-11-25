@@ -2,7 +2,11 @@
 <!-- Configuration of the Ant build system to generate a Jar file --> 
 <project name="cc-shell" default="CreateJar">
   <target name="CreateJar" description="Create Jar file">
-    <jar jarfile="dist/cc-shell.jar" basedir="bin" includes="**/*.class" />
+    <jar destfile="dist/cc-shell.jar">
+      <fileset dir="bin" includes="**/*.class"/>
+      <zipfileset includes="**/*.class" src="../sodiumcow-util/dist/sodiumcow-util.jar"/>
+      <zipfileset includes="**/*.class" src="../sodiumcow-util/dist/sodiumcow-repl.jar"/>
+    </jar>
     <copy file="dist/cc-shell.jar" todir="${user.home}/vagrant/harmony" />
   </target>
 </project>

@@ -3,6 +3,7 @@
 	<name>cleo-core-api</name>
 	<comment></comment>
 	<projects>
+		<project>sodiumcow-util</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
