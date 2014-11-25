@@ -54,7 +54,7 @@ import com.sodiumcow.cc.exception.URLResolutionException;
 import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
-import com.sodiumcow.util.F;
+import com.sodiumcow.uri.unify.json.Share;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
 import com.sodiumcow.util.X;
@@ -184,6 +184,30 @@ public class Shell extends REPL {
             return qq(entry.getKey().toString())+"="+qq(entry.getValue().toString());
         }
     };
+
+    /**
+     * Quotes a String of the form a[=b], quoting a and b independently.
+     * @param s a (possibly null) String of the form a[=b]
+     * @return qq(a)[=qq(b)], or "null"
+     */
+    private String qqequals(String s) {
+        if (s==null) return "null";
+        return S.join("=", qq(s.split("=", 2)));
+    }
+
+    /**
+     * Quotes an array of Strings of the form a[=b].
+     * @param ss a (possibly null) array of Strings
+     * @return a formatted result, or null
+     */
+    private String[] qqequals(String[] ss) {
+        if (ss==null) return null;
+        String[] result = new String[ss.length];
+        for (int i=0; i<ss.length; i++) {
+            result[i] = qqequals(ss[i]);
+        }
+        return result;
+    }
 
     @Command(name="quote", args="message", comment="print message")
     public void quote(String...argv) {
@@ -467,8 +491,25 @@ public class Shell extends REPL {
     }
     private DB vldb = new DB();
     private DB h2db = new DB().setOptions(new DBOptions("h2:viewonly:VersaLex@127.0.0.1:9092/data/hibernate"));
+    private DB utdb = find_utdb();
+    private DB find_utdb () {
+        String unifydb = System.getProperty("cleo.uri.unify.db");
+        if (unifydb!=null) {
+            Matcher m = Pattern.compile("(.+):(.+)@(.+)").matcher(unifydb);
+            if (m.matches()) {
+                try {
+                    return new DB(m.group(3), m.group(1), core.decode(m.group(2)));
+                } catch (Exception e) {
+                    error("could not locate Unify database", e);
+                }
+            } else {
+                error("could not parse Unify database description: "+unifydb);
+            }
+        }
+        return vldb;
+    }
     private VLNav get_vlnav() throws Exception {
-        return new VLNav(vldb);
+        return new VLNav(vldb, core);
     }
     @Command(name="list_certs", comment="list user certificate aliases")
     public void list_certs() throws Exception {
@@ -590,12 +631,7 @@ public class Shell extends REPL {
     public void uri_install(String...jars) throws Exception {
         URI  scheme = new URI(core.getHome(), jars);
         File lib    = new File(core.getHome(), "lib/uri");
-        for (int i=0; i<jars.length; i++) {
-            if (!jars[i].contains("=") && !jars[i].endsWith(":")) {
-                jars[i] = F.copy(new File(jars[i]), lib, F.ClobberMode.UNIQUE).getAbsolutePath();
-            }
-        }
-        scheme = new URI(core.getHome(), jars);
+        scheme.install(lib, this);
         Properties props = URI.load(core.getHome());
         URI.setScheme(props, scheme);
         URI.store(core.getHome(), props);
@@ -635,7 +671,15 @@ public class Shell extends REPL {
             }
             report(path.toString()+" ("+path.getType()+": "+Arrays.toString(path.getPath())+")");
             for (Path item : core.list(path.getType(), path.getParent())) {
-                report(item.toString());
+                String name = item.toString();
+                if (item.getType()==PathType.HOST) {
+                    String folder = core.getSingleProperty(item, "folder");
+                    if (folder!=null) {
+                        folder = folder.replace('\\', '/');
+                        name = folder+"/"+name;
+                    }
+                }
+                report(name);
             }
         } catch (Exception e) {
             error("could not list", e);
@@ -916,14 +960,9 @@ public class Shell extends REPL {
     public void url(String...argv) {
         for (String arg : argv) {
             try {
-                /*Matcher m = Pattern.compile("(.*)\\?[^\\]/?]*").matcher(arg);
-                if (m.matches()) {
-                    report("matches: "+m.group(1).length());
-                } else {
-                    report("does not match: -1");
-                    report("null test: "+arg.equalsIgnoreCase(null));
-                }
-                */
+                java.net.URL u = new java.net.URL(arg);
+                report("path = "+u.getPath());
+                /*
                 URL url = URL.parseURL(arg);
                 if (url==null) {
                     error("cannot parse "+arg);
@@ -934,6 +973,7 @@ public class Shell extends REPL {
                     report("host ", S.join(" ", url.getHostProperties(), qqequals));
                     report("mailbox ", S.join(" ", url.getMailboxProperties(), qqequals));
                 }
+                */
             } catch (Exception e) {
                 error("parsing error", e);
             }
@@ -1035,7 +1075,7 @@ public class Shell extends REPL {
     public void remove(String...argv) {
         for (String arg : argv) {
             try {
-                core.remove(new Path(arg));
+                core.remove(Path.parsePath(arg));
             } catch (Exception e) {
                 error("error removing "+arg, e);
             }
@@ -1524,6 +1564,7 @@ public class Shell extends REPL {
                             output.add("host "+qq(folder+alias)+" "+qq(url.toString()));
                         }
                         for (Mailbox m : h.getMailboxes()) {
+                            if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
                                 // get the properties
                                 Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
@@ -1666,40 +1707,6 @@ public class Shell extends REPL {
                 mailbox.setProperty("enabled", "True");
                 host.save();
             }
-            /* old code
-            u.resolve(core, alias);
-            Host host = u.getHost();
-            if (host.getSource()==HostSource.ACTIVATE) {
-                report("created host "+host.getPath());
-                Mailbox template = host.getMailbox("myMailbox");
-                if (template!=null) {
-                    template.setProperty("enabled", "False");
-                    template.rename(Host.TEMPLATE_MAILBOX);
-                    host.save();
-                    report("renamed template: "+template.getPath());
-                }
-            } else {
-                report("reusing host "+host.getPath());
-            }
-            Mailbox mailbox = u.getMailbox();
-            if (mailbox!=null) {
-                report("mailbox exists: "+mailbox.getSingleProperty("alias"));
-            } else {
-                report("mailbox being created for "+u.getUser()+":"+u.getPassword());
-                mailbox = host.cloneMailbox(u.getUser());
-                report("protocol is "+host.getProtocol());
-                if (host.getProtocol()==Protocol.HTTP_CLIENT) {
-                    mailbox.setProperty("Authtype", "1"); // BASIC
-                    mailbox.setProperty("Authusername", u.getUser());
-                    mailbox.setProperty("Authpassword", u.getPassword());
-                } else {
-                    mailbox.setProperty("Username", u.getUser());
-                    mailbox.setProperty("Password", u.getPassword());
-                }
-                mailbox.setProperty("enabled", "True");
-                host.save();
-            }
-            */
         } catch (Exception e) {
             error("trouble activating host", e);
         }
@@ -1717,6 +1724,7 @@ public class Shell extends REPL {
                     if (h.isLocal()) {
                         HostType type = h.getHostType();
                         for (Mailbox m : h.getMailboxes()) {
+                            if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                             String malias = m.getPath().getAlias();
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True") && (user==null || malias.matches(user))) {
                                 Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
@@ -1739,6 +1747,12 @@ public class Shell extends REPL {
                         }
                     }
                 }
+                // repeat the same thing with vlusers
+                for (VLNav.UserDescription u : get_vlnav().list_users()) {
+                    if (user==null || u.username.matches(user)) {
+                        report("  user "+S.join(" ", qqequals(u.toStrings())));
+                    }
+                }
             } catch (Exception e) {
                 error("error listing users", e);
             }
@@ -1746,14 +1760,32 @@ public class Shell extends REPL {
         }
         // now in create user mode
         // user [folder/]name[:password] type {property=value ...}
+        if (argv.length<2) {
+            error("missing type");
+            return;
+        }
+        String typename = argv[1];
+        // check for vluser
+        if (typename.equalsIgnoreCase(VLNav.UserDescription.VLUSER)) {
+            try {
+                VLNav.UserDescription vluser = get_vlnav().new UserDescription(argv);
+                report("add/update user "+S.join(" ", qqequals(vluser.toStrings())));
+                vluser = get_vlnav().update_user(vluser);
+                report("user "+S.join(" ", qqequals(vluser.toStrings())));
+            } catch (Exception e) {
+                error("can not create vluser", e);
+            }
+            return;
+        }
+        // back to actual users
         String[] folderup = splitFolder(argv[0]);
         String   folder   = folderup[0];
         String[] userpass = folderup[1].split(":", 2);
         String   username = userpass[0];
         String   password = userpass.length>1 ? userpass[1] : null;
         
-        String typename = argv[1];
-        String root     = null;
+        // type[:root-folder-or-uri]
+        String root = null;
         if (typename.contains(":")) {
             String[] tr = typename.split(":", 2);
             typename = tr[0];
@@ -1763,18 +1795,21 @@ public class Shell extends REPL {
         try {
             type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
         } catch (IllegalArgumentException e) {
-            error("protcol must be ftp, http, or sftp");
+            error("protcol must be ftp, http, sftp, or vluser");
             return;
         }
         try {
             // valid input -- find "host"
             Host host = core.findLocalHost(type, root, folder);
+            String hostalias;
             if (host==null) {
-                String hostalias = typename+(root==null?"":":"+root)+" users";
+                hostalias = typename+(root==null?"":":"+root)+" users";
                 if (folder!=null) {
                     String[] folders = folder.split("\\\\");
                     hostalias = folders[folders.length-1]+"/"+hostalias;
                 }
+report("host not found: proposing "+hostalias);
+                //hostalias.replace('/', '#');
                 if (core.exists(new Path(hostalias))) {
                     int uniquer = 0;
                     String test;
@@ -1783,31 +1818,50 @@ public class Shell extends REPL {
                         test = hostalias+"["+uniquer+"]";
                     } while (core.exists(new Path(test)));
                     hostalias = test;
+report("had to make it unique as "+hostalias);
                 }
                 host = core.activateHost(type, hostalias);
                 if (folder!=null) {
+report("setting folder "+folder);
                     host.setProperty("folder", folder);
                 }
-                if (root!=null) {
-                    host.setProperty("Ftprootpath", root);
-                }
+                //host.save();
                 for (Mailbox m : host.getMailboxes()) {
                     String alias = m.getSingleProperty("alias");
                     if (alias.startsWith("myTradingPartner")) {
-                        m.setProperty("enabled", "False");
-                        m.rename(Host.TEMPLATE_MAILBOX);
-                        m.save();
-                        report("renamed template "+alias+": "+m.getPath());
+                        if (root!=null && root.matches("\\w{2,}:.*")) {
+                            // looks like a URI -- kill the template mailbox
+                            m.remove();
+                            report("deleted template "+alias+": "+m.getPath());
+                        } else {
+                            m.setProperty("enabled", "False");
+                            m.rename(Host.TEMPLATE_MAILBOX);
+                            m.save();
+                            report("renamed template "+alias+": "+m.getPath());
+                        }
                         break;
                     }
                 }
-                host.save();
+                //host.save();
+                if (root!=null) {
+report("setting Ftprootpath "+root);
+                    host.setProperty("Ftprootpath", root);
+                }
+            } else {
+                hostalias = host.getSingleProperty("alias");
+report("found host "+hostalias);
             }
             // got host -- find "mailbox"
             Mailbox mailbox = host.findMailbox(username, password);
             if (mailbox==null) {
-                mailbox = host.cloneMailbox(username);
-                report("created new mailbox "+username);
+                try {
+                    mailbox = host.cloneMailbox(username);
+                    report("created new mailbox "+username+" from template");
+                } catch (Exception e) {
+                    // maybe template isn't where we expect it -- just make new
+                    mailbox = host.createMailbox(username);
+                    report("created new mailbox "+username);
+                }
             } else {
                 report("updating existing mailbox "+username);
             }
@@ -1834,8 +1888,8 @@ public class Shell extends REPL {
     }
     @Command(name="action", args="[path [command...]]", comment="export/create action(s)")
     public void action(String...argv) {
-        if (argv.length==0 || (argv.length==1 && argv[0].equals("*"))) {
-            // usage: action [*]
+        if (argv.length==0) {
+            // usage: action
             // export all scheduled actions
             // output format is the action commands to set the actions up
             try {
@@ -1847,15 +1901,52 @@ public class Shell extends REPL {
             } catch (Exception e) {
                 error("error listing scheduled actions", e);
             }
+        } else if ((argv.length==1 && argv[0].equals("*"))) {
+            // usage: action *
+            // export all (and I mean all) actions
+            try {
+                for (Host h : core.getHosts()) {
+                    for (Item i : h.getChildren(PathType.HOST_ACTION)) {
+                        String[] commands = core.getProperty(i.getPath(), "Commands")[0].split("\n");
+                        report("action "+qq(i.getPath().toString())+" ", S.join(" \\\n",qq(commands)));
+                    }
+                    for (Mailbox m : h.getMailboxes()) {
+                        if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
+                        for (Item i : m.getChildren(PathType.ACTION)) {
+                            String[] commands = core.getProperty(i.getPath(), "Commands")[0].split("\n");
+                            report("action "+qq(i.getPath().toString())+" ", S.join(" \\\n",qq(commands)));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                error("error listing all actions", e);
+            }
         } else if (argv.length==1) {
-            // usage: action <action>
+            // usage: action path
             // export the scheduled action <action>
             // output format is the action command to set the action up
             String name = argv[0];
             try {
                 Path path = Path.parsePath(name);
-                String[] commands = core.getProperty(path, "Commands")[0].split("\n");
-                report("action "+qq(path.toString())+" ", S.join("\\\n",qq(commands)));
+                List<Path> actions = new ArrayList<Path>();
+                switch (path.getType()) {
+                case HOST:
+                    actions.addAll(Arrays.asList(core.list(PathType.HOST_ACTION, path)));
+                    break;
+                case MAILBOX:
+                    actions.addAll(Arrays.asList(core.list(PathType.ACTION, path)));
+                    break;
+                case ACTION:
+                case HOST_ACTION:
+                    actions.add(path);
+                    break;
+                default:
+                    error("this type of path does not have actions");
+                }
+                for (Path action : actions) {
+                    String[] commands = core.getProperty(action, "Commands")[0].split("\n");
+                    report("action "+qq(action.toString())+" ", S.join("\\\n",qq(commands)));
+                }
             } catch (Exception e) {
                 error("error listing action commands for "+name, e);
             }
@@ -1966,9 +2057,11 @@ public class Shell extends REPL {
             // export all user-defined groups
             // output format is the group command to set the group up
             try {
-                String[] groups = get_vlnav().list_groups();
-                for (String group : groups) {
+                for (String group : get_vlnav().list_groups().values()) {
                     report("group "+group+" "+S.join(" \\\n    ", get_vlnav().find_group(group).toMap(), qqequals));
+                    for (VLNav.UserDescription user : get_vlnav().list_users(group)) {
+                        report("  user "+S.join(" ", qq(user.toStrings())));
+                    }
                 }
             } catch (Exception e) {
                 error("could not list groups", e);
@@ -2001,9 +2094,16 @@ public class Shell extends REPL {
             // create new <group> with <definition>
             String name = argv[0];
             try {
-                VLNav.GroupDescription desc = get_vlnav().new GroupDescription(name, Arrays.copyOfRange(argv, 1, argv.length));
-                get_vlnav().create_group(desc);
-                report("group "+name+" created");
+                VLNav.GroupDescription exist = get_vlnav().find_group(name);
+                if (exist!=null) {
+                    error("group "+name+" exists: "+exist);
+                    VLNav.GroupDescription update = get_vlnav().new GroupDescription(name, Arrays.copyOfRange(argv, 1, argv.length));
+                    report("update to "+update);
+                } else {
+                    VLNav.GroupDescription desc = get_vlnav().new GroupDescription(name, Arrays.copyOfRange(argv, 1, argv.length));
+                    get_vlnav().create_group(desc);
+                    report("group "+name+" created");
+                }
             } catch (Exception e) {
                 error("can not create group "+name, e);
             }
@@ -2060,6 +2160,43 @@ public class Shell extends REPL {
         } catch (Exception e) {
             error("cannot connect to database", e);
         }
+    }
+
+    @Command(name="unify_users", comment="list unify users")
+    public void unify_users() throws Exception {
+        UnifyShell ush = new UnifyShell(utdb);
+        for (Share.Collaborator c : ush.getUsers()) {
+            report(c.toString());
+            Share[] shares = ush.getShares(c);
+            if (shares!=null) {
+                for (Share s : shares) {
+                    report("  ", s.toString());
+                    if (s.share.name.equals("Members") && s.permissions.isAll()) {
+                        Share.Collaborator[] collabs = ush.getCollaborators(c, s);
+                        if (collabs!=null) {
+                            for (Share.Collaborator collab : collabs) {
+                                report("    ", collab.email);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    @Command(name="unify_share", comment="list or create shares")
+    public void unify_share(String user, String share) {
+        UnifyShell ush = new UnifyShell(utdb);
+        try {
+            ush.newShare(user, share);
+            report("created share "+share);
+        } catch (Exception e) {
+            error("error creating share", e);
+        }
+    }
+    @Command(name="unify_sync", args="list", comment="unify sync")
+    public void unify_sync(String mode) throws Exception {
+        UnifyShell ush = new UnifyShell(utdb);
+        ush.sync(mode.equalsIgnoreCase("list"));
     }
     public static void main(String[] argv) {
         Shell repl = new Shell();

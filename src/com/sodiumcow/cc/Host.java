@@ -66,9 +66,13 @@ public class Host extends Item {
         String userproperty = isLocal() ? "alias" : isHttp ? "Authusername": "Username";
         String passwordproperty = isHttp ? "Authpassword": "Password";
         for (Mailbox m : getMailboxes()) {
-            if (m.matchProperty(userproperty, username) &&
-                m.matchProperty(passwordproperty, core.encode(password))) {
-                return m;
+            try {
+                if (m.matchProperty(userproperty, username) &&
+                    m.matchProperty(passwordproperty, core.encode(password))) {
+                    return m;
+                }
+            } catch (Exception ignore) {
+                // sometimes ILexiCom seems to get out of sync and returns non-existing mailboxes
             }
         }
         return null;
