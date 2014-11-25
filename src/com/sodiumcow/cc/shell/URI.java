@@ -8,15 +8,19 @@ import java.io.IOException;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.sodiumcow.util.F;
 import com.sodiumcow.util.S;
 
 public class URI {
@@ -160,6 +164,7 @@ public class URI {
 
     private synchronized void inspectJars (File home, final String...jars) throws Exception {
         List<String> schemeFiles  = new ArrayList<String>();
+        List<String> depends      = new ArrayList<String>();
         for (String file : jars) {
             // check if it's a property, not a file
             if (file.contains("=")) {
@@ -184,54 +189,126 @@ public class URI {
             for (int i=0; i<schemeFiles.size(); i++) {
                 urls[i] = new java.net.URL("jar:file:"+homeFile(home, schemeFiles.get(i)).getCanonicalPath()+"!/");
             }
-            final URLClassLoader ucl         = new URLClassLoader(urls, classLoader);
+            final URLClassLoader ucl = new URLClassLoader(urls, classLoader);
             for (String f : schemeFiles) {
-                final File           jarfile = homeFile(home, f);
-                final JarInputStream jar     = new JarInputStream(new FileInputStream(jarfile));
-                JarEntry entry;
-                while ((entry = jar.getNextJarEntry()) != null) {
-                    if (entry.getName().endsWith(".class")) {
-                        String classname = entry.getName().replaceAll("/", "\\.");
-                        classname = classname.substring(0, classname.length()-".class".length());
-                        if (!classname.contains("$")) {
-                            try {
-                                final Class<?> test = Class.forName(classname, true, ucl);
-                                if (com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
-                                    this.file = classname;
-                                    if (this.id==null) {
-                                        this.id = classname.toLowerCase();
-                                        if (this.id.endsWith("file")) {
-                                            this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
-                                        }
-                                    }
+                final JarFile jarfile = new JarFile(homeFile(home, f));
+                // first check manifest
+                Manifest manifest = jarfile.getManifest();
+                if (manifest!=null) {
+                    Attributes attrs = manifest.getMainAttributes();
+                    if (attrs!=null) {
+                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
+                            this.file = attrs.getValue("Cleo-URI-File-Class");
+                            if (this.id==null) {
+                                this.id = file.toLowerCase();
+                                if (this.id.endsWith("file")) {
+                                    this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
                                 }
-                                try {
-                                    test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class);
-                                    if (java.io.InputStream.class.isAssignableFrom(test)) {
-                                        this.inputStream = classname;
-                                    }
-                                } catch (Exception e) {}
-                                try {
-                                    test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class, boolean.class);
-                                    if (java.io.OutputStream.class.isAssignableFrom(test)) {
-                                        this.outputStream = classname;
-                                    }
-                                } catch (Exception e) {}
-                            } catch (final ClassNotFoundException e) {
-                                // so what
-                            } catch (final NoClassDefFoundError e) {
-                                // so what
-                            } 
+                            }
+                        }
+                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
+                            this.inputStream = attrs.getValue("Cleo-URI-InputStream-Class");
+                        }
+                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-OutputStream-Class"))) {
+                            this.outputStream = attrs.getValue("Cleo-URI-OutputStream-Class");
+                        }
+                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
+                            depends.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
                         }
                     }
                 }
-                jar.close();
+                jarfile.close();
+                if (file!=null && inputStream!=null && outputStream!=null) {
+                    break;
+                }
+            }
+            if (file==null || inputStream==null || outputStream==null) {
+                // look for compatible classes
+                for (String f : schemeFiles) {
+                    final JarFile jarfile = new JarFile(homeFile(home, f));
+                    for (Enumeration<JarEntry> entries = jarfile.entries(); entries.hasMoreElements();) {
+                        JarEntry entry = entries.nextElement();
+                        if (entry.getName().endsWith(".class")) {
+                            String classname = entry.getName().replaceAll("/", "\\.");
+                            classname = classname.substring(0, classname.length()-".class".length());
+                            if (!classname.contains("$")) {
+                                try {
+                                    final Class<?> test = Class.forName(classname, true, ucl);
+                                    if (file==null && com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
+                                        this.file = classname;
+                                        if (this.id==null) {
+                                            this.id = classname.toLowerCase();
+                                            if (this.id.endsWith("file")) {
+                                                this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
+                                            }
+                                        }
+                                    }
+                                    if (inputStream==null) {
+                                        try {
+                                            test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class);
+                                            if (java.io.InputStream.class.isAssignableFrom(test)) {
+                                                this.inputStream = classname;
+                                            }
+                                        } catch (Exception ignore) {}
+                                    }
+                                    if (outputStream==null) {
+                                        try {
+                                            test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class, boolean.class);
+                                            if (java.io.OutputStream.class.isAssignableFrom(test)) {
+                                                this.outputStream = classname;
+                                            }
+                                        } catch (Exception ignore) {}
+                                    }
+                                } catch (final ClassNotFoundException e) {
+                                    // so what
+                                } catch (final NoClassDefFoundError e) {
+                                    // so what
+                                } 
+                            }
+                        }
+                    }
+                    jarfile.close();
+                }
             }
         }
         if (this.file==null || this.inputStream==null || this.outputStream==null) {
             throw new Exception("classes missing from classpath: invalid URI");
         }
+        schemeFiles.addAll(depends);
         this.classPath = schemeFiles.toArray(new String[schemeFiles.size()]);
+    }
+
+    private String mvn2(String path) {
+        String[] gav = path.split("%");
+        if (gav.length==3) {
+            StringBuilder s = new StringBuilder("http://central.maven.org/maven2/")
+                              .append(gav[0].replace('.','/'))   // group, changing . to /
+                              .append('/').append(gav[1])        // artifact
+                              .append('/').append(gav[2])        // version
+                              .append('/').append(gav[1])        // artifact-version.jar
+                                .append('-').append(gav[2]).append(".jar");
+            return s.toString();
+        }
+        return null;
+    }
+
+    public void install(File lib, Shell shell) throws Exception {
+        for (int i=0; i<classPath.length; i++) {
+            String path = classPath[i];
+            String mvn2 = mvn2(path);
+            if (mvn2!=null) {
+                byte[] sha1 = F.hex(new String(F.download(mvn2+".sha1")));
+                F.Clobbered result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
+                classPath[i] = result.file.getAbsolutePath();
+                shell.report(result.matched ? path+" matched to existing "+result.file
+                                            : path+" downloaded to "+result.file);
+            } else {
+                F.Clobbered result = F.copy(new File(path), lib, F.ClobberMode.UNIQUE);
+                classPath[i] = result.file.getAbsolutePath();
+                shell.report(result.matched ? path+" matched to existing "+result.file
+                                            : path+" coped to "+result.file);
+            }
+        }
     }
 
     public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String[] schemeClassPath, Map<String,String> properties) {
