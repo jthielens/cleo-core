@@ -631,7 +631,7 @@ public class Shell extends REPL {
     public void uri_install(String...jars) throws Exception {
         URI  scheme = new URI(core.getHome(), jars);
         File lib    = new File(core.getHome(), "lib/uri");
-        scheme.install(lib, this);
+        scheme.install(core.getHome(), lib, this);
         Properties props = URI.load(core.getHome());
         URI.setScheme(props, scheme);
         URI.store(core.getHome(), props);

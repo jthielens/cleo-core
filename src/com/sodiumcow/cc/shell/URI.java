@@ -292,19 +292,19 @@ public class URI {
         return null;
     }
 
-    public void install(File lib, Shell shell) throws Exception {
+    public void install(File home, File lib, Shell shell) throws Exception {
         for (int i=0; i<classPath.length; i++) {
             String path = classPath[i];
             String mvn2 = mvn2(path);
             if (mvn2!=null) {
                 byte[] sha1 = F.hex(new String(F.download(mvn2+".sha1")));
                 F.Clobbered result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
-                classPath[i] = result.file.getAbsolutePath();
+                classPath[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
                                             : path+" downloaded to "+result.file);
             } else {
                 F.Clobbered result = F.copy(new File(path), lib, F.ClobberMode.UNIQUE);
-                classPath[i] = result.file.getAbsolutePath();
+                classPath[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
                                             : path+" coped to "+result.file);
             }
