@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.sodiumcow.cc.constant.HostType;
+import com.sodiumcow.cc.Core;
+import com.sodiumcow.cc.User;
 import com.sodiumcow.uri.unify.Unify;
 import com.sodiumcow.uri.unify.json.Share;
 import com.sodiumcow.util.DB;
@@ -26,6 +29,10 @@ public class UnifyShell {
 
     private void connect() throws SQLException {
         db.connect();
+    }
+
+    private void report(String s) {
+        System.out.println(s);
     }
 
     public Share.Collaborator[] getUsers() throws SQLException {
@@ -83,7 +90,10 @@ public class UnifyShell {
     }
 
     public Share[] getShares(Share.Collaborator user) {
-        Unify u = getUnify(user.email);
+        return getShares(user.email);
+    }
+    public Share[] getShares(String email) {
+        Unify u = getUnify(email);
         return u.getShares();
     }
 
@@ -127,9 +137,68 @@ public class UnifyShell {
             // ?
             throw new Exception("Failed inserting "+email, e);
         }
+    }
 
-        //Unify u = getUnify(email);
-        //return u.newShare(share);
+    public void sync_sftp(Core core, boolean commit) throws Exception {
+        VLNav utnav = new VLNav(db, core);
+        VLNav.UserDescription[] unifiers = utnav.list_users();
+        Map<String,VLNav.UserDescription> unifiers_by_name = new HashMap<String,VLNav.UserDescription>();
+        for (VLNav.UserDescription unifier : unifiers) {
+            unifiers_by_name.put(unifier.username, unifier);
+        }
+        User.Filter sftpunify = new User.Filter() {
+            @Override public boolean accept(User.Description user) {
+                return user.type==HostType.LOCAL_SFTP && user.root.equals("unify:/");
+            }
+        };
+        User.Description[] sftpers = User.list(core, sftpunify);
+        List<User.Description> sftp_modify = new ArrayList<User.Description>();
+        List<User.Description> sftp_delete = new ArrayList<User.Description>();
+        List<User.Description> sftp_report = new ArrayList<User.Description>();
+        for (User.Description sftper : sftpers) {
+            VLNav.UserDescription unifier = unifiers_by_name.get(sftper.username);
+            if (unifier!=null) {
+                if (unifier.password.equals(sftper.password)) {
+                    // matches -- don't worry about it
+                    unifiers_by_name.remove(sftper.username);
+                    sftp_report.add(sftper);
+                } else {
+                    sftper.password = unifiers_by_name.get(sftper.username).password;
+                    sftp_modify.add(sftper);
+                }
+            } else {
+                sftp_delete.add(sftper);
+            }
+        }
+        // process deletes
+        for (User.Description sftper : sftp_delete) {
+            report("delete "+sftper.username);
+            if (commit) {
+                User.remove(core, sftper);
+                report(S.join("\n", sftper.notes));
+            }
+        }
+        // process updates
+        for (User.Description sftper : sftp_modify) {
+            report("(update) user "+S.join(" ", Shell.qqequals(sftper.toStrings())));
+            if (commit) {
+                User.update(core, sftper);
+                report(S.join("\n", sftper.notes));
+            }
+        }
+        // process adds
+        for (VLNav.UserDescription unifier : unifiers_by_name.values()) {
+            User.Description sftper = new User.Description(S.a(unifier.username+":"+unifier.password, "sftp:unify:/"));
+            report("(add) user "+S.join(" ", Shell.qqequals(sftper.toStrings())));
+            if (commit) {
+                User.update(core, sftper);
+                report(S.join("\n", sftper.notes));
+            }
+        }
+        // report matches
+        for (User.Description sftper : sftp_report) {
+            report("(match) user "+S.join(" ", Shell.qqequals(sftper.toStrings())));
+        }
     }
 
     public Share.Collaborator[] getCollaborators(Share.Collaborator user, Share share) {
@@ -151,7 +220,13 @@ public class UnifyShell {
                        Share.Permission.MODIFY_COLLABORATORS,
                        Share.Permission.MODIFY_CONFIGURATION);
 
-    public void sync(boolean list) throws SQLException {
+    /**
+     * Synchronizes the permissions based on "Members" shares playing the role
+     * of a group.
+     * @param list
+     * @throws SQLException
+     */
+    public void sync_members(boolean commit) throws SQLException {
         Map<String,Set<String>>  groups  = new TreeMap<String,Set<String>> (); // group email -> set of user email
         Map<Long,Set<NamePerms>> folders = new HashMap<Long,Set<NamePerms>>(); // folder id   -> set of group email+perms
         Map<Long,String>         owner   = new HashMap<Long,String>        (); // folder id   -> owner with FULL_CONTROL
@@ -194,9 +269,9 @@ public class UnifyShell {
         // Now we have a complete list of groups and their members
         // and shared folders and their groups.
         // We now reconcile for each folder
-        if (list) {
+        if (!commit) {
             for (Map.Entry<String,Set<String>> e : groups.entrySet()) {
-                System.out.println("group "+e.getKey()+" members "+S.join(", ", e.getValue()));
+                report("group "+e.getKey()+" members "+S.join(", ", e.getValue()));
             }
         }
 
@@ -223,17 +298,17 @@ public class UnifyShell {
             Unify unify = Unify.getUnify(owner.get(folderID), "cleo");
             Share.Collaborator[] existing = unify.getCollaborators(folderID);
             String prefix;
-            if (list) {
+            if (!commit) {
                 StringBuffer s = new StringBuffer();
                 s.append("folder id ").append(folderID).append(" groups");
                 for (NamePerms np : e.getValue()) {
                     s.append(" ").append(np.name).append(" ").append(np.perms.toString());
                 }
                 s.append(" owner ").append(owner.get(folderID));
-                System.out.println(s.toString());
+                report(s.toString());
                 prefix = "members  ";
                 for (Map.Entry<String,Share.Permissions> member : members.entrySet()) {
-                    System.out.println(prefix+member.getKey()+" "+member.getValue());
+                    report(prefix+member.getKey()+" "+member.getValue());
                     prefix = "         ";
                 }
             }
@@ -241,8 +316,8 @@ public class UnifyShell {
             for (int i=0; i<existing.length; i++) {
                 if (!groups.containsKey(existing[i].email)) {
                     existing[i] = unify.getCollaborator(folderID, existing[i].id); // need to get permissions
-                    if (list) {
-                        System.out.println(prefix+existing[i].email+" "+existing[i].permissions);
+                    if (!commit) {
+                        report(prefix+existing[i].email+" "+existing[i].permissions);
                         prefix = "         ";
                     }
                 }
@@ -271,25 +346,25 @@ public class UnifyShell {
             if (extra.size()>0) {
                 prefix = "delete:  ";
                 for (Share.Collaborator delete : extra) {
-                    System.out.println(prefix+delete.email);
+                    report(prefix+delete.email);
                     prefix = "         ";
-                    if (!list) unify.deleteCollaborator(folderID, delete.id);
+                    if (commit) unify.deleteCollaborator(folderID, delete.id);
                 }
             }
             prefix = "add:     ";
             for (Map.Entry<String,Share.Permissions> member : members.entrySet()) {
-                System.out.println(prefix+member.getKey()+" "+member.getValue());
+                report(prefix+member.getKey()+" "+member.getValue());
                 prefix = "         ";
                 Share.Collaborator add = new Share.Collaborator();
                 add.email = member.getKey();
                 add.permissions = member.getValue();
-                if (!list) unify.newCollaborator(folderID, add);
+                if (commit) unify.newCollaborator(folderID, add);
             }
             prefix = "update:  ";
             for (Share.Collaborator change : update) {
-                System.out.println(prefix+change.email+" "+change.permissions);
+                report(prefix+change.email+" "+change.permissions);
                 prefix = "         ";
-                if (!list) unify.updateCollaborator(folderID, change);
+                if (commit) unify.updateCollaborator(folderID, change);
             }
         }
     }

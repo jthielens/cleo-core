@@ -68,7 +68,8 @@ public class Host extends Item {
         for (Mailbox m : getMailboxes()) {
             try {
                 if (m.matchProperty(userproperty, username) &&
-                    m.matchProperty(passwordproperty, core.encode(password))) {
+                    (password==null ||   // null means don't match on password
+                     m.matchProperty(passwordproperty, core.encode(password)))) {
                     return m;
                 }
             } catch (Exception ignore) {

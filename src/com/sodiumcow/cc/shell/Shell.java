@@ -43,6 +43,7 @@ import com.sodiumcow.cc.Mailbox;
 import com.sodiumcow.cc.Path;
 import com.sodiumcow.cc.Schedule;
 import com.sodiumcow.cc.URL;
+import com.sodiumcow.cc.User;
 import com.sodiumcow.cc.constant.HostSource;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.Mode;
@@ -54,6 +55,7 @@ import com.sodiumcow.cc.exception.URLResolutionException;
 import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
+import com.sodiumcow.uri.unify.Unify;
 import com.sodiumcow.uri.unify.json.Share;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
@@ -190,7 +192,7 @@ public class Shell extends REPL {
      * @param s a (possibly null) String of the form a[=b]
      * @return qq(a)[=qq(b)], or "null"
      */
-    private String qqequals(String s) {
+    static String qqequals(String s) {
         if (s==null) return "null";
         return S.join("=", qq(s.split("=", 2)));
     }
@@ -200,7 +202,7 @@ public class Shell extends REPL {
      * @param ss a (possibly null) array of Strings
      * @return a formatted result, or null
      */
-    private String[] qqequals(String[] ss) {
+    static String[] qqequals(String[] ss) {
         if (ss==null) return null;
         String[] result = new String[ss.length];
         for (int i=0; i<ss.length; i++) {
@@ -491,22 +493,33 @@ public class Shell extends REPL {
     }
     private DB vldb = new DB();
     private DB h2db = new DB().setOptions(new DBOptions("h2:viewonly:VersaLex@127.0.0.1:9092/data/hibernate"));
-    private DB utdb = find_utdb();
-    private DB find_utdb () {
-        String unifydb = System.getProperty("cleo.uri.unify.db");
-        if (unifydb!=null) {
-            Matcher m = Pattern.compile("(.+):(.+)@(.+)").matcher(unifydb);
-            if (m.matches()) {
-                try {
-                    return new DB(m.group(3), m.group(1), core.decode(m.group(2)));
-                } catch (Exception e) {
-                    error("could not locate Unify database", e);
+    private DB utdb = null;
+    private DB get_utdb () {
+        if (utdb==null) {
+            String unifydb = null;
+            String unifyurl = null;
+            try {
+                Properties props = URI.load(core.getHome());
+                unifydb = props.getProperty("cleo.uri.unify.db");
+                unifyurl = props.getProperty("cleo.uri.unify.url");
+            } catch (Exception ignore) {}
+            if (unifydb!=null) {
+                Matcher m = Pattern.compile("(.+):(.+)@(.+)").matcher(unifydb);
+                if (m.matches()) {
+                    try {
+                        utdb = new DB(m.group(3), m.group(1), core.decode(m.group(2)));
+                    } catch (Exception e) {
+                        error("could not locate Unify database", e);
+                    }
+                } else {
+                    error("could not parse Unify database description: "+unifydb);
                 }
-            } else {
-                error("could not parse Unify database description: "+unifydb);
+            }
+            if (unifyurl!=null) {
+                Unify.setURL(unifyurl);
             }
         }
-        return vldb;
+        return utdb!=null ? utdb : vldb;
     }
     private VLNav get_vlnav() throws Exception {
         return new VLNav(vldb, core);
@@ -1718,34 +1731,10 @@ public class Shell extends REPL {
             // export [all] user[s]
             // output format is the user commands to set the users up
             try {
-                String user = (argv.length==0 || argv[0].equals("*"))
-                              ? null : argv[0];
-                for (Host h : core.getHosts()) {
-                    if (h.isLocal()) {
-                        HostType type = h.getHostType();
-                        for (Mailbox m : h.getMailboxes()) {
-                            if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
-                            String malias = m.getPath().getAlias();
-                            if (m.getSingleProperty("enabled").equalsIgnoreCase("True") && (user==null || malias.matches(user))) {
-                                Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
-                                crackPasswords(mprops);
-                                if (malias.equals(mprops.get("Homedirectory"))) {
-                                    mprops.remove("Homedirectory");
-                                }
-                                String password = mprops.remove("Password");
-                                String userpass = qq(malias) + (password!=null ? ":"+qq(password) : "");
-                                String typename = type.name().substring("LOCAL_".length()).toLowerCase();
-                                String root     = h.getSingleProperty("Ftprootpath");
-                                String folder   = h.getSingleProperty("folder");
-                                // cleanup folder: \ to / and ending in / (unless empty)
-                                folder = folder==null?"":folder.replace('\\', '/').replaceFirst("(?<=[^/])$", "/");
-                                if (!root.equals(Defaults.getHostDefaults(type).get("Ftprootpath"))) {
-                                    typename += ":"+root;
-                                }
-                                report("  user "+folder+userpass+" "+typename+" "+S.join(" \\\n    ", mprops, qqequals));
-                            }
-                        }
-                    }
+                String user = (argv.length==0 || argv[0].equals("*")) ? null : argv[0];
+                User.Filter filter = new User.RegexFilter(user);
+                for (User.Description u : User.list(core, filter)) {
+                    report("  user "+S.join(" ", qqequals(u.toStrings())));
                 }
                 // repeat the same thing with vlusers
                 for (VLNav.UserDescription u : get_vlnav().list_users()) {
@@ -1776,114 +1765,16 @@ public class Shell extends REPL {
                 error("can not create vluser", e);
             }
             return;
-        }
-        // back to actual users
-        String[] folderup = splitFolder(argv[0]);
-        String   folder   = folderup[0];
-        String[] userpass = folderup[1].split(":", 2);
-        String   username = userpass[0];
-        String   password = userpass.length>1 ? userpass[1] : null;
-        
-        // type[:root-folder-or-uri]
-        String root = null;
-        if (typename.contains(":")) {
-            String[] tr = typename.split(":", 2);
-            typename = tr[0];
-            root     = tr[1];
-        }
-        HostType type;
-        try {
-            type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            error("protcol must be ftp, http, sftp, or vluser");
-            return;
-        }
-        try {
-            // valid input -- find "host"
-            Host host = core.findLocalHost(type, root, folder);
-            String hostalias;
-            if (host==null) {
-                hostalias = typename+(root==null?"":":"+root)+" users";
-                if (folder!=null) {
-                    String[] folders = folder.split("\\\\");
-                    hostalias = folders[folders.length-1]+"/"+hostalias;
-                }
-report("host not found: proposing "+hostalias);
-                //hostalias.replace('/', '#');
-                if (core.exists(new Path(hostalias))) {
-                    int uniquer = 0;
-                    String test;
-                    do {
-                        uniquer++;
-                        test = hostalias+"["+uniquer+"]";
-                    } while (core.exists(new Path(test)));
-                    hostalias = test;
-report("had to make it unique as "+hostalias);
-                }
-                host = core.activateHost(type, hostalias);
-                if (folder!=null) {
-report("setting folder "+folder);
-                    host.setProperty("folder", folder);
-                }
-                //host.save();
-                for (Mailbox m : host.getMailboxes()) {
-                    String alias = m.getSingleProperty("alias");
-                    if (alias.startsWith("myTradingPartner")) {
-                        if (root!=null && root.matches("\\w{2,}:.*")) {
-                            // looks like a URI -- kill the template mailbox
-                            m.remove();
-                            report("deleted template "+alias+": "+m.getPath());
-                        } else {
-                            m.setProperty("enabled", "False");
-                            m.rename(Host.TEMPLATE_MAILBOX);
-                            m.save();
-                            report("renamed template "+alias+": "+m.getPath());
-                        }
-                        break;
-                    }
-                }
-                //host.save();
-                if (root!=null) {
-report("setting Ftprootpath "+root);
-                    host.setProperty("Ftprootpath", root);
-                }
-            } else {
-                hostalias = host.getSingleProperty("alias");
-report("found host "+hostalias);
+        } else {
+            try {
+                User.Description user = new User.Description(argv);
+                report("add/update user "+S.join(" ", qqequals(user.toStrings())));
+                user = User.update(core, user);
+                report(S.join("\n", user.notes));
+                report("user "+S.join(" ", qqequals(user.toStrings())));
+            } catch (Exception e) {
+                error("can not create user", e);
             }
-            // got host -- find "mailbox"
-            Mailbox mailbox = host.findMailbox(username, password);
-            if (mailbox==null) {
-                try {
-                    mailbox = host.cloneMailbox(username);
-                    report("created new mailbox "+username+" from template");
-                } catch (Exception e) {
-                    // maybe template isn't where we expect it -- just make new
-                    mailbox = host.createMailbox(username);
-                    report("created new mailbox "+username);
-                }
-            } else {
-                report("updating existing mailbox "+username);
-            }
-            if (password!=null) {
-                mailbox.setProperty("Password", password);
-                report("user "+username+" password set");
-            }
-            boolean homeset = false;
-            for (int i=2; i<argv.length; i++) {
-                String[] av = argv[i].split("=", 2);
-                mailbox.setProperty(av[0], av.length>1 ? av[1] : "");
-                if (av[0].equalsIgnoreCase("Homedirectory")) {
-                    homeset = true;
-                }
-            }
-            if (!homeset) {
-                mailbox.setProperty("Homedirectory", username);
-            }
-            mailbox.setProperty("Enabled", "True");
-            host.save();
-        } catch (Exception e) {
-            error("error creating "+username, e);
         }
     }
     @Command(name="action", args="[path [command...]]", comment="export/create action(s)")
@@ -2162,41 +2053,72 @@ report("found host "+hostalias);
         }
     }
 
-    @Command(name="unify_users", comment="list unify users")
-    public void unify_users() throws Exception {
-        UnifyShell ush = new UnifyShell(utdb);
+    @Command(name="unify_user", comment="list unify users")
+    public void unify_user(String...argv) throws Exception {
+        UnifyShell ush = new UnifyShell(get_utdb());
         for (Share.Collaborator c : ush.getUsers()) {
             report(c.toString());
-            Share[] shares = ush.getShares(c);
-            if (shares!=null) {
-                for (Share s : shares) {
-                    report("  ", s.toString());
-                    if (s.share.name.equals("Members") && s.permissions.isAll()) {
-                        Share.Collaborator[] collabs = ush.getCollaborators(c, s);
-                        if (collabs!=null) {
-                            for (Share.Collaborator collab : collabs) {
-                                report("    ", collab.email);
+        }
+        VLNav utnav = new VLNav(utdb, core);
+        for (VLNav.UserDescription u : utnav.list_users()) {
+            report("  user "+S.join(" ", qqequals(u.toStrings())));
+        }
+    }
+    @Command(name="unify_share", comment="list or create shares")
+    public void unify_share(String...argv) {
+        String user  = argv.length>0 ? argv[0] : null;
+        String share = argv.length>1 ? argv[1] : null;
+        UnifyShell ush = new UnifyShell(get_utdb());
+        if (share!=null) {
+            try {
+                ush.newShare(user, share);
+                report("created share "+share);
+            } catch (Exception e) {
+                error("error creating share", e);
+            }
+        } else {
+            try {
+                Share.Collaborator[] users;
+                if (user!=null) {
+                    users = new Share.Collaborator[] {new Share.Collaborator()};
+                    users[0].email = user;
+                } else {
+                    users = ush.getUsers();
+                }
+                for (Share.Collaborator c : users) {
+                    report(c.toString());
+                    Share[] shares = ush.getShares(c);
+                    if (shares!=null) {
+                        for (Share s : shares) {
+                            report("  ", s.toString());
+                            if (s.share.name.equals("Members") && s.permissions.isAll()) {
+                                Share.Collaborator[] collabs = ush.getCollaborators(c, s);
+                                if (collabs!=null) {
+                                    for (Share.Collaborator collab : collabs) {
+                                        report("    ", collab.email);
+                                    }
+                                }
                             }
                         }
                     }
                 }
+            } catch (Exception e) {
+                error("error listing shares", e);
             }
+            
         }
     }
-    @Command(name="unify_share", comment="list or create shares")
-    public void unify_share(String user, String share) {
-        UnifyShell ush = new UnifyShell(utdb);
-        try {
-            ush.newShare(user, share);
-            report("created share "+share);
-        } catch (Exception e) {
-            error("error creating share", e);
+    @Command(name="unify_sync", args="members|sftp list|commit", comment="unify sync")
+    public void unify_sync(String what, String mode) throws Exception {
+        boolean commit = mode.equalsIgnoreCase("commit");
+        UnifyShell ush = new UnifyShell(get_utdb());
+        if (what.equalsIgnoreCase("members")) {
+            ush.sync_members(commit);
+        } else if (what.equalsIgnoreCase("sftp")) {
+            ush.sync_sftp(core, commit);
+        } else {
+            error("usage: unify sync members|sftp list|commit");
         }
-    }
-    @Command(name="unify_sync", args="list", comment="unify sync")
-    public void unify_sync(String mode) throws Exception {
-        UnifyShell ush = new UnifyShell(utdb);
-        ush.sync(mode.equalsIgnoreCase("list"));
     }
     public static void main(String[] argv) {
         Shell repl = new Shell();

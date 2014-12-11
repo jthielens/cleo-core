@@ -95,4 +95,12 @@ public class Mailbox extends Item {
         action.remove();  // it looks like this is good hygiene for list
         return files;
     }
+
+    public String decode(String encoded) throws Exception {
+        return core.decode(encoded);
+    }
+
+    public String encode(String decoded) throws Exception {
+        return core.encode(decoded);
+    }
 }
