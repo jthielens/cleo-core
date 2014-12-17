@@ -34,6 +34,10 @@ public class Mailbox extends Item {
         return lastResult;
     }
 
+    public Host getHost() throws Exception {
+        return new Host(core, path.getHost());
+    }
+
     public Action[] getActions() throws Exception {
         Item[] nodes = getChildren(PathType.ACTION);
         return (Action[]) Arrays.copyOf(nodes, nodes.length, Action[].class);
@@ -94,13 +98,5 @@ public class Mailbox extends Item {
         }
         action.remove();  // it looks like this is good hygiene for list
         return files;
-    }
-
-    public String decode(String encoded) throws Exception {
-        return core.decode(encoded);
-    }
-
-    public String encode(String decoded) throws Exception {
-        return core.encode(decoded);
     }
 }

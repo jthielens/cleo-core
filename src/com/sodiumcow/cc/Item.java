@@ -187,4 +187,12 @@ public class Item {
     public void removeLogListener(LexiComLogListener listener) throws Exception {
         core.getLexiCom().removeLogListener(listener, path.getPath(), path.getType().id);
     }
+
+    public String decode(String encoded) throws Exception {
+        return core.decode(encoded);
+    }
+
+    public String encode(String decoded) throws Exception {
+        return core.encode(decoded);
+    }
 }
