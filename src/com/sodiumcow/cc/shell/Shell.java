@@ -1798,14 +1798,17 @@ public class Shell extends REPL {
             try {
                 for (Host h : core.getHosts()) {
                     for (Item i : h.getChildren(PathType.HOST_ACTION)) {
-                        String[] commands = core.getProperty(i.getPath(), "Commands")[0].split("\n");
-                        report("action "+qq(i.getPath().toString())+" ", S.join(" \\\n",qq(commands)));
+                        if (i!=null) {
+                            report("got item "+i.getPath());
+                            String[] commands = S.s(core.getSingleProperty(i.getPath(), "Commands")).split("\n");
+                            report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
+                        }
                     }
                     for (Mailbox m : h.getMailboxes()) {
                         if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                         for (Item i : m.getChildren(PathType.ACTION)) {
-                            String[] commands = core.getProperty(i.getPath(), "Commands")[0].split("\n");
-                            report("action "+qq(i.getPath().toString())+" ", S.join(" \\\n",qq(commands)));
+                            String[] commands = S.s(core.getSingleProperty(i.getPath(), "Commands")).split("\n");
+                            report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
                         }
                     }
                 }
