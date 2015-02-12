@@ -29,6 +29,8 @@ public class Item {
             return new Mailbox(core, path);
         case ACTION:
             return new Action(core, path);
+        case HOST_ACTION:
+            return new HostAction(core, path);
         default:
             return null;
         }

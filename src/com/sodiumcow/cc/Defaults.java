@@ -1,16 +1,21 @@
 package com.sodiumcow.cc;
 
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import com.cleo.lexicom.beans.LexHostBean;
 import com.sodiumcow.cc.constant.HostType;
+import com.sodiumcow.cc.shell.Util;
 
 public class Defaults {
     // these are all .toLowerCase for case insensitive lookup
@@ -52,6 +57,15 @@ public class Defaults {
         manualmailboxdefaults.put(".usercert",                        "");
         manualmailboxdefaults.put(".usercertpassword",                "");
     }
+
+    /*
+    private static final Map<HostType,Class> hostclass = new HashMap<HostType,Class>();
+    private static final Map<HostType,Class> mailboxclass = new HashMap<HostType,Class>();
+    static {
+        hostclass.put(AS2, com.cleo.lexicom.beans.as2bean.AS2Host.class);
+        / com.cleo.lexicom.beans.as2bean.AS2Mailbox
+    }
+    */
 
     private static final Map<HostType,Map<String,String>> hostmap = new HashMap<HostType,Map<String,String>>();
     private static final Map<HostType,Map<String,String>> mailboxmap = new HashMap<HostType,Map<String,String>>();
@@ -1264,7 +1278,7 @@ public class Defaults {
                 .replaceAll("\"", "\\\\\"");
     }
     private static final String ALIAS = UUID.randomUUID().toString();
-    public static void printDefaults(PrintStream out, Core core, HostType type) {
+    public static Object printDefaults(PrintStream out, Core core, HostType type) {
         Map<String,String> hostprops;
         Map<String,String> mailboxprops;
         try {
@@ -1273,11 +1287,30 @@ public class Defaults {
             Mailbox mailbox = host.getMailboxes()[0];
             hostprops = host.getProperties();
             mailboxprops = mailbox.getProperties();
+
+            String hostclass = core.decode(hostprops.get(".class"));
+            String mailboxclass = core.decode(mailboxprops.get(".class"));
+            out.println(type.name() + ": "+ hostclass + " / "+ mailboxclass);
+            Class beanclass = Class.forName(hostclass);
+            Object bean = beanclass.newInstance();
+            //Properties defaults = bean.defaultProperties;
+            PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();
+            for (PropertyDescriptor prop : props) {
+                out.println(prop.getName()+": "+prop.getPropertyType().getName()+" = "+hostprops.get(prop.getName().toLowerCase()));
+            }
+            for (Map.Entry<String, String> e : hostprops.entrySet()) {
+                if (!ignore.contains(e.getKey().toLowerCase())) {
+                    out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
+                }
+            }
+
             core.remove(host.getPath());
+            return bean;
         } catch (Exception e) {
             e.printStackTrace();
-            return;
+            return null;
         }
+/*
         // the dangerous part is done -- now just print the results
         out.println("        map = new TreeMap<String,String>();");
         for (Map.Entry<String, String> e : hostprops.entrySet()) {
@@ -1293,6 +1326,7 @@ public class Defaults {
             }
         }
         out.printf("        mailboxmap.put(HostType.%s, map);\n", type.name());
+*/
     }
     public static void printAllDefaults(PrintStream out, Core core) {
         for (HostType t : HostType.values()) {
@@ -1304,6 +1338,33 @@ public class Defaults {
         return hostmap.get(type);
     }
 
+    public static Map<String,String> getDefaults(Item item) throws Exception {
+        Host     host = null;
+        Mailbox  mbox = null;
+        HostType type = null;
+        if (item instanceof Host) {
+            host = (Host)item;
+            type = host.getHostType();
+        } else if (item instanceof Mailbox) {
+            mbox = (Mailbox)item;
+            host = mbox.getHost();
+            type = host.getHostType();
+        } else {
+            return null;
+        }
+        Map<String,String> result = new HashMap<String,String>();
+        Class beanclass = Class.forName(item.decode(item.getProperties().get(".class")));
+        Object bean = beanclass.newInstance();
+        //Properties defaults = bean.defaultProperties;
+        PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();
+        for (PropertyDescriptor prop : props) {
+            result.put(prop.getName(), prop.getPropertyType().getName());
+        }
+        //for (Map.Entry<Object,Object> e : defaults.entrySet()) {
+            //result.put(e.getKey().toString(), e.getValue().toString());
+        //}
+        return result;
+    }
     public static Map<String,String> suppressHostDefaults(HostType type, Map<String,String> props) {
         if (props!=null) {
             Map<String,String> defaults = getHostDefaults(type);

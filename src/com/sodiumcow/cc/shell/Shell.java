@@ -717,7 +717,8 @@ public class Shell extends REPL {
                     } else {
                         // usage: dump type:audit
                         // Calculates and prints new Defaults for <type>
-                        Defaults.printDefaults(System.out, core, HostType.valueOf(name.toUpperCase()));
+                        Object o = Defaults.printDefaults(System.out, core, HostType.valueOf(name.toUpperCase()));
+                        Util.report_bean(this, o);
                     }
                 } else {
                     Path     path = Path.parsePath(name);
@@ -742,6 +743,9 @@ public class Shell extends REPL {
                         // Dumps the segment of the XML host file for <path> [to <depth>]
                         String[][] description = S.invert(X.flat(X.xml2map(item.getNode()), depth));
                         report(new String[] {"Attribute", "Value"}, description);
+                    } else if ("defaults".equalsIgnoreCase(fmt)) {
+                        Map<String,String> defaults = Defaults.getDefaults(item);
+                        report(new String[] {"Attribute", "Value"}, S.invert(defaults));
                     } else {
                         // usage: dump path
                         // Dumps the raw XML pretty-print of the XML host file segment for <path>
@@ -1380,7 +1384,7 @@ public class Shell extends REPL {
             return c;
         }
     }
-    @Command(name="db", args="find|set|remove|create|drop string", comment="find/set db connection")
+    @Command(name="db", args="find|set|use|remove|create|drop string", comment="find/set db connection")
     public void db(String...argv) {
         if (argv.length!=2) {
             error("usage: db find|set string");
@@ -1408,6 +1412,8 @@ public class Shell extends REPL {
                     } catch (Exception e) {
                         error("usage: db set type:user:password@host[:port]/database");
                     }
+                } else if (command.equalsIgnoreCase("use")) {
+                    vldb.setOptions(new DBOptions(string));
                 } else if (command.equalsIgnoreCase("remove")) {
                     o.removeDBConnection(string);
                     o.save();
@@ -1798,11 +1804,9 @@ public class Shell extends REPL {
             try {
                 for (Host h : core.getHosts()) {
                     for (Item i : h.getChildren(PathType.HOST_ACTION)) {
-                        if (i!=null) {
-                            report("got item "+i.getPath());
-                            String[] commands = S.s(core.getSingleProperty(i.getPath(), "Commands")).split("\n");
-                            report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
-                        }
+                        report("got item "+i.getPath());
+                        String[] commands = S.s(core.getSingleProperty(i.getPath(), "Commands")).split("\n");
+                        report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
                     }
                     for (Mailbox m : h.getMailboxes()) {
                         if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does

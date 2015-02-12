@@ -306,7 +306,7 @@ public class URI {
                 F.Clobbered result = F.copy(new File(path), lib, F.ClobberMode.UNIQUE);
                 classPath[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
-                                            : path+" coped to "+result.file);
+                                            : path+" copied to "+result.file);
             }
         }
     }
