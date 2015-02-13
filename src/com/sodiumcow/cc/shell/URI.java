@@ -10,9 +10,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -29,6 +31,7 @@ public class URI {
     public String             inputStream  = null;
     public String             outputStream = null;
     public String[]           classPath    = null;
+    public String[]           addPath      = null;
     public Map<String,String> properties   = new HashMap<String,String>();
 
     private static final Pattern URI_PROPERTY = Pattern.compile("cleo\\.uri\\.(\\w+)\\.file");
@@ -55,6 +58,15 @@ public class URI {
         props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
         for (Map.Entry<String,String> e : scheme.properties.entrySet()) {
             props.setProperty("cleo.uri."+scheme.id+"."+e.getKey(), e.getValue());
+        }
+        if (scheme.addPath!=null && scheme.addPath.length>0) {
+            Set<String> classSet = new HashSet<String>();
+            String existing = props.getProperty("cleo.additional.classpath");
+            if (existing!=null && !existing.isEmpty()) {
+                classSet.addAll(Arrays.asList(existing.split(COLON)));
+            }
+            classSet.addAll(Arrays.asList(scheme.addPath));
+            props.setProperty("cleo.additional.classpath", S.join(COLON, classSet));
         }
         return props;
     }
@@ -165,6 +177,7 @@ public class URI {
     private synchronized void inspectJars (File home, final String...jars) throws Exception {
         List<String> schemeFiles  = new ArrayList<String>();
         List<String> depends      = new ArrayList<String>();
+        Set<String>  additional   = new HashSet<String>();
         for (String file : jars) {
             // check if it's a property, not a file
             if (file.contains("=")) {
@@ -214,6 +227,9 @@ public class URI {
                         }
                         if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
                             depends.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
+                        }
+                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-Additional"))) {
+                            additional.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Additional").split("\\s+")));
                         }
                     }
                 }
@@ -276,6 +292,9 @@ public class URI {
         }
         schemeFiles.addAll(depends);
         this.classPath = schemeFiles.toArray(new String[schemeFiles.size()]);
+        if (!additional.isEmpty()) {
+            this.addPath = additional.toArray(new String[additional.size()]);
+        }
     }
 
     private String mvn2(String path) {
@@ -292,23 +311,29 @@ public class URI {
         return null;
     }
 
-    public void install(File home, File lib, Shell shell) throws Exception {
-        for (int i=0; i<classPath.length; i++) {
-            String path = classPath[i];
+    private void copyToLib(String[] list, File home, File lib, Shell shell) throws Exception {
+        if (list==null) return;
+        for (int i=0; i<list.length; i++) {
+            String path = list[i];
             String mvn2 = mvn2(path);
             if (mvn2!=null) {
                 byte[] sha1 = F.hex(new String(F.download(mvn2+".sha1")));
                 F.Clobbered result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
-                classPath[i] = relativize(home, result.file);
+                list[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
                                             : path+" downloaded to "+result.file);
             } else {
-                F.Clobbered result = F.copy(new File(path), lib, F.ClobberMode.UNIQUE);
-                classPath[i] = relativize(home, result.file);
+                F.Clobbered result = F.copy(homeFile(home, path), lib, F.ClobberMode.UNIQUE);
+                list[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
                                             : path+" copied to "+result.file);
             }
         }
+    }
+
+    public void install(File home, File lib, Shell shell) throws Exception {
+        copyToLib(classPath, home, lib, shell);
+        copyToLib(addPath,   home, lib, shell);
     }
 
     public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String[] schemeClassPath, Map<String,String> properties) {
