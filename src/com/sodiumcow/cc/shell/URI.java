@@ -317,7 +317,7 @@ public class URI {
             String path = list[i];
             String mvn2 = mvn2(path);
             if (mvn2!=null) {
-                byte[] sha1 = F.hex(new String(F.download(mvn2+".sha1")));
+                byte[] sha1 = F.hex(S.s(F.download(mvn2+".sha1")));
                 F.Clobbered result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
                 list[i] = relativize(home, result.file);
                 shell.report(result.matched ? path+" matched to existing "+result.file
