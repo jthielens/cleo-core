@@ -11,7 +11,10 @@ import com.cleo.lexicom.external.ISchedule;
 
 public class Schedule {
     /*
-     * A Schedule is a list of Items.
+     * A Schedule has inital flags:
+     *   triggered on file:                                        "on file"
+     *   continuous:                                               "continuously"
+     * A Schedule is a list of Items, separated by:                "+"
      * An Item has a Type:
      *   ONE_TIME: Calendar with a single Date yyyy/mm/dd          "ON yyyy/mm/dd"
      *   WEEKLY:   Calendar with a list of Days                    "ON d,d-d,..."
@@ -20,7 +23,7 @@ public class Schedule {
      *      Non-recurrent: a list of day numbers 1-31              "ON THE n,n-n,..."
      * Every Calendar also has a list of Times.
      * A Time has a Start hh:mm[:ss],                              "@hh:mm[:ss]"
-     *   and optional Recurring and End hh:mm[:ss]                 "hh:mm-hh:mmxhh:mm"
+     *   and optional Recurring and End hh:mm[:ss]                 "hh:mm/hh:mm-hh:mm"
      */
 
     public enum Type {
