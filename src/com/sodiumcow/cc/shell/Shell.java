@@ -26,6 +26,7 @@ import javax.xml.bind.DatatypeConverter;
 
 import com.cleo.lexicom.beans.Options;
 import com.cleo.lexicom.beans.Options.DBConnection;
+import com.cleo.lexicom.certmgr.ImportedCertificate;
 import com.cleo.lexicom.certmgr.external.ICertManagerRunTime;
 import com.cleo.lexicom.external.DirectoryEntry;
 import com.cleo.lexicom.external.ILicense;
@@ -59,8 +60,8 @@ import com.sodiumcow.uri.unify.Unify;
 import com.sodiumcow.uri.unify.json.Share;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
-import com.sodiumcow.util.X;
 import com.sodiumcow.util.S.Inspector;
+import com.sodiumcow.util.X;
 
 public class Shell extends REPL {
     Core             core = new Core();
@@ -167,10 +168,6 @@ public class Shell extends REPL {
     @Command(name="echo_f", args="glob s...", comment="filter(s, glob)")
     public void echof(String glob, String...s) throws Exception {
         print(S.join(" ", S.filter(s, new S.GlobFilter<String>(glob))));
-    }
-    @Command(name="echo_file", args="filename", comment="print filename")
-    public void echofile(String fn) throws Exception {
-        print(new File(fn).getCanonicalPath());
     }
     @Command(name="echo", args="message", comment="print message")
     public void echo(String...argv) {
@@ -604,6 +601,12 @@ public class Shell extends REPL {
             certManager.importUserCertKey(alias, certf, keyf, password, true/*replace*/, false/*addPassword*/);
             report("key \""+alias+"\" imported");
         }
+    }
+    @Command(name="import_ssh", args="alias key", comment="import SSH public key")
+    public void import_ssh(String alias, String key) throws Exception {
+        ImportedCertificate imported = new ImportedCertificate(alias, key);
+        ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
+        certManager.importCaStoreCert(alias, imported.getX509(), false);
     }
 
     @Command(name="uri_parse", args="uri", comment="parse URI")
