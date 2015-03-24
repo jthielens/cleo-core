@@ -538,8 +538,12 @@ public class Shell extends REPL {
         ICertManagerRunTime certManager = core.getLexiCom().getCertManager();
         String certPath = core.getLexiCom().getAbsolute("certs");
         Map<String,String> cas = new TreeMap<String,String>();
+        Map<String,String> caseMap = new HashMap<String,String>();
         for (File ca : new File(certPath).listFiles()) {
             if (!ca.isFile()) continue;
+            caseMap.put(ca.getName().toLowerCase(), ca.getName());
+            /*
+            report(ca.getName().toLowerCase()+" -> "+ca.getName());
             try {
                 Collection<X509Certificate> certs = certManager.readCert(ca);
                 for (X509Certificate x : certs) {
@@ -548,19 +552,25 @@ public class Shell extends REPL {
             } catch (Exception e) {
                 error("error listing cert", e);
             }
+            */
         }
-        report(new String[] {"CA", "File"}, S.invert(cas));
-        /* this way doesn't work because getCAFiles seems to lowercase everything
-        for (Enumeration<String> e=certManager.getCAFiles();
-             e.hasMoreElements();) {
+        //report(new String[] {"CA", "File"}, S.invert(cas));
+        /* this way doesn't work because getCAFiles seems to lowercase everything */
+        for (Enumeration<String> e=certManager.getCAFiles(); e.hasMoreElements();) {
             String ca = e.nextElement();
-            report(ca);
-            Collection<X509Certificate> certs = certManager.readCert(certPath+"/"+ca);
-            for (X509Certificate x : certs) {
-                report(". ", certManager.getFriendlyName(x));
+            if (ca.endsWith("/")) {
+                String fn = ca.replaceAll("/$", "");
+                if (caseMap.containsKey(fn)) fn = caseMap.get(fn);
+                Collection<X509Certificate> certs = certManager.readCert(certPath+"/"+fn);
+                for (X509Certificate x : certs) {
+                    cas.put(certManager.getFriendlyName(x), ca);
+                }
+            } else {
+                X509Certificate x = certManager.getCACertificate(ca);
+                cas.put(certManager.getFriendlyName(x), ca);
             }
         }
-        */
+        report(new String[] {"CA", "Id"}, S.invert(cas));
     }
     @Command(name="trust", args="file...", comment="trust CA(s)")
     public void trust(String...argv) {
