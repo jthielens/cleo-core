@@ -300,7 +300,20 @@ public class URL {
             }
         } else {
             host = hosts[0];  // default choice is just the first one, unless...
-            mailbox = host.findMailbox(user, password);
+            mailbox = host.findMailbox(user, null);
+        }
+
+        // create a mailbox if there wasn't a match
+        if (mailbox==null) {
+            try {
+                mailbox = host.cloneMailbox(user);
+            } catch (Exception e) {
+                // maybe template isn't where we expect it -- just make new
+                mailbox = host.createMailbox(user);
+            }
+            for (Map.Entry<String,String> e : mailboxProperties.entrySet()) {
+                mailbox.setProperty(e.getKey(), e.getValue());
+            }
         }
         host.save();
     }

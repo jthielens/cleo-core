@@ -55,7 +55,9 @@ public class URI {
         props.setProperty("cleo.uri."+scheme.id+".file",         scheme.file);
         props.setProperty("cleo.uri."+scheme.id+".inputstream",  scheme.inputStream);
         props.setProperty("cleo.uri."+scheme.id+".outputstream", scheme.outputStream);
-        props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
+        if (scheme.classPath!=null && scheme.classPath.length>0) {
+        	props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
+        }
         for (Map.Entry<String,String> e : scheme.properties.entrySet()) {
             props.setProperty("cleo.uri."+scheme.id+"."+e.getKey(), e.getValue());
         }
@@ -152,6 +154,11 @@ public class URI {
         this.outputStream = schemeOutputStream;
         this.classPath    = schemeClassPath==null ? null : schemeClassPath.split(COLON);
         this.properties   = properties;
+        if (classPath==null) {
+            properties.put("file",         this.file);
+            properties.put("inputstream",  this.inputStream);
+            properties.put("outputstream", this.outputStream);
+        }
     }
 
     private static String relativize (File home, File jar) {
@@ -175,14 +182,27 @@ public class URI {
     }
 
     private synchronized void inspectJars (File home, final String...jars) throws Exception {
-        List<String> schemeFiles  = new ArrayList<String>();
-        List<String> depends      = new ArrayList<String>();
-        Set<String>  additional   = new HashSet<String>();
+        List<String> schemeFiles  = new ArrayList<String>(); // JARs on the "command line"
+        List<String> classpath    = new ArrayList<String>(); // the ones to add to classpath
+        Set<String>  additional   = new HashSet<String>();   // the ones to add to additional.classpath
+
+        // First: look through the "command line" and strip out
+        // - properties that look like a=b
+        // - the scheme id that looks like scheme:
+        // And get upset if anything remaining isn't a readable file
         for (String file : jars) {
             // check if it's a property, not a file
             if (file.contains("=")) {
                 String[] kv = file.split("=", 2);
-                this.properties.put(kv[0], kv[1]);
+                if (kv[0].equals("file")) {
+                    this.file = kv[1];
+                } else if (kv[0].equals("inputstream")) {
+                    this.inputStream = kv[1];
+                } else if (kv[0].equals("outputstream")) {
+                    this.outputStream = kv[1];
+                } else {
+                    this.properties.put(kv[0], kv[1]);
+                }
                 continue;
             } else if (file.endsWith(":")) {
                 this.id = file.substring(0, file.length()-1);
@@ -196,6 +216,7 @@ public class URI {
                 throw new Exception("can not read file: "+jarfile);
             }
         }
+        // Second: run through the actual files in two passes
         if (!schemeFiles.isEmpty()) {
             final ClassLoader    classLoader = Util.class.getClassLoader();
             final java.net.URL[] urls = new java.net.URL[schemeFiles.size()];
@@ -203,6 +224,16 @@ public class URI {
                 urls[i] = new java.net.URL("jar:file:"+homeFile(home, schemeFiles.get(i)).getCanonicalPath()+"!/");
             }
             final URLClassLoader ucl = new URLClassLoader(urls, classLoader);
+            // First pass: parse out manifest attributes to find:
+            // - scheme                Cleo-URI-Scheme
+            // - file class            Cleo-URI-File-Class
+            // - input class           Cleo-URI-InputStream-Class
+            // - output class          Cleo-URI-OutputStream-Class
+            // - classpath             Cleo-URI-Depends
+            // - additional.classpath  Cleo-URI-Additional
+            // Note that first setting wins (for scheme and file classes that aren't lists).
+            // Note also that the JARs themselves are added to classpath unless "this" appears in
+            //      Additional, in which case the current JAR is added to additional instead
             for (String f : schemeFiles) {
                 final JarFile jarfile = new JarFile(homeFile(home, f));
                 // first check manifest
@@ -210,7 +241,10 @@ public class URI {
                 if (manifest!=null) {
                     Attributes attrs = manifest.getMainAttributes();
                     if (attrs!=null) {
-                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
+                        if (this.id==null && attrs.containsKey(new Attributes.Name("Cleo-URI-Scheme"))) {
+                            this.id = attrs.getValue("Cleo-URI-Scheme").toLowerCase();
+                        }
+                        if (this.file==null && attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
                             this.file = attrs.getValue("Cleo-URI-File-Class");
                             if (this.id==null) {
                                 this.id = file.toLowerCase();
@@ -219,14 +253,14 @@ public class URI {
                                 }
                             }
                         }
-                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
+                        if (this.inputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
                             this.inputStream = attrs.getValue("Cleo-URI-InputStream-Class");
                         }
-                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-OutputStream-Class"))) {
+                        if (this.outputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-OutputStream-Class"))) {
                             this.outputStream = attrs.getValue("Cleo-URI-OutputStream-Class");
                         }
                         if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
-                            depends.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
+                            classpath.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
                         }
                         if (attrs.containsKey(new Attributes.Name("Cleo-URI-Additional"))) {
                             additional.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Additional").split("\\s+")));
@@ -234,10 +268,16 @@ public class URI {
                     }
                 }
                 jarfile.close();
-                if (file!=null && inputStream!=null && outputStream!=null) {
-                    break;
+                if (additional.contains("this")) {
+                    additional.remove("this");
+                    additional.add(f);
+                } else {
+                    classpath.add(f);
                 }
             }
+            // Second pass: if the classes were not set in manifest atttributes,
+            // read through the JAR files again trying on each class to find ones
+            // that match the necessary types.
             if (file==null || inputStream==null || outputStream==null) {
                 // look for compatible classes
                 for (String f : schemeFiles) {
@@ -287,11 +327,14 @@ public class URI {
                 }
             }
         }
+        // Finally: check to make sure we got the classes we need
+        // and set the classPath and addPath lists
         if (this.file==null || this.inputStream==null || this.outputStream==null) {
             throw new Exception("classes missing from classpath: invalid URI");
         }
-        schemeFiles.addAll(depends);
-        this.classPath = schemeFiles.toArray(new String[schemeFiles.size()]);
+        if (!classpath.isEmpty()) {
+            this.classPath = classpath.toArray(new String[classpath.size()]);
+        }
         if (!additional.isEmpty()) {
             this.addPath = additional.toArray(new String[additional.size()]);
         }
@@ -301,11 +344,11 @@ public class URI {
         String[] gav = path.split("%");
         if (gav.length==3) {
             StringBuilder s = new StringBuilder("http://central.maven.org/maven2/")
-                              .append(gav[0].replace('.','/'))   // group, changing . to /
-                              .append('/').append(gav[1])        // artifact
-                              .append('/').append(gav[2])        // version
-                              .append('/').append(gav[1])        // artifact-version.jar
-                                .append('-').append(gav[2]).append(".jar");
+                                  .append(gav[0].replace('.','/'))   // group, changing . to /
+                                  .append('/').append(gav[1])        // artifact
+                                  .append('/').append(gav[2])        // version
+                                  .append('/').append(gav[1])        // artifact-version.jar
+                                  .append('-').append(gav[2]).append(".jar");
             return s.toString();
         }
         return null;
@@ -353,7 +396,9 @@ public class URI {
         list.add("cleo.uri."+this.id+".file="+this.file);
         list.add("cleo.uri."+this.id+".inputstream="+this.inputStream);
         list.add("cleo.uri."+this.id+".outputStream="+this.outputStream);
-        list.add("cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath));
+        if (this.classPath!=null) {
+            list.add("cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath));
+        }
         for (Map.Entry<String,String> e : this.properties.entrySet()) {
             list.add("cleo.uri."+this.id+"."+e.getKey()+"="+e.getValue());
         }
@@ -365,7 +410,9 @@ public class URI {
     public String[] deconstruct() {
         List<String> list = new ArrayList<String>();
         list.add(this.id+":");
-        list.addAll(Arrays.asList(this.classPath));
+        if (this.classPath!=null) {
+            list.addAll(Arrays.asList(this.classPath));
+        }
         for (Map.Entry<String,String> e : this.properties.entrySet()) {
             list.add(e.getKey()+"="+e.getValue());
         }

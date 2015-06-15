@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
 
+import com.cleo.lexicom.beans.LexBean;
 import com.cleo.lexicom.beans.Options;
 import com.cleo.lexicom.beans.Options.DBConnection;
 import com.cleo.lexicom.certmgr.ImportedCertificate;
@@ -35,6 +36,7 @@ import com.cleo.lexicom.external.ISchedule;
 import com.cleo.lexicom.external.LexiComLogEvent;
 import com.cleo.lexicom.external.LexiComLogListener;
 import com.cleo.lexicom.external.RegistrationInfo;
+import com.cleo.security.encryption.ConfigEncryption;
 import com.sodiumcow.cc.Action;
 import com.sodiumcow.cc.Core;
 import com.sodiumcow.cc.Defaults;
@@ -56,8 +58,6 @@ import com.sodiumcow.cc.exception.URLResolutionException;
 import com.sodiumcow.repl.REPL;
 import com.sodiumcow.repl.annotation.Command;
 import com.sodiumcow.repl.annotation.Option;
-import com.sodiumcow.uri.unify.Unify;
-import com.sodiumcow.uri.unify.json.Share;
 import com.sodiumcow.util.LDAP;
 import com.sodiumcow.util.S;
 import com.sodiumcow.util.S.Inspector;
@@ -490,34 +490,6 @@ public class Shell extends REPL {
     }
     private DB vldb = new DB();
     private DB h2db = new DB().setOptions(new DBOptions("h2:viewonly:VersaLex@127.0.0.1:9092/data/hibernate"));
-    private DB utdb = null;
-    private DB get_utdb () {
-        if (utdb==null) {
-            String unifydb = null;
-            String unifyurl = null;
-            try {
-                Properties props = URI.load(core.getHome());
-                unifydb = props.getProperty("cleo.uri.unify.db");
-                unifyurl = props.getProperty("cleo.uri.unify.url");
-            } catch (Exception ignore) {}
-            if (unifydb!=null) {
-                Matcher m = Pattern.compile("(.+):(.+)@(.+)").matcher(unifydb);
-                if (m.matches()) {
-                    try {
-                        utdb = new DB(m.group(3), m.group(1), core.decode(m.group(2)));
-                    } catch (Exception e) {
-                        error("could not locate Unify database", e);
-                    }
-                } else {
-                    error("could not parse Unify database description: "+unifydb);
-                }
-            }
-            if (unifyurl!=null) {
-                Unify.setURL(unifyurl);
-            }
-        }
-        return utdb!=null ? utdb : vldb;
-    }
     private VLNav get_vlnav() throws Exception {
         return new VLNav(vldb, core);
     }
@@ -934,14 +906,16 @@ public class Shell extends REPL {
                 fis.close();
                 src = new String(buf);
             }
-            src = core.encrypt(src);
+            String enc = core.encrypt(src);
             if (argv.length>1) {
                 File out = new File(argv[1]);
                 FileOutputStream fos = new FileOutputStream(out);
-                fos.write(DatatypeConverter.parseBase64Binary(src));
+                fos.write(DatatypeConverter.parseBase64Binary(enc));
                 fos.close();
             } else {
-                report(src);
+                report(enc);
+                enc = LexBean.vlEncrypt((ConfigEncryption) null, src);
+                report(enc);
             }
         } catch (Exception e) {
             error("could not encrypt", e);
@@ -955,6 +929,7 @@ public class Shell extends REPL {
         }
         try {
             String src = argv[0];
+            String d2  = null;
             XmlReadResult xml = null;
             try {
                 xml = read_xml_document(src);
@@ -968,7 +943,10 @@ public class Shell extends REPL {
                     }
                     src = sb.toString();
                 }
-                src = core.decrypt(src);
+                d2 = LexBean.vlDecrypt((ConfigEncryption) null, src);
+                try {
+                    src = core.decrypt(src);
+                } catch (Exception ignore) {}
             }
             if (argv.length>1) {
                 Util.string2file(argv[1], src);
@@ -981,6 +959,7 @@ public class Shell extends REPL {
                 }
             } else {
                 report(src);
+                if (d2!=null) report(d2);
             }
         } catch (Exception e) {
             error("could not decrypt", e);
@@ -1728,8 +1707,14 @@ public class Shell extends REPL {
                 malias = mbx.getKey();
                 Mailbox mailbox = host.getMailbox(malias);
                 if (mailbox==null) {
-                    mailbox = host.cloneMailbox(malias);
-                    report("created new mailbox "+malias);
+                    try {
+                        mailbox = host.cloneMailbox(malias);
+                        report("created new mailbox "+malias+" from template");
+                    } catch (Exception e) {
+                        // maybe template isn't where we expect it -- just make new
+                        mailbox = host.createMailbox(malias);
+                        report("created new mailbox "+malias);
+                    }
                 } else {
                     report("updating existing mailbox "+malias);
                 }
@@ -2073,73 +2058,6 @@ public class Shell extends REPL {
         }
     }
 
-    @Command(name="unify_user", comment="list unify users")
-    public void unify_user(String...argv) throws Exception {
-        UnifyShell ush = new UnifyShell(get_utdb());
-        for (Share.Collaborator c : ush.getUsers()) {
-            report(c.toString());
-        }
-        VLNav utnav = new VLNav(utdb, core);
-        for (VLNav.UserDescription u : utnav.list_users()) {
-            report("  user "+S.join(" ", qqequals(u.toStrings())));
-        }
-    }
-    @Command(name="unify_share", comment="list or create shares")
-    public void unify_share(String...argv) {
-        String user  = argv.length>0 ? argv[0] : null;
-        String share = argv.length>1 ? argv[1] : null;
-        UnifyShell ush = new UnifyShell(get_utdb());
-        if (share!=null) {
-            try {
-                ush.newShare(user, share);
-                report("created share "+share);
-            } catch (Exception e) {
-                error("error creating share", e);
-            }
-        } else {
-            try {
-                Share.Collaborator[] users;
-                if (user!=null) {
-                    users = new Share.Collaborator[] {new Share.Collaborator()};
-                    users[0].email = user;
-                } else {
-                    users = ush.getUsers();
-                }
-                for (Share.Collaborator c : users) {
-                    report(c.toString());
-                    Share[] shares = ush.getShares(c);
-                    if (shares!=null) {
-                        for (Share s : shares) {
-                            report("  ", s.toString());
-                            if (s.share.name.equals("Members") && s.permissions.isAll()) {
-                                Share.Collaborator[] collabs = ush.getCollaborators(c, s);
-                                if (collabs!=null) {
-                                    for (Share.Collaborator collab : collabs) {
-                                        report("    ", collab.email);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                error("error listing shares", e);
-            }
-            
-        }
-    }
-    @Command(name="unify_sync", args="members|sftp list|commit", comment="unify sync")
-    public void unify_sync(String what, String mode) throws Exception {
-        boolean commit = mode.equalsIgnoreCase("commit");
-        UnifyShell ush = new UnifyShell(get_utdb());
-        if (what.equalsIgnoreCase("members")) {
-            ush.sync_members(commit);
-        } else if (what.equalsIgnoreCase("sftp")) {
-            ush.sync_sftp(core, commit);
-        } else {
-            error("usage: unify sync members|sftp list|commit");
-        }
-    }
     public static void main(String[] argv) {
         Shell repl = new Shell();
         repl.run(argv);

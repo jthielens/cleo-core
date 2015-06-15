@@ -56,6 +56,7 @@ public class Defaults {
         manualmailboxdefaults.put("Usesamecerts",                     "True");
         manualmailboxdefaults.put(".usercert",                        "");
         manualmailboxdefaults.put(".usercertpassword",                "");
+        manualmailboxdefaults.put(".cacert",                          "");
     }
 
     /*

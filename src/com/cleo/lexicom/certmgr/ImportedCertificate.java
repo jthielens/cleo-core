@@ -5,6 +5,7 @@ import java.io.File;
 import java.security.KeyPair;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Date;
 
 import com.cleo.lexicom.certmgr.external.CertificateHandlerException;
 import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
@@ -24,6 +25,16 @@ public class ImportedCertificate {
         alias = alias.toUpperCase();
         File sshkeyf  = new File(sshkeyfn);
         SshPublicKeyFile sshPublicKeyFile = SshPublicKeyFile.parse(sshkeyf);
+        x509 = generate(alias, sshPublicKeyFile, sshkeyf.lastModified());
+    }
+
+    public ImportedCertificate(String alias, byte[] sshkey) throws Exception {
+        alias = alias.toUpperCase();
+        SshPublicKeyFile sshPublicKeyFile = SshPublicKeyFile.parse(sshkey);
+        x509 = generate(alias, sshPublicKeyFile, new Date().getTime());
+    }
+
+    private static X509Certificate generate(String alias, SshPublicKeyFile sshPublicKeyFile, long creationTime) throws Exception {
         // Get the generic format and public key from the SshPublicKeyFile.
         //SshPublicKeyFormat sshFormat = sshPublicKeyFile.getFormat();
         SshPublicKey sshPublicKey = sshPublicKeyFile.toPublicKey();
@@ -42,8 +53,6 @@ public class ImportedCertificate {
             //jTextFieldUser.setText(alias);
         //}
 
-        // Creation time needed to generate same keyID
-        long creationTime = sshkeyf.lastModified();
         // Set the key ID
         int keyID = sshPublicKey.hashCode();
         int bitStrength = sshPublicKey.getBitLength();
@@ -84,8 +93,9 @@ public class ImportedCertificate {
         csr.generateCert(cert);
         ByteArrayInputStream inStream = new ByteArrayInputStream(csr.getSelfSignedCertificate());
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        this.x509 = (X509Certificate)cf.generateCertificate(inStream);
+        X509Certificate x509 = (X509Certificate)cf.generateCertificate(inStream);
         inStream.close();
+        return x509;
     }
 
 }

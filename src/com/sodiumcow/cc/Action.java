@@ -32,6 +32,7 @@ public class Action extends Item {
             ISchedule.Item item = scheduler.newItem(getPath().getPath());
             schedule.transcribe(item);
             scheduler.updateItem(item, true);
+            scheduler.save();
         }
     }
 }
