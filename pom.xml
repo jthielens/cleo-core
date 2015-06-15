@@ -2,11 +2,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.cleo.labs</groupId>
-    <artifactId>api-shell</artifactId>
+    <artifactId>cleo-labs-api-shell</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>api-shell</name>
+    <name>cleo-labs-api-shell</name>
     <url>http://maven.apache.org</url>
 
     <distributionManagement>
@@ -74,7 +74,7 @@
         </dependency>
         <dependency>
             <groupId>com.cleo.labs</groupId>
-            <artifactId>util</artifactId>
+            <artifactId>cleo-labs-util</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
