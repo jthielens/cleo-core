@@ -1,0 +1,99 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.cleo.labs</groupId>
+    <artifactId>api-shell</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>api-shell</name>
+    <url>http://maven.apache.org</url>
+
+    <distributionManagement>
+        <repository>
+            <id>cleo_repo</id>
+            <name>Internal Releases</name>
+            <url>http://contd.cleo.com/nexus/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>cleo_repo</id>
+            <name>Internal Releases</name>
+            <url>http://contd.cleo.com/nexus/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <!-- Official Cleo's repository -->
+            <id>cleo_repo</id>
+            <name>Cleo's Repository</name>
+            <!--  <url>http://10.80.80.157:8081/nexus/content/groups/public/</url> -->
+            <url>http://contd.cleo.com/nexus/content/groups/public/</url>
+            <releases>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <cleo.version>5.1</cleo.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jdk.tools</groupId>
+            <artifactId>jdk.tools</artifactId>
+            <scope>system</scope>
+            <version>1.7</version>
+            <systemPath>${java.home}/../lib/tools.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.cleo</groupId>
+            <artifactId>lexbean</artifactId>
+            <version>${cleo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.cleo</groupId>
+            <artifactId>LexiCom</artifactId>
+            <version>${cleo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.cleo</groupId>
+            <artifactId>j2ssh</artifactId>
+            <version>${cleo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.cleo.labs</groupId>
+            <artifactId>util</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+    <build>
+     <plugins>
+      <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-compiler-plugin</artifactId>
+       <version>3.2</version>
+       <configuration>
+         <source>1.7</source>
+         <target>1.7</target>
+       </configuration>
+      </plugin>
+      <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-jar-plugin</artifactId>
+       <version>2.5</version>
+      </plugin>
+     </plugins>
+    </build>
+</project>
