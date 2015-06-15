@@ -24,6 +24,13 @@ import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
 
+import com.cleo.labs.util.LDAP;
+import com.cleo.labs.util.S;
+import com.cleo.labs.util.X;
+import com.cleo.labs.util.S.Inspector;
+import com.cleo.labs.util.repl.REPL;
+import com.cleo.labs.util.repl.annotation.Command;
+import com.cleo.labs.util.repl.annotation.Option;
 import com.cleo.lexicom.beans.LexBean;
 import com.cleo.lexicom.beans.Options;
 import com.cleo.lexicom.beans.Options.DBConnection;
@@ -55,13 +62,6 @@ import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Product;
 import com.sodiumcow.cc.constant.Protocol;
 import com.sodiumcow.cc.exception.URLResolutionException;
-import com.sodiumcow.repl.REPL;
-import com.sodiumcow.repl.annotation.Command;
-import com.sodiumcow.repl.annotation.Option;
-import com.sodiumcow.util.LDAP;
-import com.sodiumcow.util.S;
-import com.sodiumcow.util.S.Inspector;
-import com.sodiumcow.util.X;
 
 public class Shell extends REPL {
     Core             core = new Core();
@@ -394,7 +394,7 @@ public class Shell extends REPL {
         return new LDAP(X.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
     }
 
-    private class DB extends com.sodiumcow.util.DB {
+    private class DB extends com.cleo.labs.util.DB {
         private DBOptions                       options = null;
         private Map<String,Map<String,Integer>> tables  = null;
 

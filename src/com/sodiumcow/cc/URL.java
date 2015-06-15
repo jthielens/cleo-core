@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.cleo.labs.util.S;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.Protocol;
 import com.sodiumcow.cc.exception.URLResolutionException;
-import com.sodiumcow.util.S;
 
 public class URL {
     private String   raw;

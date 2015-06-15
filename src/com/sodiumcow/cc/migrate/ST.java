@@ -7,10 +7,10 @@ import javax.xml.bind.DatatypeConverter;
 
 import org.w3c.dom.Document;
 
-import com.sodiumcow.repl.REPL;
-import com.sodiumcow.repl.annotation.Command;
-import com.sodiumcow.util.F;
-import com.sodiumcow.util.X;
+import com.cleo.labs.util.F;
+import com.cleo.labs.util.X;
+import com.cleo.labs.util.repl.REPL;
+import com.cleo.labs.util.repl.annotation.Command;
 
 public class ST extends REPL {
 

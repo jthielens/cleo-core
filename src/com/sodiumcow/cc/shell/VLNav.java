@@ -13,9 +13,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.cleo.labs.util.DB;
+import com.cleo.labs.util.S;
 import com.sodiumcow.cc.Core;
-import com.sodiumcow.util.DB;
-import com.sodiumcow.util.S;
 
 public class VLNav {
     public static final int IS = 1;

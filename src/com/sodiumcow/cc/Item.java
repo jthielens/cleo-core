@@ -7,10 +7,10 @@ import java.util.Map;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
+import com.cleo.labs.util.X;
 import com.cleo.lexicom.external.LexiComLogListener;
 import com.sodiumcow.cc.constant.HostType;
 import com.sodiumcow.cc.constant.PathType;
-import com.sodiumcow.util.X;
 
 public class Item {
 

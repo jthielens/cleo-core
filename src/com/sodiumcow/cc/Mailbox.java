@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.util.Arrays;
 import java.util.Properties;
 
+import com.cleo.labs.util.X;
 import com.cleo.lexicom.external.DirectoryEntry;
 import com.cleo.lexicom.external.IActionController;
 import com.cleo.lexicom.external.IMailboxController;
@@ -13,7 +14,6 @@ import com.cleo.lexicom.external.LexiComOutgoing;
 import com.cleo.lexicom.external.RemoteLexiComOutgoing;
 import com.sodiumcow.cc.constant.PathType;
 import com.sodiumcow.cc.constant.Sort;
-import com.sodiumcow.util.X;
 
 public class Mailbox extends Item {
     private IMailboxController controller = null;

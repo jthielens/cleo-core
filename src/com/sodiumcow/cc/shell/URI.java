@@ -22,8 +22,8 @@ import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.sodiumcow.util.F;
-import com.sodiumcow.util.S;
+import com.cleo.labs.util.F;
+import com.cleo.labs.util.S;
 
 public class URI {
     public String             id           = null;

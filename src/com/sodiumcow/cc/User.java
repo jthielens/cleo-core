@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.cleo.labs.util.S;
 import com.sodiumcow.cc.constant.HostType;
-import com.sodiumcow.util.S;
 
 public class User {
     public static class Description {
