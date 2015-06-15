@@ -1379,7 +1379,7 @@ public class Shell extends REPL {
     @Command(name="db", args="find|set|use|remove|create|drop string", comment="find/set db connection")
     public void db(String...argv) {
         if (argv.length!=2) {
-            error("usage: db find|set string");
+            error("usage: db find|set|use|remove|create|drop string");
         } else {
             String command = argv[0];
             String string  = argv[1];
@@ -1405,7 +1405,21 @@ public class Shell extends REPL {
                         error("usage: db set type:user:password@host[:port]/database");
                     }
                 } else if (command.equalsIgnoreCase("use")) {
-                    vldb.setOptions(new DBOptions(string));
+                	if (string.contains(":")) {
+                        vldb.setOptions(new DBOptions(string));
+                	} else {
+                		// just setting the password
+	                    try {
+	                        DBConnection c = o.getTransferLoggingDBConnection();
+	                        if (c!=null) {
+	                            DBOptions options = new DBOptions(c);
+	                            options.password = string;
+	                            vldb.setOptions(options);
+	                        }
+	                    } catch (Exception e) {
+	                        // error will fall out
+	                    }
+                	}
                 } else if (command.equalsIgnoreCase("remove")) {
                     o.removeDBConnection(string);
                     o.save();
@@ -1741,10 +1755,14 @@ public class Shell extends REPL {
                     report("  user "+S.join(" ", qqequals(u.toStrings())));
                 }
                 // repeat the same thing with vlusers
-                for (VLNav.UserDescription u : get_vlnav().list_users()) {
-                    if (user==null || u.username.matches(user)) {
-                        report("  user "+S.join(" ", qqequals(u.toStrings())));
-                    }
+                try {
+	                for (VLNav.UserDescription u : get_vlnav().list_users()) {
+	                    if (user==null || u.username.matches(user)) {
+	                        report("  user "+S.join(" ", qqequals(u.toStrings())));
+	                    }
+	                }
+                } catch (SQLException e) {
+                	// probably VLNav is not set up?
                 }
             } catch (Exception e) {
                 error("error listing users", e);
