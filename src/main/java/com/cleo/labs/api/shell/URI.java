@@ -22,8 +22,13 @@ import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
+
 import com.cleo.labs.util.F;
 import com.cleo.labs.util.S;
+import com.cleo.labs.util.X;
 
 public class URI {
     public String             id           = null;
@@ -33,6 +38,8 @@ public class URI {
     public String[]           classPath    = null;
     public String[]           addPath      = null;
     public Map<String,String> properties   = new HashMap<String,String>();
+    public File               home         = null;
+    public Shell              shell        = null;
 
     private static final Pattern URI_PROPERTY = Pattern.compile("cleo\\.uri\\.(\\w+)\\.file");
     private static final String  COLON        = String.valueOf(File.pathSeparatorChar);
@@ -161,7 +168,7 @@ public class URI {
         }
     }
 
-    private static String relativize (File home, File jar) {
+    private String relativize (File jar) {
         if (home==null) {
             try {
                 return jar.getCanonicalPath();
@@ -173,7 +180,7 @@ public class URI {
         }
     }
 
-    private File homeFile(File home, String name) {
+    private File homeFile(String name) {
         File f = new File(name);
         if (home!=null && !f.isAbsolute()) {
             return new File(home, name);
@@ -181,7 +188,7 @@ public class URI {
         return f;
     }
 
-    private synchronized void inspectJars (File home, final String...jars) throws Exception {
+    private synchronized void inspectJars (File home, Shell shell, final String...jars) throws Exception {
         List<String> schemeFiles  = new ArrayList<String>(); // JARs on the "command line"
         List<String> classpath    = new ArrayList<String>(); // the ones to add to classpath
         Set<String>  additional   = new HashSet<String>();   // the ones to add to additional.classpath
@@ -209,9 +216,12 @@ public class URI {
                 continue;
             }
             // ok, it's a file
-            File jarfile = homeFile(home, file);
+            if (mvn2(file)!=null) {
+            	file = copyToLib(file);
+            }
+            File jarfile = homeFile(file);
             if (jarfile.canRead()) {
-                schemeFiles.add(relativize(home, jarfile));
+                schemeFiles.add(relativize(jarfile));
             } else {
                 throw new Exception("can not read file: "+jarfile);
             }
@@ -221,7 +231,7 @@ public class URI {
             final ClassLoader    classLoader = Util.class.getClassLoader();
             final java.net.URL[] urls = new java.net.URL[schemeFiles.size()];
             for (int i=0; i<schemeFiles.size(); i++) {
-                urls[i] = new java.net.URL("jar:file:"+homeFile(home, schemeFiles.get(i)).getCanonicalPath()+"!/");
+                urls[i] = new java.net.URL("jar:file:"+homeFile(schemeFiles.get(i)).getCanonicalPath()+"!/");
             }
             final URLClassLoader ucl = new URLClassLoader(urls, classLoader);
             // First pass: parse out manifest attributes to find:
@@ -235,7 +245,7 @@ public class URI {
             // Note also that the JARs themselves are added to classpath unless "this" appears in
             //      Additional, in which case the current JAR is added to additional instead
             for (String f : schemeFiles) {
-                final JarFile jarfile = new JarFile(homeFile(home, f));
+                final JarFile jarfile = new JarFile(homeFile(f));
                 // first check manifest
                 Manifest manifest = jarfile.getManifest();
                 if (manifest!=null) {
@@ -281,7 +291,7 @@ public class URI {
             if (file==null || inputStream==null || outputStream==null) {
                 // look for compatible classes
                 for (String f : schemeFiles) {
-                    final JarFile jarfile = new JarFile(homeFile(home, f));
+                    final JarFile jarfile = new JarFile(homeFile(f));
                     for (Enumeration<JarEntry> entries = jarfile.entries(); entries.hasMoreElements();) {
                         JarEntry entry = entries.nextElement();
                         if (entry.getName().endsWith(".class")) {
@@ -343,52 +353,69 @@ public class URI {
     private String mvn2(String path) {
         String[] gav = path.split("%");
         if (gav.length==3) {
-            StringBuilder s = new StringBuilder("http://central.maven.org/maven2/")
-                                  .append(gav[0].replace('.','/'))   // group, changing . to /
-                                  .append('/').append(gav[1])        // artifact
-                                  .append('/').append(gav[2])        // version
-                                  .append('/').append(gav[1])        // artifact-version.jar
-                                  .append('-').append(gav[2]).append(".jar");
-            return s.toString();
+            String repo = "http://central.maven.org/maven2/";
+            String dir  = gav[0].replace('.','/')+"/"+ // group, changing . to /
+                          gav[1]+"/"+                  // artifact
+                          gav[2]+"/";                  // version
+        	String jar  = gav[1]+"-"+gav[2]+".jar";
+        	if (gav[0].startsWith("com.cleo")) {
+        		if (gav[2].contains("SNAPSHOT")) {
+                    // contd.cleo.com
+        			repo = "http://10.80.80.156/nexus/content/repositories/snapshots/";
+                    try {
+						Map<String,Object> meta = X.xml2map(X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))).getDocumentElement());
+                        meta = X.submap(meta, "versioning", "snapshotVersions", "snapshotVersion[0]");
+                        String value = (String)meta.get("value");
+                        jar = gav[1]+"-"+value+".jar";
+					} catch (Exception ignore) {
+						shell.report(ignore.toString());
+					}
+        		} else {
+                    // contd.cleo.com
+        			repo = "http://10.80.80.156/nexus/content/repositories/releases/";
+        		}
+        	}
+            return repo+dir+jar;
         }
         return null;
     }
 
-    private void copyToLib(String[] list, File home, File lib, Shell shell) throws Exception {
+    private void copyToLib(String[] list) throws Exception {
         if (list==null) return;
         for (int i=0; i<list.length; i++) {
-            String path = list[i];
-            String mvn2 = mvn2(path);
-            if (mvn2!=null) {
-                byte[] sha1 = F.hex(S.s(F.download(mvn2+".sha1")));
-                F.Clobbered result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
-                list[i] = relativize(home, result.file);
-                shell.report(result.matched ? path+" matched to existing "+result.file
-                                            : path+" downloaded to "+result.file);
-            } else {
-                F.Clobbered result = F.copy(homeFile(home, path), lib, F.ClobberMode.UNIQUE);
-                list[i] = relativize(home, result.file);
-                shell.report(result.matched ? path+" matched to existing "+result.file
-                                            : path+" copied to "+result.file);
-            }
+        	list[i] = copyToLib(list[i]);
         }
     }
+    private String copyToLib(String path) throws Exception {
+    	F.Clobbered result;
+        String mvn2 = mvn2(path);
+        File lib = new File(home, "lib/uri");
+        if (mvn2!=null) {
+            byte[] sha1 = F.hex(S.s(F.download(mvn2+".sha1")));
+            result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
+            shell.report(result.matched ? path+" matched to existing "+result.file
+                                        : path+" downloaded to "+result.file);
+        } else {
+            result = F.copy(homeFile(path), lib, F.ClobberMode.UNIQUE);
+            shell.report(result.matched ? path+" matched to existing "+result.file
+                                        : path+" copied to "+result.file);
+        }
+        return relativize(result.file);
+    }
 
-    public void install(File home, File lib, Shell shell) throws Exception {
-        copyToLib(classPath, home, lib, shell);
-        copyToLib(addPath,   home, lib, shell);
+    public void install() throws Exception {
+        copyToLib(classPath);
+        copyToLib(addPath);
     }
 
     public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String[] schemeClassPath, Map<String,String> properties) {
         this(scheme, schemeFile, schemeInputStream, schemeOutputStream, S.join(COLON, schemeClassPath), properties);
     }
 
-    public URI(String...jars) throws Exception {
-        this(null, jars);
-    }
-
-    public URI(File home, final String...jars) throws Exception {
-        inspectJars(home, jars);
+    public URI(File home, Shell shell, final String...jars) throws Exception {
+    	this.home  = home;
+    	this.shell = shell;
+        inspectJars(home, shell, jars);
     }
 
     public String[] toStrings() {

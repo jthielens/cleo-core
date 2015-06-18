@@ -627,9 +627,8 @@ public class Shell extends REPL {
     }
     @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
     public void uri_install(String...jars) throws Exception {
-        URI  scheme = new URI(core.getHome(), jars);
-        File lib    = new File(core.getHome(), "lib/uri");
-        scheme.install(core.getHome(), lib, this);
+        URI scheme = new URI(core.getHome(), this, jars);
+        scheme.install();
         Properties props = URI.load(core.getHome());
         URI.setScheme(props, scheme);
         URI.store(core.getHome(), props);
