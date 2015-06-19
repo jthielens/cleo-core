@@ -49,11 +49,13 @@ public class Defaults {
     }
     private static final Map<String,String> manualmailboxdefaults = new HashMap<String,String>();
     static {
+        manualmailboxdefaults.put("Advanced.ClientType",              "");
         manualmailboxdefaults.put("Advanced.HighPriority",            "");
         manualmailboxdefaults.put("Advanced.PGPCompressionAlgorithm", "System Default");
         manualmailboxdefaults.put("Advanced.PGPEncryptionAlgorithm",  "System Default");
         manualmailboxdefaults.put("Advanced.PGPHashAlgorithm",        "System Default");
         manualmailboxdefaults.put("Usesamecerts",                     "True");
+        manualmailboxdefaults.put("Zipportaluploads",                 "False");
         manualmailboxdefaults.put(".usercert",                        "");
         manualmailboxdefaults.put(".usercertpassword",                "");
         manualmailboxdefaults.put(".cacert",                          "");
