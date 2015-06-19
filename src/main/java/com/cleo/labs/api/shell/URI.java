@@ -359,20 +359,19 @@ public class URI {
                           gav[2]+"/";                  // version
         	String jar  = gav[1]+"-"+gav[2]+".jar";
         	if (gav[0].startsWith("com.cleo")) {
+                String contd = "10.80.80.156";  // contd.cleo.com behind the VPN
         		if (gav[2].contains("SNAPSHOT")) {
-                    // contd.cleo.com
-        			repo = "http://10.80.80.156/nexus/content/repositories/snapshots/";
+        			repo = "http://"+contd+"/nexus/content/repositories/snapshots/";
                     try {
 						Map<String,Object> meta = X.xml2map(X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))).getDocumentElement());
-                        meta = X.submap(meta, "versioning", "snapshotVersions", "snapshotVersion[0]");
-                        String value = (String)meta.get("value");
+                        String value = (String)X.subobj(meta, "versioning", "snapshotVersions", "snapshotVersion[0]", "value");
                         jar = gav[1]+"-"+value+".jar";
 					} catch (Exception ignore) {
 						shell.report(ignore.toString());
 					}
         		} else {
                     // contd.cleo.com
-        			repo = "http://10.80.80.156/nexus/content/repositories/releases/";
+        			repo = "http://"+contd+"/nexus/content/repositories/releases/";
         		}
         	}
             return repo+dir+jar;
