@@ -22,10 +22,6 @@ import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.xml.sax.SAXException;
-
 import com.cleo.labs.util.F;
 import com.cleo.labs.util.S;
 import com.cleo.labs.util.X;
@@ -285,7 +281,7 @@ public class URI {
                     classpath.add(f);
                 }
             }
-            // Second pass: if the classes were not set in manifest atttributes,
+            // Second pass: if the classes were not set in manifest attributes,
             // read through the JAR files again trying on each class to find ones
             // that match the necessary types.
             if (file==null || inputStream==null || outputStream==null) {
