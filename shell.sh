@@ -65,18 +65,56 @@ download () {
     echo $target
 }
 
+# usage:   cleohome=$(servicehome $service)
+# returns: the CLEOHOME parsed from the $service conf file
+servicehome() {
+    local init service
+    init=`ps -p1 | grep systemd > /dev/null && echo systemd || echo upstart`
+    service=$1
+    if [ "$init" = "systemd" ]; then
+        sed -n '/^Environment=CLEOHOME=/s/.*=\s*//p' /lib/systemd/system/$service.service 2>/dev/null
+    else
+        sed -n '/^env\s*CLEOHOME=/s/.*=\s*//p' /etc/init/$service.conf 2>/dev/null
+    fi
+}
+
+# usage:   cleohome=$(findhome arg)
+# returns: the (suspected) path to Harmony/VLTrader's install directory based on the argument
+findhome() {
+    local cleohome arg
+    arg=$1
+    cleohome=$(servicehome $arg)
+    if [ "$cleohome" = "" ]; then
+        if [ -e "$arg/Harmonyc" -o -e "$arg/VLTraderc"  ]; then
+            cleohome=$arg
+        fi
+    fi
+    echo $cleohome
+}
+
 here=$(cd `dirname $0` && pwd -P)
 if [ "$1" = "update" ]; then
     download cleo-labs-util      0.0.1-SNAPSHOT
     download cleo-labs-api-shell 0.0.1-SNAPSHOT
 else
-    service='cleo-harmony'
-    if [ -e "/etc/init/$1.conf" ]; then
-        service=$1
-        shift
+    cleohome=$(findhome $1)
+    if [ "$cleohome" != "" ]; then
+        shift;
+    elif [ -d $1 ]; then
+        # assume this was supposed to be a CLEOHOME
+        :
+    elif [ -e "./Harmonyc" -o -e "./VLTraderc" ]; then
+        cleohome=.
+    else
+        cleohome=$(servicehome cleo-harmony)
     fi
-    harmony=`sed -n '/^env\s*CLEOHOME=/s/.*=\s*//p' /etc/init/$service.conf`
-    unset DISPLAY
-    classpath=$here/cleo-labs-api-shell-0.0.1-SNAPSHOT.jar:$here/cleo-labs-util-0.0.1-SNAPSHOT.jar:$harmony/lib/\*:$harmony/lib/help/\*:$harmony/webserver/AjaxSwing/lib/ajaxswing.jar:$harmony/lib/hibernate/\*:$harmony/lib/secureshare/\*:$harmony/lib/json/\*:$harmony/lib/ext/\*:$harmony/lib/uri/\*
-    (cd $harmony; ./jre/bin/java -cp $classpath com.cleo.labs.api.shell.Shell -h . -p h -m client "$@")
+    if [ "$cleohome" != "" ]; then
+        cleohome=$(cd $cleohome && pwd -P)
+        echo "CLEOHOME=$cleohome"
+        unset DISPLAY
+        classpath=$here/cleo-labs-api-shell-0.0.1-SNAPSHOT.jar:$here/cleo-labs-util-0.0.1-SNAPSHOT.jar:$cleohome/lib/\*:$cleohome/lib/help/\*:$cleohome/webserver/AjaxSwing/lib/ajaxswing.jar:$cleohome/lib/hibernate/\*:$cleohome/lib/secureshare/\*:$cleohome/lib/json/\*:$cleohome/lib/ext/\*:$cleohome/lib/uri/\*
+        (cd $cleohome; ./jre/bin/java -cp $classpath com.cleo.labs.api.shell.Shell -h . -p h -m client "$@")
+    else
+        echo "Cleo installation not found"
+    fi
 fi
