@@ -35,16 +35,13 @@ snapversion() {
     wget -nv -q -O- $(snapurl $artifact $version maven-metadata.xml) | sed -n '0,/<value>/s/.*<value>\(.*\)<\/value>/\1/p'
 }
 
-# usage:   download $artifact
+# usage:   download $url $target
 # returns: the downloaded file name
-download () {
-    local artifact version metaversion tag tagfile url target
-    artifact=$1
-    version=$2
-    metaversion=$(snapversion $artifact $version)
-    url=$(snapurl $artifact $version $artifact-$metaversion.jar)
+download() {
+    local url target tag tagfile
+    url=$1
+    target=$2
     tag=$(etag $url)
-    target=$here/$artifact-$version.jar
     tagfile=$target.etag
     if [ "$tag" = "error" ]; then
         echo "connection error: reusing cached $target" 1>&2
@@ -56,13 +53,25 @@ download () {
             return
         fi
     fi
-    # download the installer
+    # download the target
     echo "downloading $target from $url (tag=$tag file=$(cat $tagfile 2>/dev/null))" 1>&2
     wget -nv -q -O $target $url
     if [ "$tag" ]; then
         echo $tag > $tagfile
     fi
     echo $target
+}
+
+# usage:   downloadjar $artifact $version
+# returns: the downloaded file name
+downloadjar () {
+    local artifact version metaversion url target
+    artifact=$1
+    version=$2
+    metaversion=$(snapversion $artifact $version)
+    url=$(snapurl $artifact $version $artifact-$metaversion.jar)
+    target=$here/$artifact-$version.jar
+    echo $(download $url $target)
 }
 
 # usage:   cleohome=$(servicehome $service)
@@ -94,8 +103,9 @@ findhome() {
 
 here=$(cd `dirname $0` && pwd -P)
 if [ "$1" = "update" ]; then
-    download cleo-labs-util      0.0.1-SNAPSHOT
-    download cleo-labs-api-shell 0.0.1-SNAPSHOT
+    downloadjar cleo-labs-util      0.0.1-SNAPSHOT > /dev/null
+    downloadjar cleo-labs-api-shell 0.0.1-SNAPSHOT > /dev/null
+    download    'https://raw.githubusercontent.com/jthielens/cleo-core/master/shell.sh' $0 > /dev/null
 else
     cleohome=$(findhome $1)
     if [ "$cleohome" != "" ]; then
