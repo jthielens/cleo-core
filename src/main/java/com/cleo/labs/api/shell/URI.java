@@ -59,7 +59,7 @@ public class URI {
         props.setProperty("cleo.uri."+scheme.id+".inputstream",  scheme.inputStream);
         props.setProperty("cleo.uri."+scheme.id+".outputstream", scheme.outputStream);
         if (scheme.classPath!=null && scheme.classPath.length>0) {
-        	props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
+            props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
         }
         for (Map.Entry<String,String> e : scheme.properties.entrySet()) {
             props.setProperty("cleo.uri."+scheme.id+"."+e.getKey(), e.getValue());
@@ -213,7 +213,7 @@ public class URI {
             }
             // ok, it's a file
             if (mvn2(file)!=null) {
-            	file = copyToLib(file);
+                file = copyToLib(file);
             }
             File jarfile = homeFile(file);
             if (jarfile.canRead()) {
@@ -346,31 +346,40 @@ public class URI {
         }
     }
 
-    private String mvn2(String path) {
+    private static class Maven2 {
+        public String url;
+        public String jar;
+        public Maven2(String url, String jar) {
+            this.url = url;
+            this.jar = jar;
+        }
+    }
+    private Maven2 mvn2(String path) {
         String[] gav = path.split("%");
         if (gav.length==3) {
             String repo = "http://central.maven.org/maven2/";
             String dir  = gav[0].replace('.','/')+"/"+ // group, changing . to /
                           gav[1]+"/"+                  // artifact
                           gav[2]+"/";                  // version
-        	String jar  = gav[1]+"-"+gav[2]+".jar";
-        	if (gav[0].startsWith("com.cleo")) {
+            String jar  = gav[1]+"-"+gav[2]+".jar";
+            String as   = jar;                         // local JAR name, initially same as remote
+            if (gav[0].startsWith("com.cleo")) {
                 String contd = "10.80.80.156";  // contd.cleo.com behind the VPN
-        		if (gav[2].contains("SNAPSHOT")) {
-        			repo = "http://"+contd+"/nexus/content/repositories/snapshots/";
+                if (gav[2].contains("SNAPSHOT")) {
+                    repo = "http://"+contd+"/nexus/content/repositories/snapshots/";
                     try {
-						Map<String,Object> meta = X.xml2map(X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))).getDocumentElement());
+                        Map<String,Object> meta = X.xml2map(X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))).getDocumentElement());
                         String value = (String)X.subobj(meta, "versioning", "snapshotVersions", "snapshotVersion[0]", "value");
                         jar = gav[1]+"-"+value+".jar";
-					} catch (Exception ignore) {
-						shell.report(ignore.toString());
-					}
-        		} else {
+                    } catch (Exception ignore) {
+                        shell.report(ignore.toString());
+                    }
+                } else {
                     // contd.cleo.com
-        			repo = "http://"+contd+"/nexus/content/repositories/releases/";
-        		}
-        	}
-            return repo+dir+jar;
+                    repo = "http://"+contd+"/nexus/content/repositories/releases/";
+                }
+            }
+            return new Maven2(repo+dir+jar, as);
         }
         return null;
     }
@@ -378,20 +387,20 @@ public class URI {
     private void copyToLib(String[] list) throws Exception {
         if (list==null) return;
         for (int i=0; i<list.length; i++) {
-        	list[i] = copyToLib(list[i]);
+            list[i] = copyToLib(list[i]);
         }
     }
     private String copyToLib(String path) throws Exception {
-    	F.Clobbered result;
-        String mvn2 = mvn2(path);
+        F.Clobbered result;
+        Maven2 mvn2 = mvn2(path);
         File lib = new File(home, "lib/uri");
         if (mvn2!=null) {
             byte[] sha1 = F.hex(S.s(F.download(mvn2+".sha1")));
-            result = F.download(mvn2, lib, "SHA-1", sha1, F.ClobberMode.UNIQUE);
+            result = F.download(mvn2.url, new File(lib,mvn2.jar), "SHA-1", sha1, F.ClobberMode.OVERWRITE);
             shell.report(result.matched ? path+" matched to existing "+result.file
                                         : path+" downloaded to "+result.file);
         } else {
-            result = F.copy(homeFile(path), lib, F.ClobberMode.UNIQUE);
+            result = F.copy(homeFile(path), lib, F.ClobberMode.OVERWRITE);
             shell.report(result.matched ? path+" matched to existing "+result.file
                                         : path+" copied to "+result.file);
         }
@@ -408,8 +417,8 @@ public class URI {
     }
 
     public URI(File home, Shell shell, final String...jars) throws Exception {
-    	this.home  = home;
-    	this.shell = shell;
+        this.home  = home;
+        this.shell = shell;
         inspectJars(home, shell, jars);
     }
 
