@@ -100,7 +100,7 @@ else
     cleohome=$(findhome $1)
     if [ "$cleohome" != "" ]; then
         shift;
-    elif [ -d $1 ]; then
+    elif [ "$1" != "" -a -d $1 ]; then
         # assume this was supposed to be a CLEOHOME
         :
     elif [ -e "./Harmonyc" -o -e "./VLTraderc" ]; then
