@@ -395,7 +395,7 @@ public class URI {
         Maven2 mvn2 = mvn2(path);
         File lib = new File(home, "lib/uri");
         if (mvn2!=null) {
-            byte[] sha1 = F.hex(S.s(F.download(mvn2+".sha1")));
+            byte[] sha1 = F.hex(S.s(F.download(mvn2.url+".sha1")));
             result = F.download(mvn2.url, new File(lib,mvn2.jar), "SHA-1", sha1, F.ClobberMode.OVERWRITE);
             shell.report(result.matched ? path+" matched to existing "+result.file
                                         : path+" downloaded to "+result.file);
