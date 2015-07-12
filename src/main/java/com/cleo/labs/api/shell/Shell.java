@@ -19,6 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -390,8 +391,33 @@ public class Shell extends REPL {
         report(columns, values);
     }
     
+    @SuppressWarnings("unused")
+	private class OldCrypt implements LDAP.Crypt {
+		@Override public String encrypt(String s) throws Exception {
+			return core.encrypt(s);
+		}
+		@Override public String decrypt(String s) throws Exception {
+            if (s.matches("#.*#")) {
+                StringBuffer sb = new StringBuffer(s.subSequence(1, s.length()-1));
+                while (sb.length()%4 > 0) sb.append('=');
+                s = core.decrypt(sb.toString());
+            }
+			return s;
+		}
+    }
+
+    private class VLCrypt implements LDAP.Crypt {
+		@Override public String encrypt(String s) throws Exception {
+			return vlenc(s);
+		}
+		@Override public String decrypt(String s) throws Exception {
+            return s;
+		}
+    }
+
     private LDAP get_ldap() throws Exception {
-        return new LDAP(X.submap(read_xml_file("Users.xml").map, "Ldapserver"), core);
+        return new LDAP(X.submap(read_xml_file("Users.xml").map, "Ldapserver"),
+                        this.new VLCrypt());
     }
 
     private class DB extends com.cleo.labs.util.DB {
@@ -889,6 +915,21 @@ public class Shell extends REPL {
             }
         }
     }
+    private String vlenc(String password) {
+        try {
+            String alias = UUID.randomUUID().toString();
+            Host host = core.activateHost(HostType.FTP, alias);
+            host.save();
+            Mailbox mailbox = host.getMailboxes()[0];
+            mailbox.setProperty("Password", password);
+            host.save();
+            String result = mailbox.getSingleProperty("Password");
+            host.remove();
+            return result;
+        } catch (Exception e) {
+            return "";
+        }
+    }
     @Command(name="encrypt", args="string|file [file]", comment="encrypt data")
     public void encrypt(String...argv) {
         if (argv.length<1 || argv.length>2) {
@@ -914,6 +955,8 @@ public class Shell extends REPL {
             } else {
                 report(enc);
                 enc = LexBean.vlEncrypt((ConfigEncryption) null, src);
+                report(enc);
+                enc = vlenc(src);
                 report(enc);
             }
         } catch (Exception e) {
@@ -952,8 +995,11 @@ public class Shell extends REPL {
             } else if (xml!=null) {
                 report(X.map2tree(xml.map));
                 Map<String,Object> ldapmap = X.submap(xml.map, "Users", "Ldapserver");
+                if (ldapmap==null) {
+                    ldapmap = X.submap(xml.map, "Options", "Ldapserver");
+                }
                 if (ldapmap!=null) {
-                    LDAP ldap = new LDAP(ldapmap, core);
+                    LDAP ldap = new LDAP(ldapmap, this.new VLCrypt());
                     report(ldap.toString());
                 }
             } else {
@@ -1251,7 +1297,7 @@ public class Shell extends REPL {
                             updated=true;
                             try {
                                 LDAP ldap = new LDAP(kv[1]);
-                                X.setmap(xml.map, path, ldap.toMap(core));
+                                X.setmap(xml.map, path, ldap.toMap(this.new VLCrypt()));
                             } catch (Exception e) {
                                 // no big deal -- not LDAP, but see if it's DB
                                 try {

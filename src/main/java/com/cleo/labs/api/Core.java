@@ -20,7 +20,7 @@ import com.cleo.lexicom.external.ILexiCom;
 import com.cleo.lexicom.external.IMailboxController;
 import com.cleo.lexicom.external.LexiComFactory;
 
-public class Core implements com.cleo.labs.util.LDAP.Crypt {
+public class Core {
     private Product  product;
     private Mode     mode;
     private File     home;
