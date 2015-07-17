@@ -117,59 +117,6 @@ public class Shell extends REPL {
         }
     }
 
-    // echo x string pattern replacement --> string.replaceAll(pattern, replacement)
-    // echo x string pattern             --> string.matches(pattern) and print match groups
-    @Command(name="echo_x", args="string re [replace]", comment="s.replaceAll(re, replace)")
-    public void echox(String s, String p, String...r) throws Exception {
-        if (r!=null && r.length>0) {
-            print(s.replaceAll(p, S.join(" ", r)));
-        } else {
-            Matcher m = Pattern.compile(p).matcher(s);
-            if (m.matches()) {
-                ArrayList<String> groups = new ArrayList<String>();
-                for (int i=1; true; i++) {
-                    try {
-                        groups.add(m.group(i));
-                    } catch (Exception e) {
-                        break;
-                    }
-                }
-                print(S.join(" ", qq(groups)));
-            } else {
-                error("no match");
-            }
-        }
-    }
-    // echo d string --> decodes %xx and re-encodes canonically
-    @Command(name="echo_d", args="string", comment="decode %xx")
-    public void echod(String s) throws Exception {
-        Matcher m = Pattern.compile("%([0-9a-fA-f]{2})").matcher(s.replace('+', ' '));
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            m.appendReplacement(sb, new String(new char[]{(char)Byte.parseByte(m.group(1), 16)}));
-        }
-        m.appendTail(sb);
-        s = sb.toString();
-        report(s);
-        Matcher me = Pattern.compile("([^-\\w\\.\\* ])").matcher(s);
-        StringBuffer sbe = new StringBuffer();
-        while (me.find()) {
-            me.appendReplacement(sbe, String.format("%%%2X", me.group(1).codePointAt(0)));
-        }
-        me.appendTail(sbe);
-        s = sbe.toString().replace(' ', '+');
-        report(s);
-    }
-    // echo s string pattern --> string.split(p)
-    @Command(name="echo_s", args="string pattern", comment="string.split(pattern)")
-    public void echos(String s, String p) throws Exception {
-        print(S.join(" ", qq(s.split(p))));
-    }
-    // echo f pattern strings... --> filtered list
-    @Command(name="echo_f", args="glob s...", comment="filter(s, glob)")
-    public void echof(String glob, String...s) throws Exception {
-        print(S.join(" ", S.filter(s, new S.GlobFilter<String>(glob))));
-    }
     @Command(name="echo", args="message", comment="print message")
     public void echo(String...argv) {
         print(S.join(" ", argv));
@@ -401,6 +348,8 @@ public class Shell extends REPL {
                 StringBuffer sb = new StringBuffer(s.subSequence(1, s.length()-1));
                 while (sb.length()%4 > 0) sb.append('=');
                 s = core.decrypt(sb.toString());
+            } else if (s.startsWith("vlenc:") || s.startsWith("*")) {
+                s = LexBean.vlDecrypt((ConfigEncryption) null, s);
             }
 			return s;
 		}
@@ -411,7 +360,7 @@ public class Shell extends REPL {
 			return vlenc(s);
 		}
 		@Override public String decrypt(String s) throws Exception {
-            return s;
+            return vldec(s);
 		}
     }
 
@@ -915,13 +864,13 @@ public class Shell extends REPL {
             }
         }
     }
-    private String vlenc(String password) {
+    private String vlenc(String s) {
         try {
             String alias = UUID.randomUUID().toString();
             Host host = core.activateHost(HostType.FTP, alias);
             host.save();
             Mailbox mailbox = host.getMailboxes()[0];
-            mailbox.setProperty("Password", password);
+            mailbox.setProperty("Password", s);
             host.save();
             String result = mailbox.getSingleProperty("Password");
             host.remove();
@@ -929,6 +878,12 @@ public class Shell extends REPL {
         } catch (Exception e) {
             return "";
         }
+    }
+    private static String vldec(String s) {
+        if (s.startsWith("vlenc:") || s.startsWith("*")) {
+            s = LexBean.vlDecrypt((ConfigEncryption) null, s);
+        }
+        return s;
     }
     @Command(name="encrypt", args="string|file [file]", comment="encrypt data")
     public void encrypt(String...argv) {
@@ -953,11 +908,11 @@ public class Shell extends REPL {
                 fos.write(DatatypeConverter.parseBase64Binary(enc));
                 fos.close();
             } else {
-                report(enc);
+                report("core:    "+enc);
                 enc = LexBean.vlEncrypt((ConfigEncryption) null, src);
-                report(enc);
+                report("LexBean: "+enc);
                 enc = vlenc(src);
-                report(enc);
+                report("vlenc:   "+enc);
             }
         } catch (Exception e) {
             error("could not encrypt", e);
@@ -985,7 +940,7 @@ public class Shell extends REPL {
                     }
                     src = sb.toString();
                 }
-                d2 = LexBean.vlDecrypt((ConfigEncryption) null, src);
+                d2 = vldec(src);
                 try {
                     src = core.decrypt(src);
                 } catch (Exception ignore) {}
@@ -1003,8 +958,12 @@ public class Shell extends REPL {
                     report(ldap.toString());
                 }
             } else {
-                report(src);
-                if (d2!=null) report(d2);
+                if (d2==null) {
+                	report(src);
+                } else {
+                    report("core:  "+src);
+                    report("vldec: "+d2);
+                }
             }
         } catch (Exception e) {
             error("could not decrypt", e);
@@ -1408,7 +1367,7 @@ public class Shell extends REPL {
             this.driver     = c.getDriverString();
             this.type       = c.getConnectionType();
             this.user       = c.getUserName();
-            this.password   = Util.decode(c.getPassword());
+            this.password   = vldec(c.getPassword());
             this.vendor     = Vendor.valueOf(this.connection.split(":")[1].toUpperCase()); // jdbc:vendor:stuff
         }
         public Options.DBConnection getDBConnection(Core core) throws Exception {
