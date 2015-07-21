@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -339,11 +338,11 @@ public class Shell extends REPL {
     }
     
     @SuppressWarnings("unused")
-	private class OldCrypt implements LDAP.Crypt {
-		@Override public String encrypt(String s) throws Exception {
-			return core.encrypt(s);
-		}
-		@Override public String decrypt(String s) throws Exception {
+    private class OldCrypt implements LDAP.Crypt {
+        @Override public String encrypt(String s) throws Exception {
+            return core.encrypt(s);
+        }
+        @Override public String decrypt(String s) throws Exception {
             if (s.matches("#.*#")) {
                 StringBuffer sb = new StringBuffer(s.subSequence(1, s.length()-1));
                 while (sb.length()%4 > 0) sb.append('=');
@@ -351,17 +350,27 @@ public class Shell extends REPL {
             } else if (s.startsWith("vlenc:") || s.startsWith("*")) {
                 s = LexBean.vlDecrypt((ConfigEncryption) null, s);
             }
-			return s;
-		}
+            return s;
+        }
     }
 
     private class VLCrypt implements LDAP.Crypt {
-		@Override public String encrypt(String s) throws Exception {
-			return vlenc(s);
-		}
-		@Override public String decrypt(String s) throws Exception {
+        @Override public String encrypt(String s) throws Exception {
+            return vlenc(s);
+        }
+        @Override public String decrypt(String s) throws Exception {
             return vldec(s);
-		}
+        }
+    }
+
+    private class Reporter implements URI.Reporter {
+        private Shell shell;
+        @Override public void report(String s) {
+            shell.report(s);
+        }
+        public Reporter(Shell shell) {
+            this.shell = shell;
+        }
     }
 
     private LDAP get_ldap() throws Exception {
@@ -579,9 +588,8 @@ public class Shell extends REPL {
     public void uri_list(String...argv) {
         try {
             // build a dictionary of installed URIs
-            Properties props = URI.load(core.getHome());
             Map<String,URI> uris = new HashMap<String,URI>();
-            for (URI uri : URI.getSchemes(props)) {
+            for (URI uri : URI.getSchemes(core.getHome(), new Reporter(this))) {
                 uris.put(uri.id, uri);
             }
             if (argv.length==0) {
@@ -601,30 +609,41 @@ public class Shell extends REPL {
         }
     }
     @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
-    public void uri_install(String...jars) throws Exception {
-        URI scheme = new URI(core.getHome(), this, jars);
-        scheme.install();
-        Properties props = URI.load(core.getHome());
-        URI.setScheme(props, scheme);
-        URI.store(core.getHome(), props);
-        report(scheme.id, scheme.toStrings());
+    public void uri_install(String...argv) throws Exception {
+        URI scheme = null;
+        if (argv.length>0 && argv[0].endsWith(":")) {
+            // usage: uri install scheme: property=value... jar...
+            scheme = URI.inspectJars(core.getHome(), new Reporter(this), argv);
+            if (scheme!=null) {
+                scheme.install();
+                report(scheme.id, scheme.toStrings());
+            } else {
+                error("invalid URI: "+S.join(" ", argv));
+            }
+        } else {
+            // usage: uri install jar-with-manifest...
+            for (String jar : argv) {
+                scheme = URI.inspectJar(core.getHome(), new Reporter(this), jar);
+                if (scheme!=null) {
+                    scheme.install();
+                    report(scheme.toStrings());
+                } else {
+                    error("invalid URI: "+jar);
+                }
+            }
+        }
     }
     @Command(name="uri_remove", args="id ...", min=1, comment="remove URI drivers")
     public void uri_remove(String...argv) throws Exception {
-        Properties props = URI.load(core.getHome());
-        Map<String,URI> uris = new HashMap<String,URI>();
-        for (URI uri : URI.getSchemes(props)) {
-            uris.put(uri.id, uri);
-        }
-        for (String arg : argv) {
-            if (uris.containsKey(arg)) {
-                URI.removeScheme(props, arg);
-                // remove files?
+        for (String uri : argv) {
+            URI scheme = URI.get(core.getHome(), new Reporter(this), uri);
+            if (scheme!=null) {
+                scheme.uninstall();
+                report("uri uninstalled: "+uri);
             } else {
-                error("uri not installed: "+arg);
+                error("uri not installed: "+uri);
             }
         }
-        URI.store(core.getHome(), props);
     }
 
     @Command(name="list_nodes", args="path with a *", comment="list objects")
@@ -959,7 +978,7 @@ public class Shell extends REPL {
                 }
             } else {
                 if (d2==null) {
-                	report(src);
+                    report(src);
                 } else {
                     report("core:  "+src);
                     report("vldec: "+d2);
@@ -1409,21 +1428,21 @@ public class Shell extends REPL {
                         error("usage: db set type:user:password@host[:port]/database");
                     }
                 } else if (command.equalsIgnoreCase("use")) {
-                	if (string.contains(":")) {
+                    if (string.contains(":")) {
                         vldb.setOptions(new DBOptions(string));
-                	} else {
-                		// just setting the password
-	                    try {
-	                        DBConnection c = o.getTransferLoggingDBConnection();
-	                        if (c!=null) {
-	                            DBOptions options = new DBOptions(c);
-	                            options.password = string;
-	                            vldb.setOptions(options);
-	                        }
-	                    } catch (Exception e) {
-	                        // error will fall out
-	                    }
-                	}
+                    } else {
+                        // just setting the password
+                        try {
+                            DBConnection c = o.getTransferLoggingDBConnection();
+                            if (c!=null) {
+                                DBOptions options = new DBOptions(c);
+                                options.password = string;
+                                vldb.setOptions(options);
+                            }
+                        } catch (Exception e) {
+                            // error will fall out
+                        }
+                    }
                 } else if (command.equalsIgnoreCase("remove")) {
                     o.removeDBConnection(string);
                     o.save();
@@ -1760,13 +1779,13 @@ public class Shell extends REPL {
                 }
                 // repeat the same thing with vlusers
                 try {
-	                for (VLNav.UserDescription u : get_vlnav().list_users()) {
-	                    if (user==null || u.username.matches(user)) {
-	                        report("  user "+S.join(" ", qqequals(u.toStrings())));
-	                    }
-	                }
+                    for (VLNav.UserDescription u : get_vlnav().list_users()) {
+                        if (user==null || u.username.matches(user)) {
+                            report("  user "+S.join(" ", qqequals(u.toStrings())));
+                        }
+                    }
                 } catch (SQLException e) {
-                	// probably VLNav is not set up?
+                    // probably VLNav is not set up?
                 }
             } catch (Exception e) {
                 error("error listing users", e);

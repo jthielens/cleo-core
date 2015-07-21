@@ -33,100 +33,134 @@ public class URI {
     public String             outputStream = null;
     public String[]           classPath    = null;
     public String[]           addPath      = null;
+    public String             self         = null;  // if read from manifest
     public Map<String,String> properties   = new HashMap<String,String>();
     public File               home         = null;
-    public Shell              shell        = null;
+    public Reporter           reporter     = null;
+
+    public interface Reporter {
+        void report(String text);
+    }
+
+    private void report(String text) {
+        if (reporter!=null) {
+            reporter.report(text);
+        }
+    }
 
     private static final Pattern URI_PROPERTY = Pattern.compile("cleo\\.uri\\.(\\w+)\\.file");
     private static final String  COLON        = String.valueOf(File.pathSeparatorChar);
 
-    public static Properties removeScheme(Properties props, URI scheme) {
-        return removeScheme(props, scheme.id);
+    public void uninstall() {
+        if (id!=null) {
+            try {
+                store(removeProperties(load(), id));
+            } catch (IOException ignore) {}
+        }
+        // TODO: cleanup JARs
     }
-    public static Properties removeScheme(Properties props, String id) {
-        String prefix = "cleo.uri."+id+".";
-        for (String key : props.stringPropertyNames()) {
-            if (key.startsWith(prefix)) {
-                props.remove(key);
+
+    public Properties removeProperties(Properties props, String id) {
+        if (id!=null && props!=null) {
+            String prefix = "cleo.uri."+id+".";
+            for (String key : props.stringPropertyNames()) {
+                if (key.startsWith(prefix)) {
+                    props.remove(key);
+                }
             }
         }
         return props;
     }
 
-    public static Properties setScheme(Properties props, URI scheme) {
-        removeScheme(props, scheme);
-        props.setProperty("cleo.uri."+scheme.id+".file",         scheme.file);
-        props.setProperty("cleo.uri."+scheme.id+".inputstream",  scheme.inputStream);
-        props.setProperty("cleo.uri."+scheme.id+".outputstream", scheme.outputStream);
-        if (scheme.classPath!=null && scheme.classPath.length>0) {
-            props.setProperty("cleo.uri."+scheme.id+".classpath",    S.join(COLON, scheme.classPath));
+    public Properties setProperties(Properties props) {
+        if (id!=null) {
+            removeProperties(props, id);
+            props.setProperty("cleo.uri."+id+".file",         file);
+            props.setProperty("cleo.uri."+id+".inputstream",  inputStream);
+            props.setProperty("cleo.uri."+id+".outputstream", outputStream);
+            if (classPath!=null && classPath.length>0) {
+                props.setProperty("cleo.uri."+id+".classpath", S.join(COLON, classPath));
+            }
+            for (Map.Entry<String,String> e : properties.entrySet()) {
+                props.setProperty("cleo.uri."+id+"."+e.getKey(), e.getValue());
+            }
         }
-        for (Map.Entry<String,String> e : scheme.properties.entrySet()) {
-            props.setProperty("cleo.uri."+scheme.id+"."+e.getKey(), e.getValue());
-        }
-        if (scheme.addPath!=null && scheme.addPath.length>0) {
+        if (addPath!=null && addPath.length>0) {
             Set<String> classSet = new HashSet<String>();
             String existing = props.getProperty("cleo.additional.classpath");
             if (existing!=null && !existing.isEmpty()) {
                 classSet.addAll(Arrays.asList(existing.split(COLON)));
             }
-            classSet.addAll(Arrays.asList(scheme.addPath));
+            classSet.addAll(Arrays.asList(addPath));
             props.setProperty("cleo.additional.classpath", S.join(COLON, classSet));
         }
         return props;
     }
 
-    public static URI getScheme(Properties props, String id) {
-        String             file         = null;
-        String             inputstream  = null;
-        String             outputstream = null;
-        String             classpath    = null;
-        Map<String,String> properties   = new HashMap<String,String>();
-
-        String prefix = "cleo.uri."+id+".";
-        if (props.containsKey(prefix+"file")) {
-            for (String key : props.stringPropertyNames()) {
-                if (key.startsWith(prefix)) {
-                    String prop = key.substring(prefix.length());
-                    if (prop.equals("file")) {
-                        file = props.getProperty(key);
-                    } else if (prop.equals("inputstream")) {
-                        inputstream = props.getProperty(key);
-                    } else if (prop.equals("outputstream")) {
-                        outputstream = props.getProperty(key);
-                    } else if (prop.equals("classpath")) {
-                        classpath = props.getProperty(key);
-                    } else {
-                        properties.put(prop, props.getProperty(key));
+    public static URI get(File home, Reporter reporter, String id) {
+        URI uri = inspectJar(home, reporter, id);
+        if (uri==null) {
+            uri = new URI(home, reporter);
+            Properties props;
+            try {
+                props = uri.load();
+            } catch (IOException ignore) {
+                return null;
+            }
+            String prefix = "cleo.uri."+id+".";
+            if (props.containsKey(prefix+"file")) {
+                uri.id = id;
+                for (String key : props.stringPropertyNames()) {
+                    if (key.startsWith(prefix)) {
+                        String prop = key.substring(prefix.length());
+                        if (prop.equals("file")) {
+                            uri.file = props.getProperty(key);
+                        } else if (prop.equals("inputstream")) {
+                            uri.inputStream = props.getProperty(key);
+                        } else if (prop.equals("outputstream")) {
+                            uri.outputStream = props.getProperty(key);
+                        } else if (prop.equals("classpath")) {
+                            uri.classPath = props.getProperty(key).split(COLON);
+                        } else {
+                            if (uri.properties==null) {
+                                uri.properties = new HashMap<>();
+                            }
+                            uri.properties.put(prop, props.getProperty(key));
+                        }
                     }
                 }
+            } else {
+                uri= null;
             }
-            return new URI(id, file, inputstream, outputstream, classpath, properties);
-        } else {
-            return null;
         }
+        return uri;
     }
 
-    public static String[] getSchemeIds(Properties props) {
+    public static String[] getSchemeIds(File home) {
         List<String> ids = new ArrayList<String>();
-        for (String key : props.stringPropertyNames()) {
-            Matcher m = URI_PROPERTY.matcher(key);
-            if (m.matches()) {
-                ids.add(m.group(1));
+        try {
+            for (String key : load(home).stringPropertyNames()) {
+                Matcher m = URI_PROPERTY.matcher(key);
+                if (m.matches()) {
+                    ids.add(m.group(1));
+                }
             }
-        }
+        } catch (IOException ignore) { }
         return ids.toArray(new String[ids.size()]);
     }
 
-    public static URI[] getSchemes(Properties props) {
-        String[] ids  = getSchemeIds(props);
+    public static URI[] getSchemes(File home, Reporter reporter) {
+        String[] ids  = getSchemeIds(home);
         URI[]    uris = new URI[ids.length];
         for (int i=0; i<ids.length; i++) {
-            uris[i] = getScheme(props, ids[i]);
+            uris[i] = get(home, reporter, ids[i]);
         }
         return uris;
     }
 
+    public Properties load() throws IOException {
+        return load(home);
+    }
     public static Properties load(File home) throws IOException {
         Properties props = new Properties();
         FileInputStream in = null;
@@ -141,10 +175,11 @@ public class URI {
         return props;
     }
 
-    public static void store(File home, Properties props) throws Exception {
+    public Properties store(Properties props) throws IOException {
         FileOutputStream out = new FileOutputStream(new File(home, "conf/system.properties"));
         props.store(out, "Properties updated by "+URI.class.getCanonicalName());
         out.close();
+        return props;
     }
 
     public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String schemeClassPath, Map<String,String> properties) {
@@ -184,7 +219,104 @@ public class URI {
         return f;
     }
 
-    private synchronized void inspectJars (File home, Shell shell, final String...jars) throws Exception {
+    public static URI inspectJar(File home, Reporter reporter, String name) {
+        URI uri = new URI(home, reporter);
+
+        File          jar        = new File(name);
+        List<String>  classpath  = new ArrayList<String>(); // the ones to add to classpath
+        Set<String>   additional = new HashSet<String>();   // the ones to add to additional.classpath
+        boolean       manifested = false;                   // did we see a valid Cleo-... manifest
+
+        // allow mvn2 references as file
+        if (uri.mvn2(name)!=null) {
+            try {
+                name = uri.copyToLib(name);
+            } catch (Exception e) {
+                reporter.report("error downloading "+name+": "+e);
+            }
+        }
+        // now read the jar manifest to parse out manifest attributes to find:
+        // - scheme                Cleo-URI-Scheme
+        // - file class            Cleo-URI-File-Class
+        // - input class           Cleo-URI-InputStream-Class
+        // - output class          Cleo-URI-OutputStream-Class
+        // - classpath             Cleo-URI-Depends
+        // - additional.classpath  Cleo-URI-Additional
+        // Note that first setting wins (for scheme and file classes that aren't lists).
+        // Note also that the JARs themselves are added to classpath unless "this" appears in
+        //      Additional, in which case the current JAR is added to additional instead
+        //
+        // Minimal JARs may only have Cleo-URI-Additional (for example a VFS Provider).
+        // Full-on URIs will need Cleo-URI-Scheme and the -Class settings at least
+        try (JarFile jarfile = new JarFile(home==null || jar.isAbsolute() ? jar : new File(home, name))) {
+            Manifest manifest = jarfile.getManifest();
+            if (manifest!=null) {
+                Attributes attrs = manifest.getMainAttributes();
+                if (attrs!=null) {
+                    if (uri.id==null && attrs.containsKey(new Attributes.Name("Cleo-URI-Scheme"))) {
+                        uri.id = attrs.getValue("Cleo-URI-Scheme").toLowerCase();
+                        manifested = true;
+                    }
+                    if (uri.file==null && attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
+                        uri.file = attrs.getValue("Cleo-URI-File-Class");
+                        if (uri.id==null) {
+                            uri.id = uri.file.toLowerCase();
+                            if (uri.id.endsWith("file")) {
+                                uri.id = uri.id.substring(uri.id.lastIndexOf(".")+1, uri.id.length()-"file".length());
+                            }
+                        }
+                        manifested = true;
+                    }
+                    if (uri.inputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
+                        uri.inputStream = attrs.getValue("Cleo-URI-InputStream-Class");
+                        manifested = true;
+                    }
+                    if (uri.outputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-OutputStream-Class"))) {
+                        uri.outputStream = attrs.getValue("Cleo-URI-OutputStream-Class");
+                        manifested = true;
+                    }
+                    if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
+                        classpath.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
+                        manifested = true;
+                    }
+                    if (attrs.containsKey(new Attributes.Name("Cleo-URI-Additional"))) {
+                        additional.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Additional").split("\\s+")));
+                        manifested = true;
+                    }
+                }
+            }
+        } catch (IOException abort) {
+            return null;
+        }
+        if (manifested) {
+            uri.self = name;
+            if (additional.contains("this")) {
+                additional.remove("this");
+                additional.add(name);
+            } else {
+                classpath.add(name);
+            }
+            if (!classpath.isEmpty()) {
+                uri.classPath = classpath.toArray(new String[classpath.size()]);
+            }
+            if (!additional.isEmpty()) {
+                uri.addPath = additional.toArray(new String[additional.size()]);
+            }
+            return uri;
+        } else {
+            return null;
+        }
+    }
+
+    private URI (File home, Reporter reporter) {
+        // use defaults
+        this.home = home;
+        this.reporter = reporter;
+    }
+
+    public static URI inspectJars(File home, Reporter reporter, final String...jars) throws Exception {
+        URI uri = new URI(home, reporter);
+
         List<String> schemeFiles  = new ArrayList<String>(); // JARs on the "command line"
         List<String> classpath    = new ArrayList<String>(); // the ones to add to classpath
         Set<String>  additional   = new HashSet<String>();   // the ones to add to additional.classpath
@@ -198,96 +330,44 @@ public class URI {
             if (file.contains("=")) {
                 String[] kv = file.split("=", 2);
                 if (kv[0].equals("file")) {
-                    this.file = kv[1];
+                    uri.file = kv[1];
                 } else if (kv[0].equals("inputstream")) {
-                    this.inputStream = kv[1];
+                    uri.inputStream = kv[1];
                 } else if (kv[0].equals("outputstream")) {
-                    this.outputStream = kv[1];
+                    uri.outputStream = kv[1];
                 } else {
-                    this.properties.put(kv[0], kv[1]);
+                    uri.properties.put(kv[0], kv[1]);
                 }
                 continue;
             } else if (file.endsWith(":")) {
-                this.id = file.substring(0, file.length()-1);
+                uri.id = file.substring(0, file.length()-1);
                 continue;
             }
             // ok, it's a file
-            if (mvn2(file)!=null) {
-                file = copyToLib(file);
+            if (uri.mvn2(file)!=null) {
+                file = uri.copyToLib(file);
             }
-            File jarfile = homeFile(file);
+            File jarfile = uri.homeFile(file);
             if (jarfile.canRead()) {
-                schemeFiles.add(relativize(jarfile));
+                schemeFiles.add(uri.relativize(jarfile));
             } else {
                 throw new Exception("can not read file: "+jarfile);
             }
         }
         // Second: run through the actual files in two passes
         if (!schemeFiles.isEmpty()) {
-            final ClassLoader    classLoader = Util.class.getClassLoader();
-            final java.net.URL[] urls = new java.net.URL[schemeFiles.size()];
-            for (int i=0; i<schemeFiles.size(); i++) {
-                urls[i] = new java.net.URL("jar:file:"+homeFile(schemeFiles.get(i)).getCanonicalPath()+"!/");
-            }
-            final URLClassLoader ucl = new URLClassLoader(urls, classLoader);
-            // First pass: parse out manifest attributes to find:
-            // - scheme                Cleo-URI-Scheme
-            // - file class            Cleo-URI-File-Class
-            // - input class           Cleo-URI-InputStream-Class
-            // - output class          Cleo-URI-OutputStream-Class
-            // - classpath             Cleo-URI-Depends
-            // - additional.classpath  Cleo-URI-Additional
-            // Note that first setting wins (for scheme and file classes that aren't lists).
-            // Note also that the JARs themselves are added to classpath unless "this" appears in
-            //      Additional, in which case the current JAR is added to additional instead
-            for (String f : schemeFiles) {
-                final JarFile jarfile = new JarFile(homeFile(f));
-                // first check manifest
-                Manifest manifest = jarfile.getManifest();
-                if (manifest!=null) {
-                    Attributes attrs = manifest.getMainAttributes();
-                    if (attrs!=null) {
-                        if (this.id==null && attrs.containsKey(new Attributes.Name("Cleo-URI-Scheme"))) {
-                            this.id = attrs.getValue("Cleo-URI-Scheme").toLowerCase();
-                        }
-                        if (this.file==null && attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
-                            this.file = attrs.getValue("Cleo-URI-File-Class");
-                            if (this.id==null) {
-                                this.id = file.toLowerCase();
-                                if (this.id.endsWith("file")) {
-                                    this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
-                                }
-                            }
-                        }
-                        if (this.inputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
-                            this.inputStream = attrs.getValue("Cleo-URI-InputStream-Class");
-                        }
-                        if (this.outputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-OutputStream-Class"))) {
-                            this.outputStream = attrs.getValue("Cleo-URI-OutputStream-Class");
-                        }
-                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
-                            classpath.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
-                        }
-                        if (attrs.containsKey(new Attributes.Name("Cleo-URI-Additional"))) {
-                            additional.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Additional").split("\\s+")));
-                        }
-                    }
-                }
-                jarfile.close();
-                if (additional.contains("this")) {
-                    additional.remove("this");
-                    additional.add(f);
-                } else {
-                    classpath.add(f);
-                }
-            }
-            // Second pass: if the classes were not set in manifest attributes,
-            // read through the JAR files again trying on each class to find ones
+            // read through the JAR files trying on each class to find ones
             // that match the necessary types.
-            if (file==null || inputStream==null || outputStream==null) {
+            if (uri.file==null || uri.inputStream==null || uri.outputStream==null) {
+                final ClassLoader    classLoader = Util.class.getClassLoader();
+                final java.net.URL[] urls = new java.net.URL[schemeFiles.size()];
+                for (int i=0; i<schemeFiles.size(); i++) {
+                    urls[i] = new java.net.URL("jar:file:"+uri.homeFile(schemeFiles.get(i)).getCanonicalPath()+"!/");
+                }
+                final URLClassLoader ucl = new URLClassLoader(urls, classLoader);
                 // look for compatible classes
                 for (String f : schemeFiles) {
-                    final JarFile jarfile = new JarFile(homeFile(f));
+                    final JarFile jarfile = new JarFile(uri.homeFile(f));
                     for (Enumeration<JarEntry> entries = jarfile.entries(); entries.hasMoreElements();) {
                         JarEntry entry = entries.nextElement();
                         if (entry.getName().endsWith(".class")) {
@@ -296,28 +376,28 @@ public class URI {
                             if (!classname.contains("$")) {
                                 try {
                                     final Class<?> test = Class.forName(classname, true, ucl);
-                                    if (file==null && com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
-                                        this.file = classname;
-                                        if (this.id==null) {
-                                            this.id = classname.toLowerCase();
-                                            if (this.id.endsWith("file")) {
-                                                this.id = this.id.substring(this.id.lastIndexOf(".")+1, this.id.length()-"file".length());
+                                    if (uri.file==null && com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
+                                        uri.file = classname;
+                                        if (uri.id==null) {
+                                            uri.id = classname.toLowerCase();
+                                            if (uri.id.endsWith("file")) {
+                                                uri.id = uri.id.substring(uri.id.lastIndexOf(".")+1, uri.id.length()-"file".length());
                                             }
                                         }
                                     }
-                                    if (inputStream==null) {
+                                    if (uri.inputStream==null) {
                                         try {
                                             test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class);
                                             if (java.io.InputStream.class.isAssignableFrom(test)) {
-                                                this.inputStream = classname;
+                                                uri.inputStream = classname;
                                             }
                                         } catch (Exception ignore) {}
                                     }
-                                    if (outputStream==null) {
+                                    if (uri.outputStream==null) {
                                         try {
                                             test.getConstructor(com.cleo.lexicom.beans.LexURIFile.class, boolean.class);
                                             if (java.io.OutputStream.class.isAssignableFrom(test)) {
-                                                this.outputStream = classname;
+                                                uri.outputStream = classname;
                                             }
                                         } catch (Exception ignore) {}
                                     }
@@ -335,15 +415,16 @@ public class URI {
         }
         // Finally: check to make sure we got the classes we need
         // and set the classPath and addPath lists
-        if (this.file==null || this.inputStream==null || this.outputStream==null) {
+        if (uri.file==null || uri.inputStream==null || uri.outputStream==null) {
             throw new Exception("classes missing from classpath: invalid URI");
         }
         if (!classpath.isEmpty()) {
-            this.classPath = classpath.toArray(new String[classpath.size()]);
+            uri.classPath = classpath.toArray(new String[classpath.size()]);
         }
         if (!additional.isEmpty()) {
-            this.addPath = additional.toArray(new String[additional.size()]);
+            uri.addPath = additional.toArray(new String[additional.size()]);
         }
+        return uri;
     }
 
     private static class Maven2 {
@@ -372,7 +453,7 @@ public class URI {
                         String value = (String)X.subobj(meta, "versioning", "snapshotVersions", "snapshotVersion[0]", "value");
                         jar = gav[1]+"-"+value+".jar";
                     } catch (Exception ignore) {
-                        shell.report(ignore.toString());
+                        report(ignore.toString());
                     }
                 } else {
                     // contd.cleo.com
@@ -397,12 +478,18 @@ public class URI {
         if (mvn2!=null) {
             byte[] sha1 = F.hex(S.s(F.download(mvn2.url+".sha1")));
             result = F.download(mvn2.url, new File(lib,mvn2.jar), "SHA-1", sha1, F.ClobberMode.OVERWRITE);
-            shell.report(result.matched ? path+" matched to existing "+result.file
-                                        : path+" downloaded to "+result.file);
+            report(result.matched ? path+" matched to existing "+result.file
+                                  : path+" downloaded to "+result.file);
         } else {
-            result = F.copy(homeFile(path), lib, F.ClobberMode.OVERWRITE);
-            shell.report(result.matched ? path+" matched to existing "+result.file
-                                        : path+" copied to "+result.file);
+            File src = homeFile(path);
+            File dst = new File(lib, src.getName());
+            if (src.equals(dst)) {
+                result = new F.Clobbered(src, true);
+            } else {
+                result = F.copy(src, dst, F.ClobberMode.OVERWRITE);
+                report(result.matched ? path+" matched to existing "+result.file
+                                      : path+" copied to "+result.file);
+            }
         }
         return relativize(result.file);
     }
@@ -410,28 +497,24 @@ public class URI {
     public void install() throws Exception {
         copyToLib(classPath);
         copyToLib(addPath);
-    }
-
-    public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String[] schemeClassPath, Map<String,String> properties) {
-        this(scheme, schemeFile, schemeInputStream, schemeOutputStream, S.join(COLON, schemeClassPath), properties);
-    }
-
-    public URI(File home, Shell shell, final String...jars) throws Exception {
-        this.home  = home;
-        this.shell = shell;
-        inspectJars(home, shell, jars);
+        store(setProperties(load()));
     }
 
     public String[] toStrings() {
         List<String> list = new ArrayList<String>();
-        list.add("cleo.uri."+this.id+".file="+this.file);
-        list.add("cleo.uri."+this.id+".inputstream="+this.inputStream);
-        list.add("cleo.uri."+this.id+".outputStream="+this.outputStream);
-        if (this.classPath!=null) {
-            list.add("cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath));
+        if (this.id!=null) {
+            list.add("cleo.uri."+this.id+".file="+this.file);
+            list.add("cleo.uri."+this.id+".inputstream="+this.inputStream);
+            list.add("cleo.uri."+this.id+".outputStream="+this.outputStream);
+            if (this.classPath!=null) {
+                list.add("cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath));
+            }
+            for (Map.Entry<String,String> e : this.properties.entrySet()) {
+                list.add("cleo.uri."+this.id+"."+e.getKey()+"="+e.getValue());
+            }
         }
-        for (Map.Entry<String,String> e : this.properties.entrySet()) {
-            list.add("cleo.uri."+this.id+"."+e.getKey()+"="+e.getValue());
+        if (this.addPath!=null) {
+            list.add("cleo.additional.classpath="+S.join(File.pathSeparator, this.addPath));
         }
         return list.toArray(new String[list.size()]);
     }
@@ -440,12 +523,20 @@ public class URI {
     }
     public String[] deconstruct() {
         List<String> list = new ArrayList<String>();
-        list.add(this.id+":");
-        if (this.classPath!=null) {
-            list.addAll(Arrays.asList(this.classPath));
-        }
-        for (Map.Entry<String,String> e : this.properties.entrySet()) {
-            list.add(e.getKey()+"="+e.getValue());
+        if (this.self!=null) {
+            // should be all manifest driven
+            list.add(this.self);
+        } else {
+            // must be explicit scheme: jars.. property=value...
+            if (this.id!=null) {
+                list.add(this.id+":");
+            }
+            if (this.classPath!=null) {
+                list.addAll(Arrays.asList(this.classPath));
+            }
+            for (Map.Entry<String,String> e : this.properties.entrySet()) {
+                list.add(e.getKey()+"="+e.getValue());
+            }
         }
         return list.toArray(new String[list.size()]);
     }
