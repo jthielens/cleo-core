@@ -1995,7 +1995,7 @@ public class Shell extends REPL {
             // output format is the group command to set the group up
             try {
                 for (String group : get_vlnav().list_groups().values()) {
-                    report("group "+group+" "+S.join(" \\\n    ", get_vlnav().find_group(group).toMap(), qqequals));
+                    report("group "+qq(group)+" "+S.join(" \\\n    ", get_vlnav().find_group(group).toMap(), qqequals));
                     for (VLNav.UserDescription user : get_vlnav().list_users(group)) {
                         report("  user "+S.join(" ", qq(user.toStrings())));
                     }
@@ -2022,7 +2022,7 @@ public class Shell extends REPL {
             // output format is the group command to set the group up
             try {
                 String group = argv[0];
-                report("group "+group+" = "+get_vlnav().find_group(group));
+                report("group "+qq(group)+" = "+get_vlnav().find_group(group));
             } catch (Exception e) {
                 error("could not list groups", e);
             }
