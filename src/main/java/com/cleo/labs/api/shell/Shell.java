@@ -39,7 +39,6 @@ import com.cleo.labs.api.constant.HostType;
 import com.cleo.labs.api.constant.Mode;
 import com.cleo.labs.api.constant.Packaging;
 import com.cleo.labs.api.constant.PathType;
-import com.cleo.labs.api.constant.Product;
 import com.cleo.labs.api.constant.Protocol;
 import com.cleo.labs.api.exception.URLResolutionException;
 import com.cleo.labs.util.LDAP;
@@ -81,19 +80,7 @@ public class Shell extends REPL {
     
     @Option(name="p", args="product", comment="H | VLT | LC")
     public void product_option(String arg) {
-        try {
-            core.setProduct(Product.valueOf(arg.toUpperCase()));
-        } catch (Exception e) {
-            if (arg.equalsIgnoreCase("H")) {
-                core.setProduct(Product.HARMONY);
-            } else if (arg.equalsIgnoreCase("VLT")) {
-                core.setProduct(Product.VLTRADER);
-            } else if (arg.equalsIgnoreCase("LC")) {
-                core.setProduct(Product.LEXICOM);
-            } else {
-                error("unrecognized product: "+arg);
-            }
-        }
+        error("product is now automatically detected: "+arg);
     }
     
     @Option(name="m", args="mode", comment="STANDALONE | DISTRIBUTED")

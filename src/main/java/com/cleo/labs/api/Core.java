@@ -44,6 +44,12 @@ public class Core {
     }
     public void setHome(File home) {
         this.home = home;
+        for (Product product : Product.values()) {
+            if (new File(home, product.proof).exists()) {
+                this.product = product;
+                break;
+            }
+        }
     }
     public ILexiCom getLexiCom() throws Exception {
         connect();
