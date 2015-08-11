@@ -27,7 +27,7 @@ import com.cleo.lexicom.external.ISchedule;
 import com.cleo.lexicom.external.LexiComFactory;
 import com.cleo.lexicom.external.LexiComLogListener;
 
-public class Core {
+public class LexiCom {
     private static Product  product;
     private static Mode     mode;
     private static File     home;
@@ -44,11 +44,11 @@ public class Core {
     }
     public static void setMode(Mode mode) {
         if (connected()) {
-            if (mode!=Core.mode) {
+            if (mode!=LexiCom.mode) {
                 throw new IllegalStateException("mode cannot be changed once connected");
             }
         }
-        Core.mode = mode;
+        LexiCom.mode = mode;
     }
     private static Product getProduct(File home) {
         for (Product product : Product.values()) {
@@ -60,7 +60,7 @@ public class Core {
     }
     public static void setHome(File home) {
         if (connected()) {
-            if (home!=Core.home) {
+            if (home!=LexiCom.home) {
                 throw new IllegalStateException("home cannot be changed once connected");
             }
         } else {
@@ -68,7 +68,7 @@ public class Core {
             if (product==null) {
                 throw new IllegalArgumentException("no VersaLex found at "+home);
             }
-            Core.home = home;
+            LexiCom.home = home;
         }
     }
     public static ILexiCom getLexiCom() throws Exception {
@@ -76,7 +76,7 @@ public class Core {
         return lexicom;
     }
 
-    private Core() {}
+    private LexiCom() {}
 
     public static boolean connected() {
         return lexicom!=null;

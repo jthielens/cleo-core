@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.cleo.labs.api.Core;
+import com.cleo.labs.api.LexiCom;
 import com.cleo.labs.util.DB;
 import com.cleo.labs.util.repl.REPL;
 import com.cleo.labs.util.repl.annotation.Command;
@@ -84,7 +84,7 @@ public class DBShell extends REPL {
             this.vendor     = Vendor.valueOf(this.connection.split(":")[1].toUpperCase()); // jdbc:vendor:stuff
         }
         public Options.DBConnection getDBConnection() throws Exception {
-            Options.DBConnection c = Core.getOptions().new DBConnection(); 
+            Options.DBConnection c = LexiCom.getOptions().new DBConnection(); 
             c.setConnectionType(this.type);
             c.setConnectionString(this.connection);
             c.setDriverString(this.driver);

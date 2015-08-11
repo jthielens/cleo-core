@@ -16,7 +16,7 @@ public class HostAction extends Item {
     }
     
     public Schedule getSchedule() throws Exception {
-        ISchedule.Item s = Core.getSchedule().findItem(getPath().getPath());
+        ISchedule.Item s = LexiCom.getSchedule().findItem(getPath().getPath());
         if (s==null) {
             return null;
         } else {
@@ -25,7 +25,7 @@ public class HostAction extends Item {
     }
 
     public void setSchedule(Schedule schedule) throws Exception {
-        ISchedule scheduler = Core.getSchedule();
+        ISchedule scheduler = LexiCom.getSchedule();
         if (schedule==null) {
             scheduler.removeItem(getPath().getPath(), true);
         } else {

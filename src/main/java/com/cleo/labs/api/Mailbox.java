@@ -45,7 +45,7 @@ public class Mailbox extends Item {
 
     public Action getAction(String alias) throws Exception {
         Path test = path.getChild(PathType.ACTION, alias);
-        if (Core.exists(test)) {
+        if (LexiCom.exists(test)) {
             return new Action(test);
         }
         return null;
@@ -53,7 +53,7 @@ public class Mailbox extends Item {
 
     private synchronized void connect() throws Exception {
         if (controller==null) {
-            controller = Core.getMailboxController(path);
+            controller = LexiCom.getMailboxController(path);
         }
     }
 

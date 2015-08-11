@@ -276,7 +276,7 @@ public class URL {
         Host[] hosts;
         if (alias!=null && !alias.equals("*")) {
             // lookup up existing host and enforce consistency if found
-            Host host = Core.getHost(alias);
+            Host host = LexiCom.getHost(alias);
             if (host==null) {
                 hosts = null;
             } else if (host.getHostType() != type ||
@@ -288,12 +288,12 @@ public class URL {
             }
         } else {
             // just find one by attributes
-            hosts = Core.findHosts(type, address, port);
+            hosts = LexiCom.findHosts(type, address, port);
             alias = getProtocol()+"://"+address;
         }
         mailbox = null;
         if (hosts==null || hosts.length==0) {
-            host = Core.activateHost(type, alias);
+            host = LexiCom.activateHost(type, alias);
             host.setProperty("Address", address);
             if (port>=0) {
                 host.setProperty("Port", String.valueOf(port));

@@ -36,7 +36,7 @@ public class Host extends Item {
 
     public Mailbox getMailbox(String alias) throws Exception {
         Path test = path.getChild(PathType.MAILBOX, alias);
-        if (Core.exists(test)) {
+        if (LexiCom.exists(test)) {
             return new Mailbox(test);
         }
         return null;
@@ -45,7 +45,7 @@ public class Host extends Item {
     public Mailbox cloneMailbox(String template, String alias) throws Exception {
         Path template_path = path.getChild(PathType.MAILBOX, template);
         if (template_path!=null) {
-            Path mailbox  = Core.clone(template_path, alias);
+            Path mailbox  = LexiCom.clone(template_path, alias);
             return new Mailbox(mailbox);
         } else {
             return createMailbox(alias);
@@ -57,7 +57,7 @@ public class Host extends Item {
     }
 
     public Mailbox createMailbox(String alias) throws Exception {
-        Path mailbox = Core.create(path.getChild(PathType.MAILBOX, alias));
+        Path mailbox = LexiCom.create(path.getChild(PathType.MAILBOX, alias));
         return new Mailbox(mailbox);
     }
 
@@ -69,7 +69,7 @@ public class Host extends Item {
             try {
                 if (m.matchProperty(userproperty, username) &&
                     (password==null ||   // null means don't match on password
-                     m.matchProperty(passwordproperty, Core.encode(password)))) {
+                     m.matchProperty(passwordproperty, LexiCom.encode(password)))) {
                     return m;
                 }
             } catch (Exception ignore) {
@@ -81,17 +81,17 @@ public class Host extends Item {
 
     // hmm below this line---
     public boolean isMultipleIDsAllowed() throws Exception {
-        return Core.isMultipleIDsAllowed(path);
+        return LexiCom.isMultipleIDsAllowed(path);
     }
     public void setMultipleIDsAllowed(boolean allowed) throws Exception {
-        Core.setMultipleIDsAllowed(path, allowed);
+        LexiCom.setMultipleIDsAllowed(path, allowed);
     }
     public boolean isLocal() throws Exception {
-        return Core.isLocal(path);
+        return LexiCom.isLocal(path);
     }
 
     public Protocol getProtocol() throws Exception {
-        return Core.getHostProtocol(path);
+        return LexiCom.getHostProtocol(path);
     }
     public HostType getHostType() throws Exception {
         if (isLocal()) {

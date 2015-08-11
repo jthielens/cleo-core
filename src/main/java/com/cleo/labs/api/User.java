@@ -77,7 +77,7 @@ public class User {
             }
             password = properties.remove("Password");
             if (password!=null) {
-                password = Core.decode(password);
+                password = LexiCom.decode(password);
             }
             note("user from host "+h.getPath().getAlias()+" mailbox "+username);
         }
@@ -127,10 +127,10 @@ public class User {
 
     public static Description[] list(Filter filter) throws Exception {
         List<Description> users = new ArrayList<Description>();
-        for (Host h : Core.getHosts()) {
+        for (Host h : LexiCom.getHosts()) {
             if (h.isLocal() && h.getHostType()!=null) {
                 for (Mailbox m : h.getMailboxes()) {
-                    if (!Core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
+                    if (!LexiCom.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                     if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
                         Description u = new Description(h, m);
                         if (filter==null || filter.accept(u)) {
@@ -145,7 +145,7 @@ public class User {
 
     private static Host find_host(Description user) throws Exception {
         String hostalias;
-        Host host = Core.findLocalHost(user.type, user.root, user.folder);
+        Host host = LexiCom.findLocalHost(user.type, user.root, user.folder);
         if (host==null) {
             hostalias = user.typename+S.all(":", user.root)+" users";
             if (user.folder!=null) {
@@ -154,17 +154,17 @@ public class User {
             }
 user.note("host not found: proposing "+hostalias);
             //hostalias.replace('/', '#');
-            if (Core.exists(new Path(hostalias))) {
+            if (LexiCom.exists(new Path(hostalias))) {
                 int uniquer = 0;
                 String test;
                 do {
                     uniquer++;
                     test = hostalias+"["+uniquer+"]";
-                } while (Core.exists(new Path(test)));
+                } while (LexiCom.exists(new Path(test)));
                 hostalias = test;
 user.note("had to make it unique as "+hostalias);
             }
-            host = Core.activateHost(user.type, hostalias);
+            host = LexiCom.activateHost(user.type, hostalias);
             if (user.folder!=null) {
 user.note("setting folder "+user.folder);
                 host.setProperty("folder", user.folder);
@@ -234,7 +234,7 @@ user.note("found host "+hostalias);
     }
 
     public static Description remove(Description user) throws Exception {
-        Host host = Core.findLocalHost(user.type, user.root, user.folder);
+        Host host = LexiCom.findLocalHost(user.type, user.root, user.folder);
         if (host==null) {
             user.note("user not removed: host not found");
         } else {
@@ -242,7 +242,7 @@ user.note("found host "+hostalias);
             if (mailbox==null) {
                 user.note("user not removed: mailbox not found");
             } else {
-                Core.remove(mailbox.getPath());
+                LexiCom.remove(mailbox.getPath());
                 user.note("user "+user.username+" removed");
             }
         }

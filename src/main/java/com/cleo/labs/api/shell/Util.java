@@ -26,7 +26,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
-import com.cleo.labs.api.Core;
+import com.cleo.labs.api.LexiCom;
 import com.cleo.labs.util.S;
 import com.cleo.labs.util.X;
 import com.cleo.labs.util.repl.REPL;
@@ -443,7 +443,7 @@ public class Util {
             fis.read(buf);
             result.file = f;
             try {
-                result.contents = Core.decrypt(DatatypeConverter.printBase64Binary(buf));
+                result.contents = LexiCom.decrypt(DatatypeConverter.printBase64Binary(buf));
                 result.encrypted = true;
             } catch (Exception e) {
                 // fall through to unencrypted write
@@ -468,7 +468,7 @@ public class Util {
             result.file.renameTo(new File(result.file.getAbsolutePath()+".bak"));
             fos = new FileOutputStream(result.file);
             if (result.encrypted) {
-                fos.write(DatatypeConverter.parseBase64Binary(Core.encrypt(result.contents)));
+                fos.write(DatatypeConverter.parseBase64Binary(LexiCom.encrypt(result.contents)));
             } else {
                 fos.write(result.contents.getBytes());
             }

@@ -44,15 +44,15 @@ public class Item {
     }
 
     public boolean hasProperty(String property) throws Exception {
-        return Core.hasProperty(path, property);
+        return LexiCom.hasProperty(path, property);
     }
 
     public String[] getProperty(String property) throws Exception {
-        return Core.getProperty(path, property);
+        return LexiCom.getProperty(path, property);
     }
 
     public String getSingleProperty(String property) throws Exception {
-        return Core.getSingleProperty(path, property);
+        return LexiCom.getSingleProperty(path, property);
     }
 
     public boolean matchPropertyIgnoreCase(String property, String match) throws Exception {
@@ -78,15 +78,15 @@ public class Item {
         return false;
     }
     public void setProperty(String property, String value) throws Exception {
-        Core.setProperty(path, property, value);
+        LexiCom.setProperty(path, property, value);
     }
 
     public void setProperty(String property, String[] values) throws Exception {
-        Core.setProperty(path, property, values);
+        LexiCom.setProperty(path, property, values);
     }
 
     public boolean exists() throws Exception {
-        return Core.exists(path);
+        return LexiCom.exists(path);
     }
 
     private Node subnode(String type, String name, Node node) {
@@ -107,7 +107,7 @@ public class Item {
         return null;
     }
     public Node getNode() throws Exception {
-        Node node = Core.getHostDocument(path).getDocumentElement();
+        Node node = LexiCom.getHostDocument(path).getDocumentElement();
         switch (path.getType()) {
         case MAILBOX:
             node = subnode("Mailbox",    path.getPath()[1], node);
@@ -143,7 +143,7 @@ public class Item {
         HostType type = new Host(path.getHost()).getHostType();
         synchronized (defaults) {
             if (defaults.isEmpty()) {
-                File preconfigured = new File(new File(Core.getHome(), "hosts"), "preconfigured");
+                File preconfigured = new File(new File(LexiCom.getHome(), "hosts"), "preconfigured");
                 for (File f : preconfigured.listFiles()) {
                     if (f.isFile() && f.getName().endsWith(".xml")) {
                         try {
@@ -162,7 +162,7 @@ public class Item {
     }
 
     public Item[] getChildren(PathType type) throws Exception {
-        Path[] paths    = Core.list(type, path);
+        Path[] paths    = LexiCom.list(type, path);
         Item[] children = new Item[paths.length];
         for (int i=0; i<paths.length; i++) {
             children[i] = getItem(paths[i]);
@@ -171,20 +171,20 @@ public class Item {
     }
 
     public void save() throws Exception {
-        Core.save(path);
+        LexiCom.save(path);
     }
     public void remove() throws Exception {
-        Core.remove(path);
+        LexiCom.remove(path);
     }
     public void rename(String alias) throws Exception {
-        Core.rename(path, alias);
+        LexiCom.rename(path, alias);
         path.setAlias(alias);
     }
 
     public void addLogListener(LexiComLogListener listener) throws Exception {
-        Core.addLogListener(listener, path);
+        LexiCom.addLogListener(listener, path);
     }
     public void removeLogListener(LexiComLogListener listener) throws Exception {
-        Core.removeLogListener(listener, path);
+        LexiCom.removeLogListener(listener, path);
     }
 }

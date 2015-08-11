@@ -25,10 +25,10 @@ import java.util.regex.Pattern;
 import javax.xml.bind.DatatypeConverter;
 
 import com.cleo.labs.api.Action;
-import com.cleo.labs.api.Core;
 import com.cleo.labs.api.Defaults;
 import com.cleo.labs.api.Host;
 import com.cleo.labs.api.Item;
+import com.cleo.labs.api.LexiCom;
 import com.cleo.labs.api.Mailbox;
 import com.cleo.labs.api.Path;
 import com.cleo.labs.api.Schedule;
@@ -43,8 +43,8 @@ import com.cleo.labs.api.constant.Protocol;
 import com.cleo.labs.api.exception.URLResolutionException;
 import com.cleo.labs.util.LDAP;
 import com.cleo.labs.util.S;
-import com.cleo.labs.util.X;
 import com.cleo.labs.util.S.Inspector;
+import com.cleo.labs.util.X;
 import com.cleo.labs.util.repl.REPL;
 import com.cleo.labs.util.repl.annotation.Command;
 import com.cleo.labs.util.repl.annotation.Option;
@@ -73,7 +73,7 @@ public class Shell extends REPL {
 
     @Option(name="h", args="home", comment="installation directory")
     public void home_option(String arg) {
-        Core.setHome(new File(arg));
+        LexiCom.setHome(new File(arg));
     }
     
     @Option(name="p", args="product", comment="H | VLT | LC")
@@ -84,7 +84,7 @@ public class Shell extends REPL {
     @Option(name="m", args="mode", comment="STANDALONE | DISTRIBUTED")
     public void mode_option(String arg) {
         try {
-            Core.setMode(Mode.valueOf(arg.toUpperCase()));
+            LexiCom.setMode(Mode.valueOf(arg.toUpperCase()));
         } catch (Exception e) {
             error("unrecognized mode: "+arg);
         }
@@ -95,7 +95,7 @@ public class Shell extends REPL {
         try {
             vldb.disconnect();
             h2db.disconnect();
-            Core.disconnect();
+            LexiCom.disconnect();
         } catch (Exception e) {
             error("error disconnecting", e);
         }
@@ -229,19 +229,19 @@ public class Shell extends REPL {
         if (argv.length==0) {
             try {
                 report("attempting to retrieve license");
-                report_license(Core.getLicense());
+                report_license(LexiCom.getLicense());
             } catch (Exception e) {
                 error("license retrieval failed", e);
             }
         } else {
-            if (Core.getMode() != Mode.STANDALONE) {
+            if (LexiCom.getMode() != Mode.STANDALONE) {
                 report("switching to -m STANDALONE");
-                Core.setMode(Mode.STANDALONE);
+                LexiCom.setMode(Mode.STANDALONE);
             }
             for (String serial : argv) {
                 try {
                     report("attempting to retrieve registration for "+serial);
-                    ILicenser license = Core.getLicenser();
+                    ILicenser license = LexiCom.getLicenser();
                     RegistrationInfo reg = license.registrationQuery(serial);
                     report_registration(reg);
                     Util.report_bean(this, reg);
@@ -256,14 +256,14 @@ public class Shell extends REPL {
     public void register_command(String...argv) {
         if (argv.length==1) {
             try {
-                if (Core.getMode() != Mode.STANDALONE) {
+                if (LexiCom.getMode() != Mode.STANDALONE) {
                     report("switching to -m STANDALONE");
-                    Core.setMode(Mode.STANDALONE);
+                    LexiCom.setMode(Mode.STANDALONE);
                 }
                 if (argv[0].matches("\\w{6}-\\w{6}")) {
                     String serial = argv[0];
                     report("attempting to retrieve registration for "+serial);
-                    ILicenser license = Core.getLicenser();
+                    ILicenser license = LexiCom.getLicenser();
                     RegistrationInfo current_reg = license.registrationQuery(serial);
                     demo_registration(current_reg);
                     report_registration(current_reg);
@@ -271,11 +271,11 @@ public class Shell extends REPL {
                     report(serial+" registered, retreiving license information");
                 } else {
                     String fn = argv[0];
-                    ILicenser license = Core.getLicenser();
+                    ILicenser license = LexiCom.getLicenser();
                     @SuppressWarnings("unused")
                     ILicense content = license.licenseFile(fn, true);
                 }
-                report_license(Core.getLicense());
+                report_license(LexiCom.getLicense());
             } catch (Exception e) {
                 error("register failed", e);
             }
@@ -287,11 +287,11 @@ public class Shell extends REPL {
     @Command(name="unregister", comment="unregister license")
     public void unregister_command(String...argv) {
         try {
-            if (Core.getMode() != Mode.STANDALONE) {
+            if (LexiCom.getMode() != Mode.STANDALONE) {
                 report("switching to -m STANDALONE");
-                Core.setMode(Mode.STANDALONE);
+                LexiCom.setMode(Mode.STANDALONE);
             }
-            ILicenser license = Core.getLicenser();
+            ILicenser license = LexiCom.getLicenser();
             license.unregister();
         } catch (Exception e) {
             error("unregister failed", e);
@@ -301,7 +301,7 @@ public class Shell extends REPL {
     @Command(name="close", comment="close LexiCom session")
     public void close_command(String...argv) {
         try {
-            Core.disconnect();
+            LexiCom.disconnect();
         } catch (Exception e) {
             error("close failed", e);
         }
@@ -309,7 +309,7 @@ public class Shell extends REPL {
 
     @Command(name="list_types", comment="list host types")
     public void list_types() throws Exception {
-        com.cleo.lexicom.external.HostType[] types = Core.listHostTypes();
+        com.cleo.lexicom.external.HostType[] types = LexiCom.listHostTypes();
         String[] columns = new String[] {"Type", "Protocol", "Packaging", "Local"};
         String[][] values = new String[types.length][4];
         for (int i=0; i<types.length; i++) {
@@ -325,13 +325,13 @@ public class Shell extends REPL {
     @SuppressWarnings("unused")
     private class OldCrypt implements LDAP.Crypt {
         @Override public String encrypt(String s) throws Exception {
-            return Core.encrypt(s);
+            return LexiCom.encrypt(s);
         }
         @Override public String decrypt(String s) throws Exception {
             if (s.matches("#.*#")) {
                 StringBuffer sb = new StringBuffer(s.subSequence(1, s.length()-1));
                 while (sb.length()%4 > 0) sb.append('=');
-                s = Core.decrypt(sb.toString());
+                s = LexiCom.decrypt(sb.toString());
             } else if (s.startsWith("vlenc:") || s.startsWith("*")) {
                 s = LexBean.vlDecrypt((ConfigEncryption) null, s);
             }
@@ -379,7 +379,7 @@ public class Shell extends REPL {
             if (!connected()) {
                 if (options==null) {
                     try {
-                        Options o = Core.getOptions();
+                        Options o = LexiCom.getOptions();
                         DBConnection c = o.getTransferLoggingDBConnection();
                         if (c!=null) {
                             options = new DBOptions(c);
@@ -464,7 +464,7 @@ public class Shell extends REPL {
     }
     @Command(name="list_certs", comment="list user certificate aliases")
     public void list_certs() throws Exception {
-        ICertManagerRunTime certManager = Core.getCertManager();
+        ICertManagerRunTime certManager = LexiCom.getCertManager();
         for (@SuppressWarnings("unchecked")
              Enumeration<String> e=certManager.getUserAliases();
              e.hasMoreElements();) {
@@ -476,8 +476,8 @@ public class Shell extends REPL {
     @SuppressWarnings("unchecked")
     @Command(name="list_cas", comment="list certificate authority aliases")
     public void list_cas() throws Exception {
-        ICertManagerRunTime certManager = Core.getCertManager();
-        String certPath = Core.getAbsolute("certs");
+        ICertManagerRunTime certManager = LexiCom.getCertManager();
+        String certPath = LexiCom.getAbsolute("certs");
         Map<String,String> cas = new TreeMap<String,String>();
         Map<String,String> caseMap = new HashMap<String,String>();
         for (File ca : new File(certPath).listFiles()) {
@@ -517,7 +517,7 @@ public class Shell extends REPL {
     public void trust(String...argv) {
         ICertManagerRunTime certManager;
         try {
-            certManager = Core.getCertManager();
+            certManager = LexiCom.getCertManager();
         } catch (Exception e) {
             error("error getting cert manager", e);
             return;
@@ -548,7 +548,7 @@ public class Shell extends REPL {
         } else if (!certf.isFile()) {
             error("cert file not found: "+cert);
         } else {
-            ICertManagerRunTime certManager = Core.getCertManager();
+            ICertManagerRunTime certManager = LexiCom.getCertManager();
             certManager.importUserCertKey(alias, certf, keyf, password, true/*replace*/, false/*addPassword*/);
             report("key \""+alias+"\" imported");
         }
@@ -556,7 +556,7 @@ public class Shell extends REPL {
     @Command(name="import_ssh", args="alias key", comment="import SSH public key")
     public void import_ssh(String alias, String key) throws Exception {
         ImportedCertificate imported = new ImportedCertificate(alias, key);
-        ICertManagerRunTime certManager = Core.getCertManager();
+        ICertManagerRunTime certManager = LexiCom.getCertManager();
         certManager.importCaStoreCert(alias, imported.getX509(), false);
     }
 
@@ -574,7 +574,7 @@ public class Shell extends REPL {
         try {
             // build a dictionary of installed URIs
             Map<String,URI> uris = new HashMap<String,URI>();
-            for (URI uri : URI.getSchemes(Core.getHome(), new Reporter(this))) {
+            for (URI uri : URI.getSchemes(LexiCom.getHome(), new Reporter(this))) {
                 uris.put(uri.id, uri);
             }
             if (argv.length==0) {
@@ -598,7 +598,7 @@ public class Shell extends REPL {
         URI scheme = null;
         if (argv.length>0 && argv[0].endsWith(":")) {
             // usage: uri install scheme: property=value... jar...
-            scheme = URI.inspectJars(Core.getHome(), new Reporter(this), argv);
+            scheme = URI.inspectJars(LexiCom.getHome(), new Reporter(this), argv);
             if (scheme!=null) {
                 scheme.install();
                 report(scheme.id, scheme.toStrings());
@@ -608,7 +608,7 @@ public class Shell extends REPL {
         } else {
             // usage: uri install jar-with-manifest...
             for (String jar : argv) {
-                scheme = URI.inspectJar(Core.getHome(), new Reporter(this), jar);
+                scheme = URI.inspectJar(LexiCom.getHome(), new Reporter(this), jar);
                 if (scheme!=null) {
                     scheme.install();
                     report(scheme.toStrings());
@@ -621,7 +621,7 @@ public class Shell extends REPL {
     @Command(name="uri_remove", args="id ...", min=1, comment="remove URI drivers")
     public void uri_remove(String...argv) throws Exception {
         for (String uri : argv) {
-            URI scheme = URI.get(Core.getHome(), new Reporter(this), uri);
+            URI scheme = URI.get(LexiCom.getHome(), new Reporter(this), uri);
             if (scheme!=null) {
                 scheme.uninstall();
                 report("uri uninstalled: "+uri);
@@ -646,10 +646,10 @@ public class Shell extends REPL {
                 error("warning: it's supposed to end in a *");
             }
             report(path.toString()+" ("+path.getType()+": "+Arrays.toString(path.getPath())+")");
-            for (Path item : Core.list(path.getType(), path.getParent())) {
+            for (Path item : LexiCom.list(path.getType(), path.getParent())) {
                 String name = item.toString();
                 if (item.getType()==PathType.HOST) {
-                    String folder = Core.getSingleProperty(item, "folder");
+                    String folder = LexiCom.getSingleProperty(item, "folder");
                     if (folder!=null) {
                         folder = folder.replace('\\', '/');
                         name = folder+"/"+name;
@@ -727,7 +727,7 @@ public class Shell extends REPL {
         for (String prop : props) {
             boolean has;
             try {
-                has = Core.hasProperty(path, prop);
+                has = LexiCom.hasProperty(path, prop);
                 report(qq(pathname)+(has?" has    ":" has no ")+prop);
             } catch (Exception e) {
                 report(qq(pathname)+" error  "+prop+": "+e.getMessage());
@@ -740,7 +740,7 @@ public class Shell extends REPL {
         for (String prop : props) {
             String[] values;
             try {
-                values = Core.getProperty(path, prop);
+                values = LexiCom.getProperty(path, prop);
                 if (values==null) {
                     report(path+"."+prop+" not found");
                 } else if (values.length==1) {
@@ -757,21 +757,21 @@ public class Shell extends REPL {
     public void set(String pathname, String property, String...value) throws Exception {
         Path path = Path.parsePath(pathname);
         if (value.length==0) {
-            Core.setProperty(path, property, (String) null);
+            LexiCom.setProperty(path, property, (String) null);
         } else if (value.length==1) {
-            Core.setProperty(path, property, value[0]);
+            LexiCom.setProperty(path, property, value[0]);
         } else {
-            Core.setProperty(path, property, value);
+            LexiCom.setProperty(path, property, value);
         }
         if (autosave) {
-            Core.save(path);
+            LexiCom.save(path);
         }
     }
     @Command(name="exists", args="path...", comment="check for object")
     public void exists(String...argv) {
         for (String arg : argv) {
             try {
-                boolean exists = Core.exists(Path.parsePath(arg));
+                boolean exists = LexiCom.exists(Path.parsePath(arg));
                 report(arg+(exists?" exists":" doesn't exist"));
             } catch (Exception e) {
                 error("error checking "+arg, e);
@@ -781,11 +781,11 @@ public class Shell extends REPL {
     @Command(name="rename", args="path alias", comment="rename object")
     public void rename(String pathname, String alias) throws Exception {
         Path path = Path.parsePath(pathname);
-        Core.rename(path, alias);
+        LexiCom.rename(path, alias);
     }
     @Command(name="lookup_host", args="id", comment="lookup host by id")
     public void lookup_host(String id) throws Exception {
-        Path found = Core.lookup(PathType.HOST, id);
+        Path found = LexiCom.lookup(PathType.HOST, id);
         if (found==null) {
             error("lookup["+id+"] not found");
         } else {
@@ -794,7 +794,7 @@ public class Shell extends REPL {
     }
     @Command(name="lookup_mailbox", args="id", comment="lookup mailbox by id")
     public void lookup_mailbox(String id) throws Exception {
-        Path found = Core.lookup(PathType.MAILBOX, id);
+        Path found = LexiCom.lookup(PathType.MAILBOX, id);
         if (found==null) {
             error("lookup["+id+"] not found");
         } else {
@@ -824,7 +824,7 @@ public class Shell extends REPL {
             for (String arg : argv) {
                 Path path = Path.parsePath(arg);
                 try {
-                    Core.save(path);
+                    LexiCom.save(path);
                 } catch (Exception e) {
                     error("error saving "+arg, e);
                 }
@@ -871,7 +871,7 @@ public class Shell extends REPL {
     private String vlenc(String s) {
         try {
             String alias = UUID.randomUUID().toString();
-            Host host = Core.activateHost(HostType.FTP, alias);
+            Host host = LexiCom.activateHost(HostType.FTP, alias);
             host.save();
             Mailbox mailbox = host.getMailboxes()[0];
             mailbox.setProperty("Password", s);
@@ -905,7 +905,7 @@ public class Shell extends REPL {
                 fis.close();
                 src = new String(buf);
             }
-            String enc = Core.encrypt(src);
+            String enc = LexiCom.encrypt(src);
             if (argv.length>1) {
                 File out = new File(argv[1]);
                 FileOutputStream fos = new FileOutputStream(out);
@@ -946,7 +946,7 @@ public class Shell extends REPL {
                 }
                 d2 = vldec(src);
                 try {
-                    src = Core.decrypt(src);
+                    src = LexiCom.decrypt(src);
                 } catch (Exception ignore) {}
             }
             if (argv.length>1) {
@@ -1092,7 +1092,7 @@ public class Shell extends REPL {
     public void remove(String...argv) {
         for (String arg : argv) {
             try {
-                Core.remove(Path.parsePath(arg));
+                LexiCom.remove(Path.parsePath(arg));
             } catch (Exception e) {
                 error("error removing "+arg, e);
             }
@@ -1117,13 +1117,13 @@ public class Shell extends REPL {
             xml.file = Util.file2string(fn);
         } catch (FileNotFoundException e1) {
             try {
-                xml.file = Util.file2string(new File(Core.getHome(), fn));
+                xml.file = Util.file2string(new File(LexiCom.getHome(), fn));
             } catch (FileNotFoundException e2) {
                 try {
-                    xml.file = Util.file2string(new File(new File(Core.getHome(), "conf"), fn));
+                    xml.file = Util.file2string(new File(new File(LexiCom.getHome(), "conf"), fn));
                 } catch (FileNotFoundException e3) {
                     try {
-                        xml.file = Util.file2string(new File(new File(Core.getHome(), "hosts"), fn));
+                        xml.file = Util.file2string(new File(new File(LexiCom.getHome(), "hosts"), fn));
                     } catch (FileNotFoundException e4) {
                         return null;
                     }
@@ -1159,7 +1159,7 @@ public class Shell extends REPL {
             if (argv.length==0) {
                 // usage: opts
                 // just dumps out core iLexCom options
-                Options o = Core.getOptions();
+                Options o = LexiCom.getOptions();
                 Util.report_bean(this, o);
             } else {
                 String name = argv[0];
@@ -1375,7 +1375,7 @@ public class Shell extends REPL {
             this.vendor     = Vendor.valueOf(this.connection.split(":")[1].toUpperCase()); // jdbc:vendor:stuff
         }
         public Options.DBConnection getDBConnection() throws Exception {
-            Options.DBConnection c = Core.getOptions().new DBConnection(); 
+            Options.DBConnection c = LexiCom.getOptions().new DBConnection(); 
             c.setConnectionType(this.type);
             c.setConnectionString(this.connection);
             c.setDriverString(this.driver);
@@ -1392,7 +1392,7 @@ public class Shell extends REPL {
             String command = argv[0];
             String string  = argv[1];
             try {
-                Options o = Core.getOptions();
+                Options o = LexiCom.getOptions();
                 if (command.equalsIgnoreCase("find")) {
                     Options.DBConnection c = o.findDBConnection(string);
                     if (c==null) {
@@ -1521,21 +1521,21 @@ public class Shell extends REPL {
     }
     @Command(name="xferlog_off", comment="disable transfer logging")
     public void xferlog_off() throws Exception {
-        Options o = Core.getOptions();
+        Options o = LexiCom.getOptions();
         o.setTransferLogging(Options.TRANSFER_LOG_OFF);
         o.setTransferLoggingEnabled(false);
         o.save();
     }
     @Command(name="xferlog_xml", comment="log transfers to XML")
     public void xferlog_xml() throws Exception {
-        Options o = Core.getOptions();
+        Options o = LexiCom.getOptions();
         o.setTransferLogging(Options.TRANSFER_LOG_XML);
         o.setTransferLoggingEnabled(true);
         o.save();
     }
     @Command(name="xferlog", args="type:user:password@host[:port]/db", comment="log transfers to database")
     public void xferlog(String db) throws Exception {
-        Options o = Core.getOptions();
+        Options o = LexiCom.getOptions();
         DBOptions dbo = new DBOptions(db);
         o.setTransferLogging(Options.TRANSFER_LOG_DATABASE);
         o.setTransferLoggingDBConnectionStr(dbo.connection);
@@ -1573,8 +1573,8 @@ public class Shell extends REPL {
             // output format is the host commands to set the hosts up
             try {
                 Host[] hosts = (argv.length==0 || argv[0].equals("*"))
-                               ? Core.getHosts()
-                               : new Host[] {Core.getHost(argv[0])};
+                               ? LexiCom.getHosts()
+                               : new Host[] {LexiCom.getHost(argv[0])};
                 for (Host h : hosts) {
                     if (h==null) {
                         error("host "+qq(argv[0])+" not found");
@@ -1597,7 +1597,7 @@ public class Shell extends REPL {
                             output.add("host "+qq(folder+alias)+" "+qq(url.toString()));
                         }
                         for (Mailbox m : h.getMailboxes()) {
-                            if (!Core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
+                            if (!LexiCom.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                             if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
                                 // get the properties
                                 Map<String,String> mprops = Defaults.suppressMailboxDefaults(type, m.getProperties());
@@ -1704,9 +1704,9 @@ public class Shell extends REPL {
         }
         try {
             // create (or update) the host
-            Host host = Core.getHost(alias);
+            Host host = LexiCom.getHost(alias);
             if (host==null) {
-                host = Core.activateHost(u.getType(), alias);
+                host = LexiCom.activateHost(u.getType(), alias);
                 report("created new host "+alias);
                 // change "myMailbox" to "template mailbox" - just because
                 Mailbox template = host.getMailbox("myMailbox");
@@ -1814,9 +1814,9 @@ public class Shell extends REPL {
             // export all scheduled actions
             // output format is the action commands to set the actions up
             try {
-                for (ISchedule.Item schedule : Core.getSchedule().listItems()) {
+                for (ISchedule.Item schedule : LexiCom.getSchedule().listItems()) {
                     Path path = new Path(schedule.getAction());
-                    String[] commands = Core.getProperty(path, "Commands")[0].split("\n");
+                    String[] commands = LexiCom.getProperty(path, "Commands")[0].split("\n");
                     report("action "+qq(path.toString())+" ", S.join(" \\\n",qq(commands)));
                 }
             } catch (Exception e) {
@@ -1826,16 +1826,16 @@ public class Shell extends REPL {
             // usage: action *
             // export all (and I mean all) actions
             try {
-                for (Host h : Core.getHosts()) {
+                for (Host h : LexiCom.getHosts()) {
                     for (Item i : h.getChildren(PathType.HOST_ACTION)) {
                         report("got item "+i.getPath());
-                        String[] commands = S.s(Core.getSingleProperty(i.getPath(), "Commands")).split("\n");
+                        String[] commands = S.s(LexiCom.getSingleProperty(i.getPath(), "Commands")).split("\n");
                         report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
                     }
                     for (Mailbox m : h.getMailboxes()) {
-                        if (!Core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
+                        if (!LexiCom.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                         for (Item i : m.getChildren(PathType.ACTION)) {
-                            String[] commands = S.s(Core.getSingleProperty(i.getPath(), "Commands")).split("\n");
+                            String[] commands = S.s(LexiCom.getSingleProperty(i.getPath(), "Commands")).split("\n");
                             report("action "+qq(i.getPath().toString())+" \\\n  "+S.join(" \\\n  ",qq(commands)));
                         }
                     }
@@ -1853,10 +1853,10 @@ public class Shell extends REPL {
                 List<Path> actions = new ArrayList<Path>();
                 switch (path.getType()) {
                 case HOST:
-                    actions.addAll(Arrays.asList(Core.list(PathType.HOST_ACTION, path)));
+                    actions.addAll(Arrays.asList(LexiCom.list(PathType.HOST_ACTION, path)));
                     break;
                 case MAILBOX:
-                    actions.addAll(Arrays.asList(Core.list(PathType.ACTION, path)));
+                    actions.addAll(Arrays.asList(LexiCom.list(PathType.ACTION, path)));
                     break;
                 case ACTION:
                 case HOST_ACTION:
@@ -1866,7 +1866,7 @@ public class Shell extends REPL {
                     error("this type of path does not have actions");
                 }
                 for (Path action : actions) {
-                    String[] commands = Core.getProperty(action, "Commands")[0].split("\n");
+                    String[] commands = LexiCom.getProperty(action, "Commands")[0].split("\n");
                     report("action "+qq(action.toString())+" ", S.join("\\\n",qq(commands)));
                 }
             } catch (Exception e) {
@@ -1880,11 +1880,11 @@ public class Shell extends REPL {
             } else {
                 String commands = S.join("\n", 1, argv);
                 try {
-                    if (!Core.exists(path)) {
-                        path = Core.create(path);
+                    if (!LexiCom.exists(path)) {
+                        path = LexiCom.create(path);
                     }
-                    Core.setProperty(path, "Commands", commands);
-                    Core.save(path);
+                    LexiCom.setProperty(path, "Commands", commands);
+                    LexiCom.save(path);
                     report(name, commands);
                 } catch (Exception e) {
                     error("error creating action "+name, e);
@@ -1899,7 +1899,7 @@ public class Shell extends REPL {
             // export all configured schedules
             // output format is the schedule commands to set the schedules up
             try {
-                for (ISchedule.Item schedule : Core.getSchedule().listItems()) {
+                for (ISchedule.Item schedule : LexiCom.getSchedule().listItems()) {
                     report("schedule "+qq(new Path(schedule.getAction()).toString())+" "+
                            new Schedule(schedule).toString());
                 }
@@ -1954,17 +1954,17 @@ public class Shell extends REPL {
     public void scheduler(String...argv) {
         try {
             if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("on")) {
-                Core.getSchedule().setAutoStartup(true);
-                Core.getSchedule().save();
+                LexiCom.getSchedule().setAutoStartup(true);
+                LexiCom.getSchedule().save();
                 report("scheduler autostart set to on");
             } else if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("off")) {
-                Core.getSchedule().setAutoStartup(false);
+                LexiCom.getSchedule().setAutoStartup(false);
                 report("scheduler autostart set to off");
-                Core.getSchedule().save();
+                LexiCom.getSchedule().save();
             } else if (argv.length==1 && argv[0].equalsIgnoreCase("autostart")) {
-                report("scheduler autostart is "+(Core.getSchedule().isAutoStartup()?"on":"off"));
+                report("scheduler autostart is "+(LexiCom.getSchedule().isAutoStartup()?"on":"off"));
             } else if (argv.length==1 && argv[0].equalsIgnoreCase("start")) {
-                Core.startService();
+                LexiCom.startService();
             } else {
                 error("usage: scheduler (autostart [on|off] | start)");
             }

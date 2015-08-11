@@ -1285,14 +1285,14 @@ public class Defaults {
         Map<String,String> hostprops;
         Map<String,String> mailboxprops;
         try {
-            Host host = Core.activateHost(type, ALIAS);
+            Host host = LexiCom.activateHost(type, ALIAS);
             host.save();
             Mailbox mailbox = host.getMailboxes()[0];
             hostprops = host.getProperties();
             mailboxprops = mailbox.getProperties();
 
-            String hostclass = Core.decode(hostprops.get(".class"));
-            String mailboxclass = Core.decode(mailboxprops.get(".class"));
+            String hostclass = LexiCom.decode(hostprops.get(".class"));
+            String mailboxclass = LexiCom.decode(mailboxprops.get(".class"));
             out.println(type.name() + ": "+ hostclass + " / "+ mailboxclass);
             Class<?> beanclass = Class.forName(hostclass);
             Object bean = beanclass.newInstance();
@@ -1307,7 +1307,7 @@ public class Defaults {
                 }
             }
 
-            Core.remove(host.getPath());
+            LexiCom.remove(host.getPath());
             return bean;
         } catch (Exception e) {
             e.printStackTrace();
@@ -1356,7 +1356,7 @@ public class Defaults {
             return null;
         }
         Map<String,String> result = new HashMap<String,String>();
-        Class<?> beanclass = Class.forName(Core.decode(item.getProperties().get(".class")));
+        Class<?> beanclass = Class.forName(LexiCom.decode(item.getProperties().get(".class")));
         Object bean = beanclass.newInstance();
         //Properties defaults = bean.defaultProperties;
         PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();
