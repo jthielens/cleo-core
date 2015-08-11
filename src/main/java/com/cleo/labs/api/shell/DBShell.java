@@ -83,8 +83,8 @@ public class DBShell extends REPL {
             this.password   = c.getPassword();
             this.vendor     = Vendor.valueOf(this.connection.split(":")[1].toUpperCase()); // jdbc:vendor:stuff
         }
-        public Options.DBConnection getDBConnection(Core core) throws Exception {
-            Options.DBConnection c = core.getLexiCom().getOptions().new DBConnection(); 
+        public Options.DBConnection getDBConnection() throws Exception {
+            Options.DBConnection c = Core.getOptions().new DBConnection(); 
             c.setConnectionType(this.type);
             c.setConnectionString(this.connection);
             c.setDriverString(this.driver);

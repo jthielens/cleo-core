@@ -432,15 +432,9 @@ public class Util {
         }
     }
     public static ReadResult file2string(String fn) throws IOException {
-        return file2string(new File(fn), null);
+        return file2string(new File(fn));
     }
     public static ReadResult file2string(File f) throws IOException {
-        return file2string(f, null);
-    }
-    public static ReadResult file2string(String fn, Core core) throws IOException {
-        return file2string(new File(fn), core);
-    }
-    public static ReadResult file2string(File f, Core core) throws IOException {
         ReadResult result = new ReadResult();
         byte buf[] = new byte[(int)f.length()];
         FileInputStream fis = null;
@@ -448,13 +442,11 @@ public class Util {
             fis = new FileInputStream(f);
             fis.read(buf);
             result.file = f;
-            if (core!=null) {
-                try {
-                    result.contents = core.decrypt(DatatypeConverter.printBase64Binary(buf));
-                    result.encrypted = true;
-                } catch (Exception e) {
-                    // fall through to unencrypted write
-                }
+            try {
+                result.contents = Core.decrypt(DatatypeConverter.printBase64Binary(buf));
+                result.encrypted = true;
+            } catch (Exception e) {
+                // fall through to unencrypted write
             }
         } finally {
             if (fis!=null) fis.close();
@@ -465,18 +457,18 @@ public class Util {
         return result;
     }
     public static void string2file(String fn, String contents) throws Exception {
-        string2file(new ReadResult(new File(fn), contents, false), null);
+        string2file(new ReadResult(new File(fn), contents, false));
     }
     public static void string2file(File f, String contents) throws Exception {
-        string2file(new ReadResult(f, contents, false), null);
+        string2file(new ReadResult(f, contents, false));
     }
-    public static void string2file(ReadResult result, Core core) throws Exception {
+    public static void string2file(ReadResult result) throws Exception {
         FileOutputStream fos = null;
         try {
             result.file.renameTo(new File(result.file.getAbsolutePath()+".bak"));
             fos = new FileOutputStream(result.file);
             if (result.encrypted) {
-                fos.write(DatatypeConverter.parseBase64Binary(core.encrypt(result.contents)));
+                fos.write(DatatypeConverter.parseBase64Binary(Core.encrypt(result.contents)));
             } else {
                 fos.write(result.contents.getBytes());
             }

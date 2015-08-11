@@ -14,23 +14,22 @@ import com.cleo.lexicom.external.LexiComLogListener;
 
 public class Item {
 
-    protected Core core;
     protected Path path;
 
-    public static Item getItem(Core core, String...path) throws Exception {
-        return getItem(core, new Path(path));
+    public static Item getItem(String...path) throws Exception {
+        return getItem(new Path(path));
     }
 
-    public static Item getItem(Core core, Path path) {
+    public static Item getItem(Path path) {
         switch (path.getType()) {
         case HOST:
-            return new Host(core, path);
+            return new Host(path);
         case MAILBOX:
-            return new Mailbox(core, path);
+            return new Mailbox(path);
         case ACTION:
-            return new Action(core, path);
+            return new Action(path);
         case HOST_ACTION:
-            return new HostAction(core, path);
+            return new HostAction(path);
         default:
             return null;
         }
@@ -40,21 +39,20 @@ public class Item {
         return path;
     }
 
-    public Item(Core core, Path path) {
-        this.core = core;
+    public Item(Path path) {
         this.path = path;
     }
 
     public boolean hasProperty(String property) throws Exception {
-        return core.hasProperty(path, property);
+        return Core.hasProperty(path, property);
     }
 
     public String[] getProperty(String property) throws Exception {
-        return core.getProperty(path, property);
+        return Core.getProperty(path, property);
     }
 
     public String getSingleProperty(String property) throws Exception {
-        return core.getSingleProperty(path, property);
+        return Core.getSingleProperty(path, property);
     }
 
     public boolean matchPropertyIgnoreCase(String property, String match) throws Exception {
@@ -80,15 +78,15 @@ public class Item {
         return false;
     }
     public void setProperty(String property, String value) throws Exception {
-        core.setProperty(path, property, value);
+        Core.setProperty(path, property, value);
     }
 
     public void setProperty(String property, String[] values) throws Exception {
-        core.setProperty(path, property, values);
+        Core.setProperty(path, property, values);
     }
 
     public boolean exists() throws Exception {
-        return core.exists(path);
+        return Core.exists(path);
     }
 
     private Node subnode(String type, String name, Node node) {
@@ -109,7 +107,7 @@ public class Item {
         return null;
     }
     public Node getNode() throws Exception {
-        Node node = core.getHostDocument(path).getDocumentElement();
+        Node node = Core.getHostDocument(path).getDocumentElement();
         switch (path.getType()) {
         case MAILBOX:
             node = subnode("Mailbox",    path.getPath()[1], node);
@@ -142,10 +140,10 @@ public class Item {
     }
     private static final Map<String,Map<String,String>> defaults = new HashMap<String,Map<String,String>>();
     public Map<String,String> getDefaultProperties() throws Exception {
-        HostType type = new Host(core, path.getHost()).getHostType();
+        HostType type = new Host(path.getHost()).getHostType();
         synchronized (defaults) {
             if (defaults.isEmpty()) {
-                File preconfigured = new File(new File(core.getHome(), "hosts"), "preconfigured");
+                File preconfigured = new File(new File(Core.getHome(), "hosts"), "preconfigured");
                 for (File f : preconfigured.listFiles()) {
                     if (f.isFile() && f.getName().endsWith(".xml")) {
                         try {
@@ -164,37 +162,29 @@ public class Item {
     }
 
     public Item[] getChildren(PathType type) throws Exception {
-        Path[] paths    = core.list(type, path);
+        Path[] paths    = Core.list(type, path);
         Item[] children = new Item[paths.length];
         for (int i=0; i<paths.length; i++) {
-            children[i] = getItem(core, paths[i]);
+            children[i] = getItem(paths[i]);
         }
         return children;
     }
 
     public void save() throws Exception {
-        core.save(path);
+        Core.save(path);
     }
     public void remove() throws Exception {
-        core.remove(path);
+        Core.remove(path);
     }
     public void rename(String alias) throws Exception {
-        core.rename(path, alias);
+        Core.rename(path, alias);
         path.setAlias(alias);
     }
 
     public void addLogListener(LexiComLogListener listener) throws Exception {
-        core.getLexiCom().addLogListener(listener, path.getPath(), path.getType().id);
+        Core.addLogListener(listener, path);
     }
     public void removeLogListener(LexiComLogListener listener) throws Exception {
-        core.getLexiCom().removeLogListener(listener, path.getPath(), path.getType().id);
-    }
-
-    public String decode(String encoded) throws Exception {
-        return core.decode(encoded);
-    }
-
-    public String encode(String decoded) throws Exception {
-        return core.encode(decoded);
+        Core.removeLogListener(listener, path);
     }
 }

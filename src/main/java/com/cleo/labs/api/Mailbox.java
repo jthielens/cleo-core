@@ -19,15 +19,15 @@ public class Mailbox extends Item {
     private IMailboxController controller = null;
     private String             lastResult = null;
 
-    public Mailbox(Core core, Path path) {
-        super(core, path);
+    public Mailbox(Path path) {
+        super(path);
         if (path.getType() != PathType.MAILBOX) {
             throw new IllegalArgumentException();
         }
     }
 
-    public Mailbox(Core core, String host, String mailbox) {
-        super(core, new Path(PathType.MAILBOX, host, mailbox));
+    public Mailbox(String host, String mailbox) {
+        super(new Path(PathType.MAILBOX, host, mailbox));
     }
 
     public String getLastResult() {
@@ -35,7 +35,7 @@ public class Mailbox extends Item {
     }
 
     public Host getHost() throws Exception {
-        return new Host(core, path.getHost());
+        return new Host(path.getHost());
     }
 
     public Action[] getActions() throws Exception {
@@ -45,21 +45,21 @@ public class Mailbox extends Item {
 
     public Action getAction(String alias) throws Exception {
         Path test = path.getChild(PathType.ACTION, alias);
-        if (core.exists(test)) {
-            return new Action(core, test);
+        if (Core.exists(test)) {
+            return new Action(test);
         }
         return null;
     }
 
     private synchronized void connect() throws Exception {
         if (controller==null) {
-            controller = core.getMailboxController(path);
+            controller = Core.getMailboxController(path);
         }
     }
 
     public Action newTempAction(String alias) throws Exception {
         connect();
-        return new Action(core, new Path(controller.createTempAction(alias)));
+        return new Action(new Path(controller.createTempAction(alias)));
     }
 
     public boolean send(File f, String folder, String as, LexiComLogListener listener) throws Exception {

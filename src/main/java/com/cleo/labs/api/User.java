@@ -77,7 +77,7 @@ public class User {
             }
             password = properties.remove("Password");
             if (password!=null) {
-                password = m.decode(password);
+                password = Core.decode(password);
             }
             note("user from host "+h.getPath().getAlias()+" mailbox "+username);
         }
@@ -125,12 +125,12 @@ public class User {
         }
     }
 
-    public static Description[] list(Core core, Filter filter) throws Exception {
+    public static Description[] list(Filter filter) throws Exception {
         List<Description> users = new ArrayList<Description>();
-        for (Host h : core.getHosts()) {
+        for (Host h : Core.getHosts()) {
             if (h.isLocal() && h.getHostType()!=null) {
                 for (Mailbox m : h.getMailboxes()) {
-                    if (!core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
+                    if (!Core.exists(m.getPath())) continue; // I don't know why VL returns non-existing ones, but it does
                     if (m.getSingleProperty("enabled").equalsIgnoreCase("True")) {
                         Description u = new Description(h, m);
                         if (filter==null || filter.accept(u)) {
@@ -143,9 +143,9 @@ public class User {
         return users.toArray(new Description[users.size()]);
     }
 
-    private static Host find_host(Core core, Description user) throws Exception {
+    private static Host find_host(Description user) throws Exception {
         String hostalias;
-        Host host = core.findLocalHost(user.type, user.root, user.folder);
+        Host host = Core.findLocalHost(user.type, user.root, user.folder);
         if (host==null) {
             hostalias = user.typename+S.all(":", user.root)+" users";
             if (user.folder!=null) {
@@ -154,17 +154,17 @@ public class User {
             }
 user.note("host not found: proposing "+hostalias);
             //hostalias.replace('/', '#');
-            if (core.exists(new Path(hostalias))) {
+            if (Core.exists(new Path(hostalias))) {
                 int uniquer = 0;
                 String test;
                 do {
                     uniquer++;
                     test = hostalias+"["+uniquer+"]";
-                } while (core.exists(new Path(test)));
+                } while (Core.exists(new Path(test)));
                 hostalias = test;
 user.note("had to make it unique as "+hostalias);
             }
-            host = core.activateHost(user.type, hostalias);
+            host = Core.activateHost(user.type, hostalias);
             if (user.folder!=null) {
 user.note("setting folder "+user.folder);
                 host.setProperty("folder", user.folder);
@@ -198,8 +198,8 @@ user.note("found host "+hostalias);
         return host;
     }
 
-    public static Description update(Core core, Description user) throws Exception {
-        Host host = find_host(core, user);
+    public static Description update(Description user) throws Exception {
+        Host host = find_host(user);
         // got host -- find "mailbox"
         Mailbox mailbox = host.findMailbox(user.username, user.password);
         if (mailbox==null) {
@@ -233,8 +233,8 @@ user.note("found host "+hostalias);
         return user;
     }
 
-    public static Description remove(Core core, Description user) throws Exception {
-        Host host = core.findLocalHost(user.type, user.root, user.folder);
+    public static Description remove(Description user) throws Exception {
+        Host host = Core.findLocalHost(user.type, user.root, user.folder);
         if (host==null) {
             user.note("user not removed: host not found");
         } else {
@@ -242,7 +242,7 @@ user.note("found host "+hostalias);
             if (mailbox==null) {
                 user.note("user not removed: mailbox not found");
             } else {
-                core.remove(mailbox.getPath());
+                Core.remove(mailbox.getPath());
                 user.note("user "+user.username+" removed");
             }
         }

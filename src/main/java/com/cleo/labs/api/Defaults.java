@@ -1281,20 +1281,20 @@ public class Defaults {
                 .replaceAll("\"", "\\\\\"");
     }
     private static final String ALIAS = UUID.randomUUID().toString();
-    public static Object printDefaults(PrintStream out, Core core, HostType type) {
+    public static Object printDefaults(PrintStream out, HostType type) {
         Map<String,String> hostprops;
         Map<String,String> mailboxprops;
         try {
-            Host host = core.activateHost(type, ALIAS);
+            Host host = Core.activateHost(type, ALIAS);
             host.save();
             Mailbox mailbox = host.getMailboxes()[0];
             hostprops = host.getProperties();
             mailboxprops = mailbox.getProperties();
 
-            String hostclass = core.decode(hostprops.get(".class"));
-            String mailboxclass = core.decode(mailboxprops.get(".class"));
+            String hostclass = Core.decode(hostprops.get(".class"));
+            String mailboxclass = Core.decode(mailboxprops.get(".class"));
             out.println(type.name() + ": "+ hostclass + " / "+ mailboxclass);
-            Class beanclass = Class.forName(hostclass);
+            Class<?> beanclass = Class.forName(hostclass);
             Object bean = beanclass.newInstance();
             //Properties defaults = bean.defaultProperties;
             PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();
@@ -1307,7 +1307,7 @@ public class Defaults {
                 }
             }
 
-            core.remove(host.getPath());
+            Core.remove(host.getPath());
             return bean;
         } catch (Exception e) {
             e.printStackTrace();
@@ -1331,9 +1331,9 @@ public class Defaults {
         out.printf("        mailboxmap.put(HostType.%s, map);\n", type.name());
 */
     }
-    public static void printAllDefaults(PrintStream out, Core core) {
+    public static void printAllDefaults(PrintStream out) {
         for (HostType t : HostType.values()) {
-            printDefaults(out, core, t);
+            printDefaults(out, t);
         }
     }
 
@@ -1356,7 +1356,7 @@ public class Defaults {
             return null;
         }
         Map<String,String> result = new HashMap<String,String>();
-        Class beanclass = Class.forName(item.decode(item.getProperties().get(".class")));
+        Class<?> beanclass = Class.forName(Core.decode(item.getProperties().get(".class")));
         Object bean = beanclass.newInstance();
         //Properties defaults = bean.defaultProperties;
         PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();

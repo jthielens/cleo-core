@@ -4,19 +4,19 @@ import com.cleo.labs.api.constant.PathType;
 import com.cleo.lexicom.external.ISchedule;
 
 public class Action extends Item {
-    public Action(Core core, Path path) {
-        super(core, path);
+    public Action(Path path) {
+        super(path);
         if (path.getType() != PathType.ACTION) {
             throw new IllegalArgumentException();
         }
     }
 
-    public Action(Core core, String host, String mailbox, String action) {
-        super(core, new Path(PathType.ACTION, host, mailbox, action));
+    public Action(String host, String mailbox, String action) {
+        super(new Path(PathType.ACTION, host, mailbox, action));
     }
     
     public Schedule getSchedule() throws Exception {
-        ISchedule.Item s = core.getLexiCom().getSchedule().findItem(getPath().getPath());
+        ISchedule.Item s = Core.getSchedule().findItem(getPath().getPath());
         if (s==null) {
             return null;
         } else {
@@ -25,7 +25,7 @@ public class Action extends Item {
     }
 
     public void setSchedule(Schedule schedule) throws Exception {
-        ISchedule scheduler = core.getLexiCom().getSchedule();
+        ISchedule scheduler = Core.getSchedule();
         if (schedule==null) {
             scheduler.removeItem(getPath().getPath(), true);
         } else {

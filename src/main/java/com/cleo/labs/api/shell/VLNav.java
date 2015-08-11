@@ -302,10 +302,8 @@ public class VLNav {
     }
 
     private DB   db;
-    private Core core;
-    public VLNav(DB db, Core core) {
+    public VLNav(DB db) {
         this.db   = db;
-        this.core = core;
     }
 
     private Map<String,Integer> entity_type  = null;
@@ -801,7 +799,7 @@ public class VLNav {
                     this.alias = values[i];
                 } else if (column.equalsIgnoreCase("UserPassword")) {
                     try {
-                        this.password = core.decode(values[i]);
+                        this.password = Core.decode(values[i]);
                     } catch (Exception e) {
                         this.password = values[i];
                     }
@@ -881,7 +879,7 @@ public class VLNav {
                             after.fullname, after.gid, etype, true, false, false); // IS, IS, ISNT);
             db.insert("VLUser",
                       S.a("VLEntityID","FirstName","LastName","BuildFullName","UserName","Alias","LDAPUser","UserPassword"),
-                      eid, after.first, after.last, after.build, after.username, after.alias, false, core.encode(after.password));
+                      eid, after.first, after.last, after.build, after.username, after.alias, false, Core.encode(after.password));
             if (!S.empty(after.email)) {
                 db.insert("VLContact", CONTACT_COLUMNS, eid, emailContact, after.email, false);
             }
@@ -919,7 +917,7 @@ public class VLNav {
             if (user_updated) {
                 DB.Selection user = db.new Selection("VLUser", S.a("VLEntityID"), eid);
                 user.update(S.a("FirstName","LastName","BuildFullName","UserName","Alias","UserPassword"),
-                            after.first, after.last, after.build, after.username, after.alias, core.encode(after.password));
+                            after.first, after.last, after.build, after.username, after.alias, Core.encode(after.password));
             }
             // VLContact: add/modify/update
             after.email = update_user_contact(eid, before.email, after.email, emailContact);

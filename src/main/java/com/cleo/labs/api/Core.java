@@ -15,89 +15,100 @@ import com.cleo.labs.api.constant.HostType;
 import com.cleo.labs.api.constant.Mode;
 import com.cleo.labs.api.constant.PathType;
 import com.cleo.labs.api.constant.Product;
+import com.cleo.labs.api.constant.Protocol;
 import com.cleo.lexicom.LexiComException;
+import com.cleo.lexicom.beans.Options;
+import com.cleo.lexicom.certmgr.external.ICertManagerRunTime;
 import com.cleo.lexicom.external.ILexiCom;
+import com.cleo.lexicom.external.ILicense;
+import com.cleo.lexicom.external.ILicenser;
 import com.cleo.lexicom.external.IMailboxController;
+import com.cleo.lexicom.external.ISchedule;
 import com.cleo.lexicom.external.LexiComFactory;
+import com.cleo.lexicom.external.LexiComLogListener;
 
 public class Core {
-    private Product  product;
-    private Mode     mode;
-    private File     home;
-    private ILexiCom lexicom;
-    private Mode     connect_mode;
+    private static Product  product;
+    private static Mode     mode;
+    private static File     home;
+    private static ILexiCom lexicom;
 
-    public Product getProduct() {
+    public static Product getProduct() {
         return product;
     }
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-    public Mode getMode() {
+    public static Mode getMode() {
         return mode;
     }
-    public void setMode(Mode mode) {
-        this.mode = mode;
-    }
-    public File getHome() {
+    public static File getHome() {
         return home;
     }
-    public void setHome(File home) {
-        this.home = home;
-        for (Product product : Product.values()) {
-            if (new File(home, product.proof).exists()) {
-                this.product = product;
-                break;
+    public static void setMode(Mode mode) {
+        if (connected()) {
+            if (mode!=Core.mode) {
+                throw new IllegalStateException("mode cannot be changed once connected");
             }
         }
+        Core.mode = mode;
     }
-    public ILexiCom getLexiCom() throws Exception {
+    private static Product getProduct(File home) {
+        for (Product product : Product.values()) {
+            if (new File(home, product.proof).exists()) {
+                return product;
+            }
+        }
+        return null;
+    }
+    public static void setHome(File home) {
+        if (connected()) {
+            if (home!=Core.home) {
+                throw new IllegalStateException("home cannot be changed once connected");
+            }
+        } else {
+            product = getProduct(home);
+            if (product==null) {
+                throw new IllegalArgumentException("no VersaLex found at "+home);
+            }
+            Core.home = home;
+        }
+    }
+    public static ILexiCom getLexiCom() throws Exception {
         connect();
         return lexicom;
     }
 
-    public Core() {
-        this.product      = null;
-        this.mode         = null;
-        this.home         = null;
-        this.lexicom      = null;
-        this.connect_mode = null;
-    }
-    public Core(Product product, Mode mode, File home) throws Exception {
-        this.product      = product;
-        this.mode         = mode;
-        this.home         = home;
-        this.lexicom      = null;
-        this.connect_mode = null;
-        connect();
-    }
+    private Core() {}
 
-    public boolean connected() {
+    public static boolean connected() {
         return lexicom!=null;
     }
 
-    public void connect() throws Exception {
-        if (this.product==null || this.mode==null || this.home==null) {
-            throw new Exception("product, mode, and home must not be null");
-        }
-        if (connect_mode != null && mode != connect_mode) {
-            disconnect();
-        }
+    public static void connect() throws Exception {
         if (!connected()) {
-            lexicom = LexiComFactory.getVersaLex(product.id, home.getAbsolutePath(), mode.id);
-            connect_mode = mode;
+            if (product==null || mode==null || home==null) {
+                lexicom = LexiComFactory.getCurrentInstance();
+                home    = lexicom.getAbsolute(new File("."));
+                product = getProduct(home);
+            } else {
+                lexicom = LexiComFactory.getVersaLex(product.id, home.getAbsolutePath(), mode.id);
+            }
         }
     }
 
-    public void disconnect() throws Exception {
-        if (this.lexicom != null) {
+    public static void disconnect() throws Exception {
+        if (lexicom != null) {
             lexicom.close();
             lexicom = null;
-            connect_mode = null;
         }
     }
-    
-    public Path[] list(PathType type, Path path) throws Exception {
+
+    public static File getAbsolute(File file) throws Exception {
+        return lexicom.getAbsolute(file);
+    }
+    public static String getAbsolute(String path) throws Exception {
+        return lexicom.getAbsolute(path);
+    }
+
+    public static Path[] list(PathType type, Path path) throws Exception {
         connect();
         String[] names = lexicom.list(type.id, path.getPath());
         Path[] paths = new Path[names.length];
@@ -107,27 +118,27 @@ public class Core {
         return paths;
     }
 
-    public Host[] getHosts() throws Exception {
+    public static Host[] getHosts() throws Exception {
         Path[]   paths = list(PathType.HOST, new Path());
         Host[]   hosts = new Host[paths.length];
         for (int i=0; i<paths.length; i++) {
-            hosts[i] = new Host(this, paths[i]);
+            hosts[i] = new Host(paths[i]);
             hosts[i].setSource(HostSource.LIST);
         }
         return hosts;
     }
 
-    public Host getHost(String alias) throws Exception {
+    public static Host getHost(String alias) throws Exception {
         Path test = new Path(PathType.HOST, alias);
         if (exists(test)) {
-            Host host = new Host(this, test);
+            Host host = new Host(test);
             host.setSource(HostSource.GET);
             return host;
         }
         return null;
     }
 
-    public Host findLocalHost(HostType type, String root, String folder) throws Exception {
+    public static Host findLocalHost(HostType type, String root, String folder) throws Exception {
         if (folder==null) folder = "";
         for (Host h : getHosts()) {
             if (h.getHostType()==type &&
@@ -142,7 +153,7 @@ public class Core {
         return null;
     }
 
-    public Host[] findHosts(HostType type, String address, int port) throws Exception {
+    public static Host[] findHosts(HostType type, String address, int port) throws Exception {
         ArrayList<Host> hosts = new ArrayList<Host>();
         for (Host h : getHosts()) {
             if (h.getHostType()==type &&
@@ -159,12 +170,12 @@ public class Core {
         }
     }
 
-    public Document getHostDocument(Path path) throws Exception {
+    public static Document getHostDocument(Path path) throws Exception {
         connect();
         return lexicom.getDocument(path.getPath()[0]);
     }
 
-    public boolean exists(Path path) throws Exception {
+    public static boolean exists(Path path) throws Exception {
         try {
             hasProperty(path, "alias");
             return true;
@@ -275,11 +286,11 @@ public class Core {
         // Now turn it back into a list
         return indexToValues(property, index);
     }
-    public boolean hasProperty(Path path, String property) throws Exception {
+    public static boolean hasProperty(Path path, String property) throws Exception {
         connect();
         return lexicom.hasProperty(path.getType().id, path.getPath(), property);
     }
-    public String[] getProperty(Path path, String name) throws Exception {
+    public static String[] getProperty(Path path, String name) throws Exception {
         connect();
         Property property = new Property(name);
         if (property.name.equalsIgnoreCase("id")) {
@@ -293,12 +304,12 @@ public class Core {
             return lexicom.getProperty(path.getType().id, path.getPath(), property.name);
         }
     }
-    public String getSingleProperty(Path path, String property) throws Exception {
+    public static String getSingleProperty(Path path, String property) throws Exception {
         String[] values = getProperty(path, property);
         if (values!=null) return values[0];
         return null;
     }
-    public void setProperty(Path path, String name, String value) throws Exception {
+    public static void setProperty(Path path, String name, String value) throws Exception {
         connect();
         Property property = new Property(name);
         if (property.isIndexed) {
@@ -332,7 +343,7 @@ public class Core {
             lexicom.setProperty(path.getType().id, path.getPath(), property.name, value);
         }
     }
-    public void setProperty(Path path, String property, String[] value) throws Exception {
+    public static void setProperty(Path path, String property, String[] value) throws Exception {
         connect();
         if (property.equalsIgnoreCase("id")) {
             // use special ID manipulators instead of get/setProperty
@@ -360,7 +371,7 @@ public class Core {
         }
     }
 
-    public Path lookup(PathType type, String id) throws Exception {
+    public static Path lookup(PathType type, String id) throws Exception {
         connect();
         String[] path = lexicom.getPath(type.id, id);
         if (path==null) {
@@ -370,7 +381,7 @@ public class Core {
         }
     }
 
-    public void save(Path path) throws Exception {
+    public static void save(Path path) throws Exception {
         connect();
         if (path.getType() == PathType.HOST) {
             lexicom.save(path.getAlias());
@@ -379,51 +390,104 @@ public class Core {
         }
     }
 
-    public void rename(Path path, String alias) throws Exception {
+    public static void rename(Path path, String alias) throws Exception {
         connect();
         lexicom.rename(path.getType().id, path.getPath(), alias);
     }
 
-    public void remove(Path path) throws Exception {
+    public static void remove(Path path) throws Exception {
         connect();
         lexicom.remove(path.getType().id, path.getPath());
     }
 
-    public Path create(Path path) throws Exception {
+    public static Path create(Path path) throws Exception {
         connect();
         Path parent = path.getParent();
         String alias = lexicom.create(path.getType().id, parent.getPath(), path.getAlias(), false);
         return parent.getChild(path.getType(), alias);
     }
 
-    public Path clone(Path path, String alias) throws Exception {
+    public static Path clone(Path path, String alias) throws Exception {
         connect();
         alias = lexicom.clone(path.getType().id, path.getPath(), alias, false);
         return path.getParent().getChild(path.getType(), alias);
     }
 
-    public Host activateHost (HostType type, String alias) throws Exception {
+    public static Host activateHost (HostType type, String alias) throws Exception {
         connect();
         String hostName = lexicom.activateHost(type.template, alias, false);
-        Host host = new Host(this, hostName);
+        Host host = new Host(hostName);
         host.setSource(HostSource.ACTIVATE);
         return host;
     }
 
-    public IMailboxController getMailboxController (Path mailbox) throws Exception {
+    public static IMailboxController getMailboxController (Path mailbox) throws Exception {
         connect();
         return lexicom.getMailboxController(mailbox.getPath());
     }
-    
+
+    public static ICertManagerRunTime getCertManager() throws Exception {
+        return lexicom.getCertManager();
+    }
+
+    public static ISchedule getSchedule() throws Exception {
+        connect();
+        return lexicom.getSchedule();
+    }
+
+    public static boolean isMultipleIDsAllowed(Path path) throws Exception {
+        return lexicom.isMultipleIDsAllowed(path.getType().id, path.getPath());
+    }
+
+    public static void setMultipleIDsAllowed(Path path, boolean allowed) throws Exception {
+        lexicom.setMultipleIDsAllowed(path.getType().id, path.getPath(), allowed);
+    }
+
+    public static boolean isLocal(Path host) throws Exception {
+        return lexicom.isLocal(host.getPath()[0]);
+    }
+
+    public static Protocol getHostProtocol(Path host) throws Exception {
+        return Protocol.valueOf(lexicom.getHostProtocol(host.getPath()[0]));
+    }
+
+    public static com.cleo.lexicom.external.HostType[] listHostTypes() throws Exception {
+        return lexicom.listHostTypes();
+    }
+
+    public static void addLogListener(LexiComLogListener listener, Path path) throws Exception {
+        lexicom.addLogListener(listener, path.getPath(), path.getType().id);
+    }
+
+    public static void removeLogListener(LexiComLogListener listener, Path path) throws Exception {
+        lexicom.removeLogListener(listener, path.getPath(), path.getType().id);
+    }
+
+    public static Options getOptions() throws Exception {
+        return lexicom.getOptions();
+    }
+
+    public static ILicense getLicense() throws Exception {
+        return lexicom.getLicense();
+    }
+
+    public static ILicenser getLicenser() throws Exception {
+        return lexicom.getLicenser();
+    }
+
+    public static void startService() throws Exception {
+        lexicom.startService();
+    }
+
     static final String BEAN_PREFIX = "com.cleo.lexicom.beans";
-    public String encode(String s) throws Exception {
+    public static String encode(String s) throws Exception {
         connect();
         if (s.startsWith(BEAN_PREFIX+".")) {
             s = new StringBuilder(s.substring(BEAN_PREFIX.length())).reverse().toString();
         }
         return lexicom.encode(s);
     }
-    public String decode(String s) throws Exception {
+    public static String decode(String s) throws Exception {
         connect();
         String decoded = lexicom.decode(s);
         if (decoded.matches("[a-zA-Z0-9\\.\\$]+\\.")) {
@@ -432,16 +496,16 @@ public class Core {
         }
         return decoded;
     }
-    public String encrypt(String s) throws Exception {
+    public static String encrypt(String s) throws Exception {
         connect();
         return lexicom.encrypt(s);
     }
-    public String decrypt(String s) throws Exception {
+    public static String decrypt(String s) throws Exception {
         connect();
         return lexicom.decrypt(s);
     }
 
-    public String getVersion() throws Exception {
+    public static String getVersion() throws Exception {
         connect();
         return lexicom.getVersion();
     }

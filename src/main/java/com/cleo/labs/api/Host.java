@@ -18,15 +18,15 @@ public class Host extends Item {
         this.source = source;
     }
 
-    public Host(Core core, Path path) {
-        super(core, path);
+    public Host(Path path) {
+        super(path);
         if (path.getType() != PathType.HOST) {
             throw new IllegalArgumentException();
         }
     }
 
-    public Host(Core core, String host) {
-        super(core, new Path(PathType.HOST, host));
+    public Host(String host) {
+        super(new Path(PathType.HOST, host));
     }
 
     public Mailbox[] getMailboxes() throws Exception {
@@ -36,8 +36,8 @@ public class Host extends Item {
 
     public Mailbox getMailbox(String alias) throws Exception {
         Path test = path.getChild(PathType.MAILBOX, alias);
-        if (core.exists(test)) {
-            return new Mailbox(core, test);
+        if (Core.exists(test)) {
+            return new Mailbox(test);
         }
         return null;
     }
@@ -45,8 +45,8 @@ public class Host extends Item {
     public Mailbox cloneMailbox(String template, String alias) throws Exception {
         Path template_path = path.getChild(PathType.MAILBOX, template);
         if (template_path!=null) {
-            Path mailbox  = core.clone(template_path, alias);
-            return new Mailbox(core, mailbox);
+            Path mailbox  = Core.clone(template_path, alias);
+            return new Mailbox(mailbox);
         } else {
             return createMailbox(alias);
         }
@@ -57,8 +57,8 @@ public class Host extends Item {
     }
 
     public Mailbox createMailbox(String alias) throws Exception {
-        Path mailbox = core.create(path.getChild(PathType.MAILBOX, alias));
-        return new Mailbox(core, mailbox);
+        Path mailbox = Core.create(path.getChild(PathType.MAILBOX, alias));
+        return new Mailbox(mailbox);
     }
 
     public Mailbox findMailbox(String username, String password) throws Exception {
@@ -69,7 +69,7 @@ public class Host extends Item {
             try {
                 if (m.matchProperty(userproperty, username) &&
                     (password==null ||   // null means don't match on password
-                     m.matchProperty(passwordproperty, core.encode(password)))) {
+                     m.matchProperty(passwordproperty, Core.encode(password)))) {
                     return m;
                 }
             } catch (Exception ignore) {
@@ -81,17 +81,17 @@ public class Host extends Item {
 
     // hmm below this line---
     public boolean isMultipleIDsAllowed() throws Exception {
-        return core.getLexiCom().isMultipleIDsAllowed(path.getType().id, path.getPath());
+        return Core.isMultipleIDsAllowed(path);
     }
     public void setMultipleIDsAllowed(boolean allowed) throws Exception {
-        core.getLexiCom().setMultipleIDsAllowed(path.getType().id, path.getPath(), allowed);
+        Core.setMultipleIDsAllowed(path, allowed);
     }
     public boolean isLocal() throws Exception {
-        return core.getLexiCom().isLocal(path.getPath()[0]);
+        return Core.isLocal(path);
     }
 
     public Protocol getProtocol() throws Exception {
-        return Protocol.valueOf(core.getLexiCom().getHostProtocol(path.getPath()[0]));
+        return Core.getHostProtocol(path);
     }
     public HostType getHostType() throws Exception {
         if (isLocal()) {

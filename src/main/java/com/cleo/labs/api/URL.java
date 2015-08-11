@@ -259,10 +259,10 @@ public class URL {
         return alias;
     }
 
-    public void resolve(Core core) throws URLResolutionException, Exception {
-        resolve(core, options.get("alias"));
+    public void resolve() throws URLResolutionException, Exception {
+        resolve(options.get("alias"));
     }
-    public void resolve(Core core, String alias) throws URLResolutionException, Exception {
+    public void resolve(String alias) throws URLResolutionException, Exception {
         // check basic preconditions
         if (type==null) {
             throw new URLResolutionException("unrecognized protocol: "+raw);
@@ -276,7 +276,7 @@ public class URL {
         Host[] hosts;
         if (alias!=null && !alias.equals("*")) {
             // lookup up existing host and enforce consistency if found
-            Host host = core.getHost(alias);
+            Host host = Core.getHost(alias);
             if (host==null) {
                 hosts = null;
             } else if (host.getHostType() != type ||
@@ -288,12 +288,12 @@ public class URL {
             }
         } else {
             // just find one by attributes
-            hosts = core.findHosts(type, address, port);
+            hosts = Core.findHosts(type, address, port);
             alias = getProtocol()+"://"+address;
         }
         mailbox = null;
         if (hosts==null || hosts.length==0) {
-            host = core.activateHost(type, alias);
+            host = Core.activateHost(type, alias);
             host.setProperty("Address", address);
             if (port>=0) {
                 host.setProperty("Port", String.valueOf(port));
