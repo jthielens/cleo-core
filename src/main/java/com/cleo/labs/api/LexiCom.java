@@ -427,6 +427,7 @@ public class LexiCom {
     }
 
     public static ICertManagerRunTime getCertManager() throws Exception {
+        connect();
         return lexicom.getCertManager();
     }
 
@@ -436,46 +437,57 @@ public class LexiCom {
     }
 
     public static boolean isMultipleIDsAllowed(Path path) throws Exception {
+        connect();
         return lexicom.isMultipleIDsAllowed(path.getType().id, path.getPath());
     }
 
     public static void setMultipleIDsAllowed(Path path, boolean allowed) throws Exception {
+        connect();
         lexicom.setMultipleIDsAllowed(path.getType().id, path.getPath(), allowed);
     }
 
     public static boolean isLocal(Path host) throws Exception {
+        connect();
         return lexicom.isLocal(host.getPath()[0]);
     }
 
     public static Protocol getHostProtocol(Path host) throws Exception {
+        connect();
         return Protocol.valueOf(lexicom.getHostProtocol(host.getPath()[0]));
     }
 
     public static com.cleo.lexicom.external.HostType[] listHostTypes() throws Exception {
+        connect();
         return lexicom.listHostTypes();
     }
 
     public static void addLogListener(LexiComLogListener listener, Path path) throws Exception {
+        connect();
         lexicom.addLogListener(listener, path.getPath(), path.getType().id);
     }
 
     public static void removeLogListener(LexiComLogListener listener, Path path) throws Exception {
+        connect();
         lexicom.removeLogListener(listener, path.getPath(), path.getType().id);
     }
 
     public static Options getOptions() throws Exception {
+        connect();
         return lexicom.getOptions();
     }
 
     public static ILicense getLicense() throws Exception {
+        connect();
         return lexicom.getLicense();
     }
 
     public static ILicenser getLicenser() throws Exception {
+        connect();
         return lexicom.getLicenser();
     }
 
     public static void startService() throws Exception {
+        connect();
         lexicom.startService();
     }
 
