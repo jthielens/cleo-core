@@ -77,8 +77,12 @@ public class Defaults {
         // *** from here
         map = new TreeMap<String,String>();
         map.put(".cemcapable", "False");
+        map.put(".created", "2015/09/18 14:01:53");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".secure", "False");
         map.put(".servercertfile", "");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Addcontenttypetoinbox", "False");
         map.put("Advanced.AutoAcceptReceivedCertificate(CEM)", "");
         map.put("Advanced.Compression-SigningOrder", "Sign then compress");
@@ -111,6 +115,7 @@ public class Defaults {
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
         map.put("Messageversion", "1.1");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Overwrite", "False");
         map.put("Port", "0");
@@ -167,8 +172,12 @@ public class Defaults {
         map.put("Usesigncert", "False");
         mailboxmap.put(HostType.AS2, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:54");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".securitymode", "None");
         map.put(".servercertfile", "");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
         map.put("Addcontenttypetoinbox", "False");
@@ -206,6 +215,7 @@ public class Defaults {
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
         map.put("Messageversion", "1.1");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Overwrite", "False");
         map.put("Passivedataporthigh", "0");
@@ -259,6 +269,7 @@ public class Defaults {
         map.put("Localsignpending", "False");
         map.put("Mictype", "0");
         map.put("Nopasswordrequired", "False");
+        map.put("Notreadyreason", "Username required.");
         map.put("Overridelistenercerts", "False");
         map.put("Partneroverridelistenercert", "True");
         map.put("Receiptdesired", "True");
@@ -270,8 +281,12 @@ public class Defaults {
         map.put("Usesigncert", "False");
         mailboxmap.put(HostType.AS3, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:54");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".id", "*Rw**");
         map.put(".secure", "False");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Addcontenttypetoinbox", "False");
         map.put("Advanced.Compression-SigningOrder", "Sign then compress");
         map.put("Advanced.Encryption-SigningOrder", "Sign then encrypt");
@@ -303,6 +318,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Overridelistenerfrompartyid", "False");
         map.put("Port", "0");
         map.put("Runnable", "True");
@@ -351,6 +367,10 @@ public class Defaults {
         map.put("Usepartnersamecerts", "False");
         mailboxmap.put(HostType.EBMS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:55");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
         map.put("Advanced.DeleteZeroLengthFiles", "False");
@@ -372,6 +392,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Passivedataporthigh", "0");
         map.put("Passivedataportlow", "0");
         map.put("Port", "21");
@@ -391,10 +412,15 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
         map.put("Nopasswordrequired", "False");
+        map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
         mailboxmap.put(HostType.FTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:55");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".securitymode", "SSL AUTH");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
         map.put("Advanced.DeleteZeroLengthFiles", "True");
@@ -422,6 +448,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Passivedataporthigh", "0");
         map.put("Passivedataportlow", "0");
@@ -445,9 +472,14 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
         map.put("Nopasswordrequired", "False");
+        map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
         mailboxmap.put(HostType.FTPS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:55");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -467,6 +499,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "80");
         map.put("Runnable", "True");
@@ -489,7 +522,11 @@ public class Defaults {
         map.put("Localpackaging", "None");
         mailboxmap.put(HostType.HTTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:55");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".secure", "False");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -511,6 +548,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "443");
         map.put("Runnable", "True");
@@ -533,6 +571,10 @@ public class Defaults {
         map.put("Localpackaging", "None");
         mailboxmap.put(HostType.HTTPS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:56");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -546,6 +588,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Port", "1414");
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
@@ -568,13 +611,18 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
         map.put("Msgpriority", "0");
+        map.put("Notreadyreason", "Sender Queue is required.");
         map.put("Sendciphersuite", "SSL_RSA_WITH_3DES_EDE_CBC_SHA");
         map.put("Usereceiverqueue", "True");
         map.put("Usereplytoqueue", "False");
         map.put("Usesamechannel", "True");
         mailboxmap.put(HostType.MQ, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:56");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".securetcpip", "False");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Acecapable", "False");
         map.put("Advanced.DowngradeOFTPVersion", "");
         map.put("Advanced.EBCDICEncoding", "Cp500 EBCDIC International");
@@ -596,6 +644,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "At least one ISDN Address is required.");
         map.put("Port", "-1");
         map.put("Recordsize", "128");
         map.put("Runnable", "True");
@@ -640,6 +689,7 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Listenersendaction", "<send>");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Trading Partner User ID (SSIDCODE) required.");
         map.put("Overridedestination", "False");
         map.put("Overrideid", "False");
         map.put("Overridelistenercerts", "False");
@@ -650,6 +700,10 @@ public class Defaults {
         map.put("Usepartnersamecerts", "False");
         mailboxmap.put(HostType.OFTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:56");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -663,6 +717,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Port", "25");
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
@@ -689,7 +744,11 @@ public class Defaults {
         map.put("Overrideservice", "False");
         mailboxmap.put(HostType.SMTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:56");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".securitymode", "None");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -704,6 +763,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Port", "25");
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
@@ -732,6 +792,10 @@ public class Defaults {
         map.put("Overrideservice", "False");
         mailboxmap.put(HostType.SMTPS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:57");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.BufferRequests", "true");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -750,6 +814,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "22");
         map.put("Runnable", "True");
@@ -767,10 +832,15 @@ public class Defaults {
         map.put("Lastclientemailexecutedate", "-1");
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
         map.put("Usepkafile", "False");
         mailboxmap.put(HostType.SFTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:57");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Ackmode", "HL7 Original Acknowledgments");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -792,6 +862,7 @@ public class Defaults {
         map.put("Mllpinboundsecure", "False");
         map.put("Mllpoutboundenabled", "True");
         map.put("Mllpoutboundsecure", "False");
+        map.put("Notreadyreason", "General tab:  Server Address is required when outbound sender is enabled.");
         map.put("Port", "2575");
         map.put("Requiremllpclientauthisselected", "False");
         map.put("Runnable", "True");
@@ -823,7 +894,11 @@ public class Defaults {
         map.put("Outboundusequeue", "False");
         mailboxmap.put(HostType.MLLP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:57");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".secure", "False");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -845,6 +920,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "0");
         map.put("Receivedbox", "receivedbox\\");
@@ -888,8 +964,12 @@ public class Defaults {
         map.put("Usetradercerts", "False");
         mailboxmap.put(HostType.WS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:57");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".folder", "");
         map.put(".secure", "False");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Addpipdirtoinbox", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -914,6 +994,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Overwriteduplicatefilenames", "False");
         map.put("Port", "0");
@@ -930,10 +1011,10 @@ public class Defaults {
         map.put(".certpassword", "");
         map.put(".localdecryptcert", "");
         map.put(".localencrcertalias", "TEST");
-        map.put(".localencrcertpassword", "*CxoMCw**");
+        map.put(".localencrcertpassword", "vlenc:c755e1fd-54bf-4cd1-b30f-56d1fc262754:9f73ba88087c5208beea4750f266b918");
         map.put(".localencryptcert", "");
         map.put(".localsigncertalias", "TEST");
-        map.put(".localsigncertpassword", "*CxoMCw**");
+        map.put(".localsigncertpassword", "vlenc:c755e1fd-54bf-4cd1-b30f-56d1fc262754:aefc4fca6a93e7881930ff504afafd59");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencrcertfile", "");
@@ -945,12 +1026,17 @@ public class Defaults {
         map.put("Lastclientemailexecutedate", "-1");
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Trading Partner Business Identifier is a required field.");
         map.put("Overridelistenercerts", "False");
         map.put("Overridelistenerids", "False");
         map.put("Usepartnersamecerts", "True");
         mailboxmap.put(HostType.RNIF, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:58");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
         map.put(".secure", "True");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.EBICSVersion", "EBICS 2.4");
         map.put("Advanced.ESVersion", "A005");
         map.put("Advanced.EncryptionAlgorithm", "AES-256");
@@ -977,6 +1063,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "443");
         map.put("Runnable", "True");
@@ -1012,11 +1099,16 @@ public class Defaults {
         map.put("Lastclientemailexecutedate", "-1");
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "EBICS tab:  My Partner ID is required.  Must be a string up to 35 characters ([a-zA-Z0-9,=]).");
         map.put("Overridelistenercerts", "False");
         map.put("Signatureclass", "Transport signature (type 'T')");
         map.put("Usepartnersamecerts", "False");
         mailboxmap.put(HostType.EBICS, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:58");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.Encryption", "None");
         map.put("Advanced.OutboxSort", "System Default");
         map.put("Advanced.Overwrite", "Always");
@@ -1030,6 +1122,7 @@ public class Defaults {
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
         map.put("Outbox", "outbox/");
         map.put("Port", "-1");
         map.put("Proxyfirewall", "<None>");
@@ -1049,11 +1142,77 @@ public class Defaults {
         map.put("Lastclientemailexecutedate", "-1");
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Username required.");
         map.put("Packagingdecrypt", "False");
         map.put("Packagingencrypt", "False");
         map.put("Usepkafile", "False");
         mailboxmap.put(HostType.FASP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:58");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".secure", "True");
+        map.put(".test", "False");
+        map.put(".version", "3");
+        map.put("Advanced.HighPriority", "");
+        map.put("Advanced.HighPriorityIncomingWeight", "10");
+        map.put("Advanced.HighPriorityOutgoingWeight", "10");
+        map.put("Advanced.OutboxSort", "System Default");
+        map.put("Advanced.PGPCompressionAlgorithm", "System Default");
+        map.put("Advanced.PGPEncryptionAlgorithm", "System Default");
+        map.put("Advanced.PGPHashAlgorithm", "System Default");
+        map.put("Advanced.SSLCipher", "");
+        map.put("Advanced.SSLMaximumProtocolVersion", "");
+        map.put("Advanced.SSLMinimumProtocolVersion", "SSL 3.0");
+        map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
+        map.put("Advanced.ZipCompressionLevel", "System Default");
+        map.put("Checkservername", "False");
+        map.put("Connecttype", "0");
+        map.put("Editable", "True");
+        map.put("Fileidentifiedby", "0");
+        map.put("Fileidentifiedfieldnum", "0");
+        map.put("Fileidentifiedposition", "0");
+        map.put("Headerlines", "0");
+        map.put("Inbox", "inbox/");
+        map.put("Index", "0");
+        map.put("Indexdate", "-1");
+        map.put("Internal", "0");
+        map.put("Notreadyreason", "Server Address is required.");
+        map.put("Outbox", "outbox/");
+        map.put("Port", "0");
+        map.put("Runnable", "True");
+        map.put("Runninglocalrequired", "False");
+        map.put("Secureportrequired", "False");
+        map.put("Standardhtmldirectory", "True");
+        map.put("Syntax[PUT]", "POST /hsp\nchannels=|1|2|8|16|32|");
+        hostmap.put(HostType.HSP, map);
+        map = new TreeMap<String,String>();
+        map.put(".localdecryptcert", "");
+        map.put(".localencrcertalias", "");
+        map.put(".localencrcertpassword", "");
+        map.put(".localencryptcert", "");
+        map.put(".localsigncertalias", "");
+        map.put(".localsigncertpassword", "");
+        map.put(".partnerdecryptcert", "");
+        map.put(".partnerdecryptpassword", "");
+        map.put(".partnerencrcertfile", "");
+        map.put(".partnerencryptcert", "");
+        map.put(".partnerpackaging", "None");
+        map.put(".partnerservercertfile", "");
+        map.put(".partnersigncertfile", "");
+        map.put(".uselocalsamecerts", "True");
+        map.put("Authtype", "0");
+        map.put("Lastclientemailexecutedate", "-1");
+        map.put("Lastserveremailexecutedate", "-1");
+        map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Local Signing Certificate Alias is required.");
+        map.put("Overridelistenercerts", "False");
+        map.put("Usepartnersamecerts", "True");
+        mailboxmap.put(HostType.HSP, map);
+        map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:58");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -1062,13 +1221,12 @@ public class Defaults {
         map.put("Advanced.PGPHashAlgorithm", "System Default");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
-        map.put("Allowincomingnofileextension", "True");
         map.put("Connecttype", "0");
         map.put("Editable", "True");
-        map.put("Enablepasswordpolicy", "True");
+        map.put("Enablepasswordpolicy", "False");
         map.put("Ftprootpath", "local/root");
         map.put("Inbox", "inbox\\");
-        map.put("Incomingfileextensions", "*");
+        map.put("Incomingfilepatterns", "*");
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
@@ -1131,10 +1289,10 @@ public class Defaults {
         map.put("Localsignpending", "False");
         map.put("Messageversion", "1.1");
         map.put("Mictype", "0");
+        map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
         map.put("Overridelistenercerts", "False");
-        map.put("Passworddate", "2014/06/24 14:14");
         map.put("Pipeincomingpayload", "False");
         map.put("Receiptdesired", "False");
         map.put("Signedreceipt", "False");
@@ -1147,6 +1305,10 @@ public class Defaults {
         map.put("Usesigncert", "False");
         mailboxmap.put(HostType.LOCAL_FTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:59");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -1158,10 +1320,11 @@ public class Defaults {
         map.put("Associatedwebportal", "Default Portal");
         map.put("Connecttype", "0");
         map.put("Editable", "True");
-        map.put("Enablepasswordpolicy", "True");
+        map.put("Enablepasswordpolicy", "False");
         map.put("Ftprootpath", "local/root");
         map.put("Inbox", "inbox\\");
-        map.put("Incomingfileextensions", "*");
+        map.put("Incomingfilepatterns", "*");
+        map.put("Incomingmediatypes", "*");
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
@@ -1173,11 +1336,14 @@ public class Defaults {
         map.put("Poolsize", "2");
         map.put("Port", "0");
         map.put("Portalapplets", "False");
+        map.put("Portaluserspasswordchange", "All");
         map.put("Readonlyusers", "False");
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "True");
         map.put("Secureportrequired", "False");
+        map.put("Usemetadata", "False");
         map.put("Viewpartnermailboxes", "False");
+        map.put("Zipuploadallowed", "False");
         hostmap.put(HostType.LOCAL_HTTP, map);
         map = new TreeMap<String,String>();
         map.put(".associateprimarymailbox", "False");
@@ -1204,14 +1370,19 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Ldaphomedir", "False");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
-        map.put("Passworddate", "2014/06/24 14:14");
         map.put("Pipeincomingpayload", "False");
         map.put("Usedefroot", "True");
         map.put("Userlockedoutuntil", "0");
+        map.put("Zipportaluploads", "False");
         mailboxmap.put(HostType.LOCAL_HTTP, map);
         map = new TreeMap<String,String>();
+        map.put(".created", "2015/09/18 14:01:59");
+        map.put(".enc", "c755e1fd-54bf-4cd1-b30f-56d1fc262754");
+        map.put(".test", "False");
+        map.put(".version", "3");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -1220,13 +1391,12 @@ public class Defaults {
         map.put("Advanced.PGPHashAlgorithm", "System Default");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
-        map.put("Allowincomingnofileextension", "True");
         map.put("Connecttype", "0");
         map.put("Editable", "True");
-        map.put("Enablepasswordpolicy", "True");
+        map.put("Enablepasswordpolicy", "False");
         map.put("Ftprootpath", "local/root");
         map.put("Inbox", "inbox\\");
-        map.put("Incomingfileextensions", "*");
+        map.put("Incomingfilepatterns", "*");
         map.put("Index", "0");
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
@@ -1264,9 +1434,9 @@ public class Defaults {
         map.put("Lastserveremailexecutedate", "-1");
         map.put("Ldaphomedir", "False");
         map.put("Localpackaging", "None");
+        map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
-        map.put("Passworddate", "2014/06/24 14:14");
         map.put("Pipeincomingpayload", "False");
         map.put("Usedefroot", "True");
         map.put("Usepkafile", "False");
@@ -1296,6 +1466,7 @@ public class Defaults {
             out.println(type.name() + ": "+ hostclass + " / "+ mailboxclass);
             Class<?> beanclass = Class.forName(hostclass);
             Object bean = beanclass.newInstance();
+            /*
             //Properties defaults = bean.defaultProperties;
             PropertyDescriptor[] props = Introspector.getBeanInfo(beanclass).getPropertyDescriptors();
             for (PropertyDescriptor prop : props) {
@@ -1306,6 +1477,25 @@ public class Defaults {
                     out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
                 }
             }
+            */
+
+            /* */
+            // the dangerous part is done -- now just print the results
+            out.println("        map = new TreeMap<String,String>();");
+            for (Map.Entry<String, String> e : hostprops.entrySet()) {
+                if (!ignore.contains(e.getKey().toLowerCase())) {
+                    out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
+                }
+            }
+            out.printf("        hostmap.put(HostType.%s, map);\n", type.name());
+            out.println("        map = new TreeMap<String,String>();");
+            for (Map.Entry<String, String> e : mailboxprops.entrySet()) {
+                if (!ignore.contains(e.getKey().toLowerCase())) {
+                    out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
+                }
+            }
+            out.printf("        mailboxmap.put(HostType.%s, map);\n", type.name());
+            /* */
 
             LexiCom.remove(host.getPath());
             return bean;
@@ -1313,23 +1503,6 @@ public class Defaults {
             e.printStackTrace();
             return null;
         }
-/*
-        // the dangerous part is done -- now just print the results
-        out.println("        map = new TreeMap<String,String>();");
-        for (Map.Entry<String, String> e : hostprops.entrySet()) {
-            if (!ignore.contains(e.getKey().toLowerCase())) {
-                out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
-            }
-        }
-        out.printf("        hostmap.put(HostType.%s, map);\n", type.name());
-        out.println("        map = new TreeMap<String,String>();");
-        for (Map.Entry<String, String> e : mailboxprops.entrySet()) {
-            if (!ignore.contains(e.getKey().toLowerCase())) {
-                out.printf("        map.put(\"%s\", \"%s\");\n", e.getKey(), q(e.getValue()));
-            }
-        }
-        out.printf("        mailboxmap.put(HostType.%s, map);\n", type.name());
-*/
     }
     public static void printAllDefaults(PrintStream out) {
         for (HostType t : HostType.values()) {

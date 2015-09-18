@@ -15,7 +15,8 @@ public enum Protocol {
     MQ_CLIENT     (ILexiCom.MQ_CLIENT),
     SMTP_CLIENT   (ILexiCom.SMTP_CLIENT),
     MLLP_CLIENT   (ILexiCom.MLLP_CLIENT),
-    FASP_CLIENT   (ILexiCom.FASP_CLIENT);
+    FASP_CLIENT   (ILexiCom.FASP_CLIENT),
+    HSP           (ILexiCom.HSP);
     
     public final int id;
     private Protocol(int id) {

@@ -40,7 +40,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <cleo.version>5.1</cleo.version>
+        <cleo.version>5.2.0.0</cleo.version>
     </properties>
 
     <dependencies>
