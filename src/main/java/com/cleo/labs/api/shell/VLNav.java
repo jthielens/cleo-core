@@ -341,7 +341,7 @@ public class VLNav {
             }
         }
         if (appl_type==null || appl_type.isEmpty()) {
-            appl_type = db.loadDictionary("VLApplicationNum", "Application");
+            appl_type = db.loadDictionary("VLApplicationNum", "Application", "IsEnabled=1");
             type_appl = new HashMap<Integer,String>();
             appl_lookup = new HashMap<String,String>();
             for (Map.Entry<String, Integer> e : appl_type.entrySet()) {
