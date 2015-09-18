@@ -26,6 +26,7 @@ import com.cleo.lexicom.external.IMailboxController;
 import com.cleo.lexicom.external.ISchedule;
 import com.cleo.lexicom.external.LexiComFactory;
 import com.cleo.lexicom.external.LexiComLogListener;
+import com.cleo.security.hashing.VLPBKDF2Authenticator;
 
 public class LexiCom {
     private static Product  product;
@@ -507,6 +508,16 @@ public class LexiCom {
                     new StringBuilder(decoded).reverse().toString();
         }
         return decoded;
+    }
+    private static final VLPBKDF2Authenticator vlpbkdf2 = new VLPBKDF2Authenticator();
+    public static String crack(String user, String password) {
+        if (password.startsWith(VLPBKDF2Authenticator.SCHEME_NAME+":")) {
+            if (vlpbkdf2.verify(user, user,       password)) return user;
+            if (vlpbkdf2.verify(user, "cleo",     password)) return "cleo";
+            if (vlpbkdf2.verify(user, "Admin",    password)) return "Admin";
+            if (vlpbkdf2.verify(user, "password", password)) return "password";
+        }
+        return password;
     }
     public static String encrypt(String s) throws Exception {
         connect();

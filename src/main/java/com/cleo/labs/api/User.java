@@ -78,6 +78,16 @@ public class User {
             password = properties.remove("Password");
             if (password!=null) {
                 password = LexiCom.decode(password);
+            } else {
+                String hash = properties.get("Pwdhash");
+                if (hash!=null && !hash.isEmpty()) {
+                    password = LexiCom.crack(username, hash);
+                    if (password.equals(hash)) {
+                        password = null;
+                    } else {
+                        properties.remove("Pwdhash");
+                    }
+                }
             }
             note("user from host "+h.getPath().getAlias()+" mailbox "+username);
         }

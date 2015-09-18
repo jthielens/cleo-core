@@ -803,6 +803,7 @@ public class VLNav {
                     } catch (Exception e) {
                         this.password = values[i];
                     }
+                    this.password = LexiCom.crack(this.alias, this.password);
                 } else if (column.equalsIgnoreCase("BuildFullName")) {
                     this.build = values[i].equals("1");
                 }
@@ -1001,8 +1002,8 @@ public class VLNav {
     }
     public UserDescription[] list_users(String group) throws SQLException {
         connect();
-        List<String> queryColumns = new ArrayList<String>(Arrays.asList("VLEntityNum","IsEnabled","IsDefaultEntity","IsSystemAdmin"));
-        List<Object> queryValues  = new ArrayList<Object>(Arrays.asList(etype, IS, ISNT, ISNT));
+        List<String> queryColumns = new ArrayList<String>(Arrays.asList("VLEntityNum","IsEnabled","IsDefaultEntity")); //,"IsSystemAdmin"));
+        List<Object> queryValues  = new ArrayList<Object>(Arrays.asList(etype, IS, ISNT)); //, ISNT));
         if (group!=null) {
             GroupDescription g = find_group(group);
             queryColumns.add("VLEntityGroupID");
