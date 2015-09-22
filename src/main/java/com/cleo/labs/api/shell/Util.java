@@ -171,9 +171,12 @@ public class Util {
                     String text = (String)e.getValue();
                     if (index!=null) {
                         // Advanced.key          = value --> Advanced        key=value
+                        // Other.key             = value --> Other           key=value
                         // Contenttypedirs[type] = value --> Contenttypedirs type=value
                         // Syntax|Header[verb]   = value --> Syntax|Header   verb value
-                        if (key.equalsIgnoreCase("Advanced") || key.equalsIgnoreCase("Contenttypedirs")) {
+                        if (key.equalsIgnoreCase("Advanced") ||
+                            key.equalsIgnoreCase("Contenttypedirs") ||
+                            key.equalsIgnoreCase("Other")) {
                             text = index + "=" + text;
                         } else if (key.equalsIgnoreCase("Syntax") || key.equalsIgnoreCase("Header")) {
                             if (text.isEmpty()) {
