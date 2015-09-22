@@ -575,7 +575,7 @@ public class Shell extends REPL {
             // build a dictionary of installed URIs
             Map<String,URI> uris = new HashMap<String,URI>();
             for (URI uri : URI.getSchemes(LexiCom.getHome(), new Reporter(this))) {
-                uris.put(uri.id, uri);
+                uris.put(uri.scheme, uri);
             }
             if (argv.length==0) {
                 argv = uris.keySet().toArray(new String[uris.size()]);
@@ -601,7 +601,7 @@ public class Shell extends REPL {
             scheme = URI.inspectJars(LexiCom.getHome(), new Reporter(this), argv);
             if (scheme!=null) {
                 scheme.install();
-                report(scheme.id, scheme.toStrings());
+                report(scheme.scheme, scheme.toStrings());
             } else {
                 error("invalid URI: "+S.join(" ", argv));
             }
@@ -1258,17 +1258,21 @@ public class Shell extends REPL {
                         String[] path = kv[0].split("/");
                         if (kv.length>1) {
                             updated=true;
-                            try {
-                                LDAP ldap = new LDAP(kv[1]);
-                                X.setmap(xml.map, path, ldap.toMap(this.new VLCrypt()));
-                            } catch (Exception e) {
-                                // no big deal -- not LDAP, but see if it's DB
+                            if (kv[1].isEmpty()) {
+                                X.setmap(xml.map, path, (Object)null); // null means remove it
+                            } else {
                                 try {
-                                    DBOptions dbo = new DBOptions(kv[1]);
-                                    X.setmap(xml.map, path, dbo.connection);
-                                } catch (Exception f) {
-                                    // no big deal -- not LDAP or DB -- just a String
-                                    X.setmap(xml.map, path, kv[1]);
+                                    LDAP ldap = new LDAP(kv[1]);
+                                    X.setmap(xml.map, path, ldap.toMap(this.new VLCrypt()));
+                                } catch (Exception e) {
+                                    // no big deal -- not LDAP, but see if it's DB
+                                    try {
+                                        DBOptions dbo = new DBOptions(kv[1]);
+                                        X.setmap(xml.map, path, dbo.connection);
+                                    } catch (Exception f) {
+                                        // no big deal -- not LDAP or DB -- just a String
+                                        X.setmap(xml.map, path, kv[1]);
+                                    }
                                 }
                             }
                         } else {
@@ -1549,7 +1553,7 @@ public class Shell extends REPL {
             while (i.hasNext()) {
                 Map.Entry<String,String> e = i.next();
                 if (e.getKey().matches("(?i).*password")) {
-                    props.put(e.getKey(), Util.decode(e.getValue()));
+                    props.put(e.getKey(), vldec(e.getValue()));
                 }
             }
         }

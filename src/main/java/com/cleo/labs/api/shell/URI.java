@@ -27,12 +27,17 @@ import com.cleo.labs.util.S;
 import com.cleo.labs.util.X;
 
 public class URI {
-    public String             id           = null;
-    public String             file         = null;
-    public String             inputStream  = null;
-    public String             outputStream = null;
-    public String[]           classPath    = null;
-    public String[]           addPath      = null;
+    public String             scheme       = null;  // Cleo-URI-Scheme
+    public String             file         = null;  // Cleo-URI-File-Class
+    public String             inputStream  = null;  // Cleo-URI-InputStream-Class
+    public String             outputStream = null;  // Cleo-URI-OutputStream-Class
+    public String[]           classPath    = null;  // Cleo-URI-Depends
+    public String[]           addPath      = null;  // Cleo-URI-Additional
+
+    public String             listener     = null;  // Cleo-API-LexiComLogListener
+    public String             incoming     = null;  // Cleo-API-ILexiComIncoming
+    public String             outgoing     = null;  // Cleo-API-LexiComOutgoingThread
+
     public String             self         = null;  // if read from manifest
     public Map<String,String> properties   = new HashMap<String,String>();
     public File               home         = null;
@@ -52,17 +57,17 @@ public class URI {
     private static final String  COLON        = String.valueOf(File.pathSeparatorChar);
 
     public void uninstall() {
-        if (id!=null) {
+        if (scheme!=null) {
             try {
-                store(removeProperties(load(), id));
+                store(removeProperties(load()));
             } catch (IOException ignore) {}
         }
         // TODO: cleanup JARs
     }
 
-    public Properties removeProperties(Properties props, String id) {
-        if (id!=null && props!=null) {
-            String prefix = "cleo.uri."+id+".";
+    public Properties removeProperties(Properties props) {
+        if (scheme!=null && props!=null) {
+            String prefix = "cleo.uri."+scheme+".";
             for (String key : props.stringPropertyNames()) {
                 if (key.startsWith(prefix)) {
                     props.remove(key);
@@ -73,16 +78,16 @@ public class URI {
     }
 
     public Properties setProperties(Properties props) {
-        if (id!=null) {
-            removeProperties(props, id);
-            props.setProperty("cleo.uri."+id+".file",         file);
-            props.setProperty("cleo.uri."+id+".inputstream",  inputStream);
-            props.setProperty("cleo.uri."+id+".outputstream", outputStream);
+        if (scheme!=null) {
+            removeProperties(props);
+            props.setProperty("cleo.uri."+scheme+".file",         file);
+            props.setProperty("cleo.uri."+scheme+".inputstream",  inputStream);
+            props.setProperty("cleo.uri."+scheme+".outputstream", outputStream);
             if (classPath!=null && classPath.length>0) {
-                props.setProperty("cleo.uri."+id+".classpath", S.join(COLON, classPath));
+                props.setProperty("cleo.uri."+scheme+".classpath", S.join(COLON, classPath));
             }
             for (Map.Entry<String,String> e : properties.entrySet()) {
-                props.setProperty("cleo.uri."+id+"."+e.getKey(), e.getValue());
+                props.setProperty("cleo.uri."+scheme+"."+e.getKey(), e.getValue());
             }
         }
         if (addPath!=null && addPath.length>0) {
@@ -109,7 +114,7 @@ public class URI {
             }
             String prefix = "cleo.uri."+id+".";
             if (props.containsKey(prefix+"file")) {
-                uri.id = id;
+                uri.scheme = id;
                 for (String key : props.stringPropertyNames()) {
                     if (key.startsWith(prefix)) {
                         String prop = key.substring(prefix.length());
@@ -182,23 +187,11 @@ public class URI {
         return props;
     }
 
-    public URI (String scheme, String schemeFile, String schemeInputStream, String schemeOutputStream, String schemeClassPath, Map<String,String> properties) {
-        if (properties==null) {
-            properties = new HashMap<String,String>();
-        }
-        this.id           = scheme;
-        this.file         = schemeFile;
-        this.inputStream  = schemeInputStream;
-        this.outputStream = schemeOutputStream;
-        this.classPath    = schemeClassPath==null ? null : schemeClassPath.split(COLON);
-        this.properties   = properties;
-        if (classPath==null) {
-            properties.put("file",         this.file);
-            properties.put("inputstream",  this.inputStream);
-            properties.put("outputstream", this.outputStream);
-        }
-    }
-
+    /**
+     * Returns the filename of {@code jar} relative to the {@code home} path.
+     * @param jar the JAR
+     * @return the relative filename
+     */
     private String relativize (File jar) {
         if (home==null) {
             try {
@@ -211,6 +204,13 @@ public class URI {
         }
     }
 
+    /**
+     * Returns a file relative to the {@code home} path, unless the
+     * filename is absolute, in which case this is the same as
+     * {@code new File(name)}.
+     * @param name
+     * @return a resolved relative or an absolute {@code File}
+     */
     private File homeFile(String name) {
         File f = new File(name);
         if (home!=null && !f.isAbsolute()) {
@@ -223,7 +223,7 @@ public class URI {
         URI uri = new URI(home, reporter);
 
         File          jar        = new File(name);
-        List<String>  classpath  = new ArrayList<String>(); // the ones to add to classpath
+        Set<String>   classpath  = new HashSet<String>();   // the ones to add to classpath
         Set<String>   additional = new HashSet<String>();   // the ones to add to additional.classpath
         boolean       manifested = false;                   // did we see a valid Cleo-... manifest
 
@@ -240,9 +240,14 @@ public class URI {
         // - file class            Cleo-URI-File-Class
         // - input class           Cleo-URI-InputStream-Class
         // - output class          Cleo-URI-OutputStream-Class
-        // - classpath             Cleo-URI-Depends
-        // - additional.classpath  Cleo-URI-Additional
+        // - classpath             Cleo-URI-Depends*
+        // - additional.classpath  Cleo-URI-Additional*
+        // - listener              Cleo-API-LexiComLogListener
+        // - incoming              Cleo-API-ILexiComIncoming
+        // - outgoing              Cleo-API-LexiComOutgoingThread
         // Note that first setting wins (for scheme and file classes that aren't lists).
+        // Depends and Additional can appear multiple times (with unique suffixes, which are
+        //      discarded), allowing for lists that would otherwise exceed the length limit
         // Note also that the JARs themselves are added to classpath unless "this" appears in
         //      Additional, in which case the current JAR is added to additional instead
         //
@@ -253,18 +258,12 @@ public class URI {
             if (manifest!=null) {
                 Attributes attrs = manifest.getMainAttributes();
                 if (attrs!=null) {
-                    if (uri.id==null && attrs.containsKey(new Attributes.Name("Cleo-URI-Scheme"))) {
-                        uri.id = attrs.getValue("Cleo-URI-Scheme").toLowerCase();
+                    if (uri.scheme==null && attrs.containsKey(new Attributes.Name("Cleo-URI-Scheme"))) {
+                        uri.scheme = attrs.getValue("Cleo-URI-Scheme").toLowerCase();
                         manifested = true;
                     }
                     if (uri.file==null && attrs.containsKey(new Attributes.Name("Cleo-URI-File-Class"))) {
                         uri.file = attrs.getValue("Cleo-URI-File-Class");
-                        if (uri.id==null) {
-                            uri.id = uri.file.toLowerCase();
-                            if (uri.id.endsWith("file")) {
-                                uri.id = uri.id.substring(uri.id.lastIndexOf(".")+1, uri.id.length()-"file".length());
-                            }
-                        }
                         manifested = true;
                     }
                     if (uri.inputStream==null && attrs.containsKey(new Attributes.Name("Cleo-URI-InputStream-Class"))) {
@@ -275,13 +274,26 @@ public class URI {
                         uri.outputStream = attrs.getValue("Cleo-URI-OutputStream-Class");
                         manifested = true;
                     }
-                    if (attrs.containsKey(new Attributes.Name("Cleo-URI-Depends"))) {
-                        classpath.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Depends").split("\\s+")));
+                    if (uri.listener==null && attrs.containsKey(new Attributes.Name("Cleo-API-LexiComLogListener"))) {
+                        uri.listener = attrs.getValue("Cleo-API-LexiComLogListener");
                         manifested = true;
                     }
-                    if (attrs.containsKey(new Attributes.Name("Cleo-URI-Additional"))) {
-                        additional.addAll(Arrays.asList(attrs.getValue("Cleo-URI-Additional").split("\\s+")));
+                    if (uri.incoming==null && attrs.containsKey(new Attributes.Name("Cleo-API-ILexiComIncoming"))) {
+                        uri.incoming = attrs.getValue("Cleo-API-ILexiComIncoming");
                         manifested = true;
+                    }
+                    if (uri.outgoing==null && attrs.containsKey(new Attributes.Name("Cleo-API-LexiComOutgoingThread"))) {
+                        uri.outgoing = attrs.getValue("Cleo-API-LexiComOutgoingThread");
+                        manifested = true;
+                    }
+                    for (Object o : attrs.keySet()) {
+                        if (o.toString().startsWith("Cleo-URI-Additional")) {
+                            additional.addAll(Arrays.asList(attrs.getValue(o.toString()).split("\\s+")));
+                            manifested = true;
+                        } else if (o.toString().startsWith("Cleo-URI-Depends")) {
+                            classpath.addAll(Arrays.asList(attrs.getValue(o.toString()).split("\\s+")));
+                            manifested = true;
+                        }
                     }
                 }
             }
@@ -340,7 +352,7 @@ public class URI {
                 }
                 continue;
             } else if (file.endsWith(":")) {
-                uri.id = file.substring(0, file.length()-1);
+                uri.scheme = file.substring(0, file.length()-1);
                 continue;
             }
             // ok, it's a file
@@ -378,10 +390,10 @@ public class URI {
                                     final Class<?> test = Class.forName(classname, true, ucl);
                                     if (uri.file==null && com.cleo.lexicom.beans.LexURIFile.class.isAssignableFrom(test)) {
                                         uri.file = classname;
-                                        if (uri.id==null) {
-                                            uri.id = classname.toLowerCase();
-                                            if (uri.id.endsWith("file")) {
-                                                uri.id = uri.id.substring(uri.id.lastIndexOf(".")+1, uri.id.length()-"file".length());
+                                        if (uri.scheme==null) {
+                                            uri.scheme = classname.toLowerCase();
+                                            if (uri.scheme.endsWith("file")) {
+                                                uri.scheme = uri.scheme.substring(uri.scheme.lastIndexOf(".")+1, uri.scheme.length()-"file".length());
                                             }
                                         }
                                     }
@@ -502,15 +514,15 @@ public class URI {
 
     public String[] toStrings() {
         List<String> list = new ArrayList<String>();
-        if (this.id!=null) {
-            list.add("cleo.uri."+this.id+".file="+this.file);
-            list.add("cleo.uri."+this.id+".inputstream="+this.inputStream);
-            list.add("cleo.uri."+this.id+".outputStream="+this.outputStream);
+        if (this.scheme!=null) {
+            list.add("cleo.uri."+this.scheme+".file="+this.file);
+            list.add("cleo.uri."+this.scheme+".inputstream="+this.inputStream);
+            list.add("cleo.uri."+this.scheme+".outputStream="+this.outputStream);
             if (this.classPath!=null) {
-                list.add("cleo.uri."+this.id+".classpath="+S.join(File.pathSeparator, this.classPath));
+                list.add("cleo.uri."+this.scheme+".classpath="+S.join(File.pathSeparator, this.classPath));
             }
             for (Map.Entry<String,String> e : this.properties.entrySet()) {
-                list.add("cleo.uri."+this.id+"."+e.getKey()+"="+e.getValue());
+                list.add("cleo.uri."+this.scheme+"."+e.getKey()+"="+e.getValue());
             }
         }
         if (this.addPath!=null) {
@@ -528,8 +540,8 @@ public class URI {
             list.add(this.self);
         } else {
             // must be explicit scheme: jars.. property=value...
-            if (this.id!=null) {
-                list.add(this.id+":");
+            if (this.scheme!=null) {
+                list.add(this.scheme+":");
             }
             if (this.classPath!=null) {
                 list.addAll(Arrays.asList(this.classPath));
