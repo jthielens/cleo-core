@@ -66,7 +66,10 @@ if [ "$1" = "update" ]; then
     githubassetdownload jthielens/cleo-labs-util 5.2 cleo-labs-util-0.0.1-SNAPSHOT.jar      $here >/dev/null
     githubassetdownload jthielens/cleo-core      5.2 cleo-labs-api-shell-0.0.1-SNAPSHOT.jar $here >/dev/null
     githubdownload      jthielens/versalex-ops       tools/cleo-util.sh                     $here >/dev/null
+    githubdownload      jthielens/versalex-ops       service/cleo-service                   $here >/dev/null
     githubdownload      jthielens/cleo-core          shell.sh                               $here >/dev/null
+    chmod a+x $here/cleo-service
+    chmod a+x $here/shell.sh
 else
     cleohome=$(findhome $1)
     if [ "$cleohome" != "" ]; then
