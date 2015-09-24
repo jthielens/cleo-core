@@ -1,77 +1,32 @@
 #!/bin/sh
 
-# where is Nexus
-nexus=10.80.80.156
+#-------------------------------------------------------------------------------------#
+# to bootstrap the download of the cleo labs shell, type:                             #
+#   wget -nv -q https://raw.githubusercontent.com/jthielens/cleo-core/master/shell.sh #
+#   chmod a+x shell.sh                                                                #
+#   ./shell.sh update                                                                 #
+#-------------------------------------------------------------------------------------#
 
-# usage:   etag $url
-# returns: the ETag for $url, or error if the connection fails
-etag () {
-    local url
+# usage:   bootstrap $url $path
+# returns: nothing
+bootstrap() {
+    local url path target tag
     url=$1
-    if headers=`wget -S --spider -nv $url 2>&1`; then
-        echo $headers | sed -n 's/.*ETag: *"\(.*\)".*/\1/p'
-    else
-        echo error
-    fi
-}
-
-# usage:   snapurl $artifact $version $file
-# returns: the Cleo snapshots repository URL for $artifact and $file
-#          hard-coded for group=com.cleo.labs
-snapurl () {
-    local artifact version file
-    artifact=$1
-    version=$2
-    file=$3
-    echo http://$nexus/nexus/content/repositories/snapshots/com/cleo/labs/$artifact/$version/$file
-}
-
-# usage:   snapversion $artifact
-# returns: the correct snapshot version of $artifact
-snapversion() {
-    local artifact version
-    artifact=$1
-    version=$2
-    wget -nv -q -O- $(snapurl $artifact $version maven-metadata.xml) | sed -n '0,/<value>/s/.*<value>\(.*\)<\/value>/\1/p'
-}
-
-# usage:   download $url $target
-# returns: the downloaded file name
-download() {
-    local url target tag tagfile
-    url=$1
-    target=$2
-    tag=$(etag $url)
-    tagfile=$target.etag
-    if [ "$tag" = "error" ]; then
-        echo "connection error: reusing cached $target" 1>&2
-        echo $target; return
-    elif [ -f $tagfile -a "$tag" ]; then
-        if [ "$tag" = $(cat $tagfile 2>/dev/null) ] ; then
-            echo "cache etag matches: reusing cached $target" 1>&2
-            echo $target
-            return
+    path=$2
+    target=${1##*/}
+    echo "downloading $path/$target from $url" 1>&2
+    if wget -nv -q -S -O $path/$target $url 2>$path/$target.tmp.h; then
+        tag=$(sed -n '0,/ETag/s/.*ETag: *"\(.*\)".*/\1/p' $path/$target.tmp.h)
+        if [ "$tag" ]; then
+            echo $tag > $path/$target.etag
         fi
+        echo "successful download: $path/$target (etag=$tag)" 1>&2
+        rm $path/$target.tmp.h >/dev/null 2>&1
+    else
+        echo "error: can't bootstrap download $url" >&2
+        rm $path/$target.tmp.h >/dev/null 2>&1
+        exit
     fi
-    # download the target
-    echo "downloading $target from $url (tag=$tag file=$(cat $tagfile 2>/dev/null))" 1>&2
-    wget -nv -q -O $target $url
-    if [ "$tag" ]; then
-        echo $tag > $tagfile
-    fi
-    echo $target
-}
-
-# usage:   downloadjar $artifact $version
-# returns: the downloaded file name
-downloadjar () {
-    local artifact version metaversion url target
-    artifact=$1
-    version=$2
-    metaversion=$(snapversion $artifact $version)
-    url=$(snapurl $artifact $version $artifact-$metaversion.jar)
-    target=$here/$artifact-$version.jar
-    echo $(download $url $target)
 }
 
 # usage:   cleohome=$(servicehome $service)
@@ -103,9 +58,15 @@ findhome() {
 
 here=$(cd `dirname $0` && pwd -P)
 if [ "$1" = "update" ]; then
-    downloadjar cleo-labs-util      0.0.1-SNAPSHOT > /dev/null
-    downloadjar cleo-labs-api-shell 0.0.1-SNAPSHOT > /dev/null
-    download    'https://raw.githubusercontent.com/jthielens/cleo-core/master/shell.sh' $0 > /dev/null
+    if ! [ -e $here/cleo-util.sh ]; then
+        bootstrap 'https://raw.githubusercontent.com/jthielens/versalex-ops/master/tools/cleo-util.sh' $here
+    fi
+    . $here/cleo-util.sh
+    quiet=short
+    githubassetdownload jthielens/cleo-labs-util 5.2 cleo-labs-util-0.0.1-SNAPSHOT.jar      $here >/dev/null
+    githubassetdownload jthielens/cleo-core      5.2 cleo-labs-api-shell-0.0.1-SNAPSHOT.jar $here >/dev/null
+    githubdownload      jthielens/versalex-ops       tools/cleo-util.sh                     $here >/dev/null
+    githubdownload      jthielens/cleo-core          shell.sh                               $here >/dev/null
 else
     cleohome=$(findhome $1)
     if [ "$cleohome" != "" ]; then
