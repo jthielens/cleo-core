@@ -69,7 +69,7 @@ public class User {
             typename   = type.name().substring("LOCAL_".length()).toLowerCase();
             folder     = h.getSingleProperty("folder");
             // cleanup folder: \ to / and ending in / (unless empty)
-            folder     = folder==null?"":folder.replace('\\', '/').replaceFirst("(?<=[^/])$", "/");
+            folder     = folder==null?"":folder.replace('\\', '/');
             username   = m.getPath().getAlias();
             properties = Defaults.suppressMailboxDefaults(type, m.getProperties());
             if (username.equals(properties.get("Homedirectory"))) {
