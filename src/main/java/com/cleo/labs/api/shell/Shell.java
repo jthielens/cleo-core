@@ -635,12 +635,11 @@ public class Shell extends REPL {
                     config.remove_hook(hook);
                 } catch (Exception ignore) {
                     MvnJar jar = config.factory().get(uri);
-                    if (jar.exists()) {
-                        report("removing "+jar.file().getPath());
-                        config.remove_jar(jar);
-                    } else {
-                        error("not sure what you mean here: "+uri);
+                    if (!jar.exists()) {
+                        report("warning: file does not exist: "+uri);
                     }
+                    report("removing "+jar.file().getPath());
+                    config.remove_jar(jar);
                 }
             }
         }
