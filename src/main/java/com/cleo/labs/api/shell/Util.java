@@ -87,7 +87,74 @@ public class Util {
             return "permanently";
         }
     }
-    
+
+    public static String get_bean(Object o, String property) {
+        String[] subprop = property.split("\\.", 2);
+        for (Method method : o.getClass().getMethods()) {
+            String     name  = method.getName();
+            Class<?>[] types = method.getParameterTypes();
+            if (subprop.length==2) {
+                if (types.length==1 && types[0].equals(String.class) &&
+                    name.equalsIgnoreCase("get"+subprop[0])) {
+                    try {
+                        return method.invoke(o, subprop[1]).toString();
+                    } catch (Exception ignore) {}
+                }
+            } else {
+                if (types.length==0 &&
+                    (name.equalsIgnoreCase("get"+property) || name.equalsIgnoreCase("is"+property))) {
+                    try {
+                        return method.invoke(o).toString();
+                    } catch (Exception ignore) {}
+                }
+            }
+        }
+        return null;
+    }
+
+    public static void set_bean(Object o, String property, String value) {
+        String[] subprop = property.split("\\.", 2);
+        for (Method method : o.getClass().getMethods()) {
+            String     name  = method.getName();
+            Class<?>[] types = method.getParameterTypes();
+            if (subprop.length==2) {
+                if (types.length==2 && name.equalsIgnoreCase("set"+subprop[0])) {
+                    try {
+                        if (types[0].equals(String.class) && types[1].equals(String.class)) {
+                            method.invoke(o, subprop[1], value);
+                            return;
+                        }
+                    } catch (Exception ignore) {
+                        // some problem
+                    }
+                }
+            } else {
+                if (types.length==1 && name.equalsIgnoreCase("set"+property)) {
+                    try {
+                        if (types[0].equals(String.class)) {
+                            method.invoke(o, value);
+                            return;
+                        } else if (types[0].equals(String[].class)) {
+                            method.invoke(o, (Object)new String[] {value});
+                            return;
+                        } else if (types[0].equals(Boolean.TYPE)) {
+                            method.invoke(o, value.equalsIgnoreCase("true"));
+                            return;
+                        } else if (types[0].equals(Integer.TYPE)) {
+                            method.invoke(o, Integer.valueOf(value));
+                            return;
+                        } else {
+                            // unrecognized type
+                        }
+                    } catch (Exception ignore) {
+                        // some problem
+                    }
+                }
+            }
+        }
+        // didn't work if we get here
+    }
+
     public static void report_bean(REPL repl, Object o) {
         // pass 1: calculate max
         int max = 1;

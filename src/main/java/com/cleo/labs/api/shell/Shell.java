@@ -41,6 +41,7 @@ import com.cleo.labs.api.constant.Packaging;
 import com.cleo.labs.api.constant.PathType;
 import com.cleo.labs.api.constant.Protocol;
 import com.cleo.labs.api.exception.URLResolutionException;
+import com.cleo.labs.api.shell.CleoSpiConfig.APIHookClass;
 import com.cleo.labs.util.LDAP;
 import com.cleo.labs.util.S;
 import com.cleo.labs.util.S.Inspector;
@@ -74,6 +75,7 @@ public class Shell extends REPL {
     @Option(name="h", args="home", comment="installation directory")
     public void home_option(String arg) {
         LexiCom.setHome(new File(arg));
+        URI.setHome(LexiCom.getHome());
     }
     
     @Option(name="p", args="product", comment="H | VLT | LC")
@@ -561,7 +563,7 @@ public class Shell extends REPL {
     }
 
     @Command(name="uri_parse", args="uri", comment="parse URI")
-    public void uri(String s) {
+    public void uri_parse(String s) {
         try {
             java.net.URI u = new java.net.URI(s);
             Util.report_bean(this, u);
@@ -571,26 +573,23 @@ public class Shell extends REPL {
     }
     @Command(name="uri_list", args="[id ...]", comment="list URI drivers")
     public void uri_list(String...argv) {
-        try {
-            // build a dictionary of installed URIs
-            Map<String,URI> uris = new HashMap<String,URI>();
-            for (URI uri : URI.getSchemes(LexiCom.getHome(), new Reporter(this))) {
-                uris.put(uri.scheme, uri);
-            }
-            if (argv.length==0) {
-                argv = uris.keySet().toArray(new String[uris.size()]);
-            }
-            // report on URIs matching argv
-            for (String arg : argv) {
-                if (uris.containsKey(arg)) {
-                    URI uri = uris.get(arg);
-                    report("uri install "+S.join(" ", uri.deconstruct()));
-                } else {
-                    error("uri not installed: "+arg);
+        CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome()).audit();
+        if (argv.length==0) {
+            // dump entire configuration
+            report(config.toString());
+            report("-----");
+            for (Map.Entry<MvnJar,Set<MvnJar>> e : config.dependencies().entrySet()) {
+                report(e.getKey().jar());
+                for (MvnJar depend : e.getValue()) {
+                    report("  "+depend.jar());
                 }
             }
-        } catch (Exception e) {
-            error("error listing URIs", e);
+        } else {
+            // report on specific jars
+            for (String arg : argv) {
+                MvnJar  mj = config.factory().get(arg);
+                report(mj.toString());
+            }
         }
     }
     @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
@@ -598,37 +597,55 @@ public class Shell extends REPL {
         URI scheme = null;
         if (argv.length>0 && argv[0].endsWith(":")) {
             // usage: uri install scheme: property=value... jar...
-            scheme = URI.inspectJars(LexiCom.getHome(), new Reporter(this), argv);
+            // TODO: deprecate this mode of install
+            scheme = URI.inspectJars(argv);
             if (scheme!=null) {
                 scheme.install();
                 report(scheme.scheme, scheme.toStrings());
             } else {
                 error("invalid URI: "+S.join(" ", argv));
             }
-        } else {
+        } else if (argv.length>0) {
             // usage: uri install jar-with-manifest...
+            CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome());
             for (String jar : argv) {
-                scheme = URI.inspectJar(LexiCom.getHome(), new Reporter(this), jar);
-                if (scheme!=null) {
-                    scheme.install();
-                    report(scheme.toStrings());
-                } else {
-                    error("invalid URI: "+jar);
-                }
+                config.install_jar(config.factory().get(jar));
             }
+            config.save();
+            report(config.toString());
         }
     }
     @Command(name="uri_remove", args="id ...", min=1, comment="remove URI drivers")
     public void uri_remove(String...argv) throws Exception {
+        CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome());
         for (String uri : argv) {
-            URI scheme = URI.get(LexiCom.getHome(), new Reporter(this), uri);
-            if (scheme!=null) {
-                scheme.uninstall();
-                report("uri uninstalled: "+uri);
+            // choices are uri:scheme, auth:scheme, any APIHook, g%a%v, or *.jar
+            if (uri.matches("(?i)uri:.*")) {
+                String name = uri.substring("uri:".length());
+                report("removing uri scheme "+name);
+                config.remove_scheme(name);
+            } else if (uri.matches("(?i)auth:.*")) {
+                String name = uri.substring("auth:".length());
+                report("removing auth scheme "+name);
+                config.remove_authenticator(name);
             } else {
-                error("uri not installed: "+uri);
+                try {
+                    APIHookClass hook = APIHookClass.valueOf(uri.toUpperCase());
+                    report("removing API Hook "+hook.name());
+                    config.remove_hook(hook);
+                } catch (Exception ignore) {
+                    MvnJar jar = config.factory().get(uri);
+                    if (jar.exists()) {
+                        report("removing "+jar.file().getPath());
+                        config.remove_jar(jar);
+                    } else {
+                        error("not sure what you mean here: "+uri);
+                    }
+                }
             }
         }
+        config.save();
+        report(config.toString());
     }
 
     @Command(name="list_nodes", args="path with a *", comment="list objects")
@@ -736,35 +753,56 @@ public class Shell extends REPL {
     }
     @Command(name="get", args="path property ...", min=1, comment="get property...")
     public void get(String pathname, String...props) {
-        Path path = Path.parsePath(pathname);
-        for (String prop : props) {
-            String[] values;
-            try {
-                values = LexiCom.getProperty(path, prop);
-                if (values==null) {
-                    report(path+"."+prop+" not found");
-                } else if (values.length==1) {
-                    report(path+"."+prop+"=", values[0]);
-                } else {
-                    report(path+"."+prop+"=", values);
+        if (pathname.isEmpty()) {
+            // system option
+            for (String prop : props) {
+                try {
+                    report(prop+"="+Util.get_bean(LexiCom.getOptions(), prop));
+                } catch (Exception e) {
+                    report(prop+" not found: "+e.toString());
                 }
-            } catch (Exception e) {
-                error("error getting "+prop, e);
+            }
+        } else {
+            // path property
+            Path path = Path.parsePath(pathname);
+            for (String prop : props) {
+                String[] values;
+                try {
+                    values = LexiCom.getProperty(path, prop);
+                    if (values==null) {
+                        report(path+"."+prop+" not found");
+                    } else if (values.length==1) {
+                        report(path+"."+prop+"=", values[0]);
+                    } else {
+                        report(path+"."+prop+"=", values);
+                    }
+                } catch (Exception e) {
+                    error("error getting "+prop, e);
+                }
             }
         }
     }
     @Command(name="set", args="path property [value...]", comment="set value(s)")
     public void set(String pathname, String property, String...value) throws Exception {
-        Path path = Path.parsePath(pathname);
-        if (value.length==0) {
-            LexiCom.setProperty(path, property, (String) null);
-        } else if (value.length==1) {
-            LexiCom.setProperty(path, property, value[0]);
+        if (pathname.isEmpty()) {
+            try {
+                Util.set_bean(LexiCom.getOptions(), property,
+                              value==null||value.length==0 ? null : value[0]);
+            } catch (Exception e) {
+                report(property+" not found: "+e.toString());
+            }
         } else {
-            LexiCom.setProperty(path, property, value);
-        }
-        if (autosave) {
-            LexiCom.save(path);
+            Path path = Path.parsePath(pathname);
+            if (value.length==0) {
+                LexiCom.setProperty(path, property, (String) null);
+            } else if (value.length==1) {
+                LexiCom.setProperty(path, property, value[0]);
+            } else {
+                LexiCom.setProperty(path, property, value);
+            }
+            if (autosave) {
+                LexiCom.save(path);
+            }
         }
     }
     @Command(name="exists", args="path...", comment="check for object")
@@ -1117,13 +1155,13 @@ public class Shell extends REPL {
             xml.file = Util.file2string(fn);
         } catch (FileNotFoundException e1) {
             try {
-                xml.file = Util.file2string(new File(LexiCom.getHome(), fn));
+                xml.file = Util.file2string(LexiCom.getHome(fn));
             } catch (FileNotFoundException e2) {
                 try {
-                    xml.file = Util.file2string(new File(new File(LexiCom.getHome(), "conf"), fn));
+                    xml.file = Util.file2string(LexiCom.getHome("conf", fn));
                 } catch (FileNotFoundException e3) {
                     try {
-                        xml.file = Util.file2string(new File(new File(LexiCom.getHome(), "hosts"), fn));
+                        xml.file = Util.file2string(LexiCom.getHome("hosts", fn));
                     } catch (FileNotFoundException e4) {
                         return null;
                     }
@@ -2086,6 +2124,12 @@ public class Shell extends REPL {
         } catch (Exception e) {
             error("cannot connect to database", e);
         }
+    }
+
+    public Shell() {
+        // TODO: move this out of URI into a context or something so I can kill URI
+        URI.setReporter(new Reporter(this));
+        URI.setHome(new File("."));
     }
 
     public static void main(String[] argv) {

@@ -40,8 +40,14 @@ public class LexiCom {
     public static Mode getMode() {
         return mode;
     }
-    public static File getHome() {
-        return home;
+    public static File getHome(String...children) {
+        File result = home;
+        if (children!=null) {
+            for (String child : children) {
+                result = new File(result, child);
+            }
+        }
+        return result;
     }
     public static void setMode(Mode mode) {
         if (connected()) {
