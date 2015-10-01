@@ -18,6 +18,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathFactory;
+
 import com.cleo.labs.util.F;
 import com.cleo.labs.util.S;
 import com.cleo.labs.util.X;
@@ -203,6 +206,10 @@ public class MvnJar {
         return gav() ? group()+"%"+artifact()+"%"+version() : null;
     }
     /**
+     * An XPath evaluator for use in Maven metadata.xml parsing.
+     */
+    private static final XPath xpath = XPathFactory.newInstance().newXPath();
+    /**
      * If there is a GAV, returns a URL String from which the file may
      * be downloaded.
      * @return a URL String if {@code gav()}, or {@code null}
@@ -219,8 +226,8 @@ public class MvnJar {
                 if (version().contains("SNAPSHOT")) {
                     repo = "http://"+contd+"/nexus/content/repositories/snapshots/";
                     try {
-                        Map<String,Object> meta = X.xml2map(X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))).getDocumentElement());
-                        String value = (String)X.subobj(meta, "versioning", "snapshotVersions", "snapshotVersion[0]", "value");
+                        String value = xpath.evaluate("/metadata/versioning/snapshotVersions[snapshotVersion/extension='jar']/snapshotVersion/value",
+                                X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))));
                         file = artifact()+"-"+value+".jar";
                     } catch (Exception ignore) {
                         URI.report(ignore.toString());
