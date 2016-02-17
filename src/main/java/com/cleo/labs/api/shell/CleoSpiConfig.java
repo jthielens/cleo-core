@@ -416,6 +416,7 @@ public class CleoSpiConfig {
     private static final String URI_PREFIX  = "cleo.uri.";
     private static final String AUTH_PREFIX = "cleo.password.validator.";
     private static final String ADDITIONAL  = "cleo.additional.classpath";
+    private static final String USERGROUPS  = "cleo.extended.usergroups";
 
     /**
      * Loads the Service Provider Interface (SPI) plugin configuration
@@ -476,7 +477,7 @@ public class CleoSpiConfig {
     public void save() {
         // save property-based configuration
         // 1. load file
-        Properties properties = new Properties();
+        properties = new Properties();
         try (FileInputStream fis = new FileInputStream(LexiCom.getHome("conf/system.properties"))) {
             properties.load(fis);
         } catch (Exception ignore) {
@@ -489,6 +490,7 @@ public class CleoSpiConfig {
             }
         }
         properties.remove(ADDITIONAL);
+        properties.remove(USERGROUPS);
         // 3. update managed properties
         if (schemes()!=null) {
             for (Map.Entry<String,UriScheme> entry : schemes().entrySet()) {
@@ -598,6 +600,7 @@ public class CleoSpiConfig {
     }
     public CleoSpiConfig remove_hook(APIHookClass hook) {
         hooks().put(hook, null);
+        remove_jar(null);
         return this;
     }
     /**

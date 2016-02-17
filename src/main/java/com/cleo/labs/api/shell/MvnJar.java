@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -62,6 +64,11 @@ public class MvnJar {
     public File    file    () { return this.file    ; }
     public String  jar     () { return this.jar     ; }
     public Factory factory () { return this.factory ; }
+
+    // cleaned up filename
+    public String  fileName() {
+        return factory().relativize(file());
+    }
 
     // cleojar attributes, parsed from manifest
     private boolean     cleojar      = false; // did we see any manifest entries
@@ -153,6 +160,22 @@ public class MvnJar {
             }
             return jars;
         }
+        /**
+         * Returns a path, converted to a relative path from the
+         * factory home directory if the path is (a) absolute and
+         * (b) resides within the home directory.  Otherwise the
+         * argument is returned unchanged.
+         * @param file the file to clean up
+         * @return the relativized path, or just file
+         */
+        public String relativize(File file) {
+            Path path = file.toPath().normalize();
+            Path home = home().getAbsoluteFile().toPath();
+            if (path.isAbsolute() && path.startsWith(home)) {
+                path = home.relativize(path);
+            }
+            return path.toString();
+        }
         public Factory(File home, File lib) {
             this.home = home;
             this.lib  = lib;
@@ -176,7 +199,12 @@ public class MvnJar {
                 this.jar = artifact()+"-"+version()+".jar";
             }
             this.file = new File(factory.lib(), new File(jar()).getName());
-            this.jar  = factory.home().toURI().relativize(file().toURI()).getPath();
+            if (Paths.get(jar()).isAbsolute() && Paths.get(jar()).startsWith(factory.home().getAbsoluteFile().toPath())) {
+                this.jar = factory.home().getAbsoluteFile().toPath().relativize(Paths.get(jar())).toString();
+            }
+            // was relativize(file().toURI())
+            // this.jar = factory.home().toURI().relativize(new File(jar()).toURI()).getPath();
+            // this.jar = factory.home().toPath().relativize(Paths.get(jar())).toString();
             parse();
         }
         return this;
@@ -274,7 +302,9 @@ public class MvnJar {
                 } catch (Exception e) {
                     URI.report("error downloading "+jar()+": "+e);
                 }
-            } else {
+            }
+            if (result==null) {
+                // gav() wasn't true or didn't work
                 File src = new File(jar());
                 if (src.equals(file())) {
                     result = new F.Clobbered(src, true);
@@ -342,10 +372,14 @@ public class MvnJar {
      */
     private MvnJar parse() {
         cleo_reset();
-        if (exists()) {
+        File source = new File(jar());
+        if (!source.exists()) {
+            source = file();
+        }
+        if (source.exists()) {
             Set<MvnJar> classSet = new HashSet<>();
             Set<MvnJar> addSet   = new HashSet<>();
-            try (JarFile jarfile = new JarFile(file())) {
+            try (JarFile jarfile = new JarFile(source)) {
                 // parse the manifest
                 Manifest manifest = jarfile.getManifest();
                 if (manifest!=null) {
@@ -490,18 +524,18 @@ public class MvnJar {
     public String toString() {
         return jar==null ? "null" :
                jar()+
-                S.all(" (",sbt(),")")+(file==null?"":" @ "+file.getPath())+
+                S.all(" (",sbt(),")")+(file==null?"":" @ "+fileName())+
                 S.all(S.all("\n  uri:",scheme()),
                       S.all("\n    file=",fileclass())+
                       S.all("\n    inputstream=",inputstream())+
                       S.all("\n    outputstream=",outputstream())+
-                      S.all("\n    classpath=",S.join("\n      ", MvnJar.asStrings(classpath()))))+
+                      S.all("\n    classpath=",S.join("\n      ", MvnJar.relativized(classpath()))))+
                 S.all("\n  listener=",listener())+
                 S.all("\n  incoming=",incoming())+
                 S.all("\n  outgoing=",outgoing())+
                 S.all("\n  usergroups=",usergroups())+
                 S.all("\n  auth:",authscheme(),"=",authclass())+
-                S.all("\n  additional=",S.join("\n    ", MvnJar.asStrings(additional())))+
+                S.all("\n  additional=",S.join("\n    ", MvnJar.relativized(additional())))+
                 S.all("\n  providers=",S.join(", ", providers));
     }
     @Override
@@ -534,17 +568,8 @@ public class MvnJar {
         if (jars!=null && !jars.isEmpty()) {
             strings = new HashSet<>();
             for (MvnJar jar : jars) {
-                strings.add(jar.jar());
+                strings.add(jar.fileName());
             }
-        }
-        return strings;
-    }
-
-    public static List<String> asStrings(Collection<MvnJar> jars) {
-        if (jars==null) return null;
-        List<String> strings = new ArrayList<>(jars.size());
-        for (MvnJar jar : jars) {
-            strings.add(jar.jar());
         }
         return strings;
     }

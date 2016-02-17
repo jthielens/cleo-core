@@ -573,6 +573,7 @@ public class Shell extends REPL {
     }
     @Command(name="uri_list", args="[id ...]", comment="list URI drivers")
     public void uri_list(String...argv) {
+        try{
         CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome()).audit();
         if (argv.length==0) {
             // dump entire configuration
@@ -591,6 +592,7 @@ public class Shell extends REPL {
                 report(mj.toString());
             }
         }
+        } catch (Exception e) {error("failed", e); }
     }
     @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
     public void uri_install(String...argv) throws Exception {
