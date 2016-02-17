@@ -63,6 +63,17 @@ public class CleoSpiConfig {
             public void set(CleoSpiConfig config, String value) throws Exception {
                 setOption(config, PROPERTY, value);
             }
+        },
+        USERGROUPS {
+            static public final String PROPERTY = "cleo.extended.usergroups";
+            @Override
+            public String get(CleoSpiConfig config) throws Exception {
+                return S.ornull(config.property(PROPERTY));
+            }
+            @Override
+            public void set(CleoSpiConfig config, String value) throws Exception {
+                config.property(PROPERTY, value);
+            }
         };
         public abstract String get(CleoSpiConfig config) throws Exception;
         public abstract void set(CleoSpiConfig config, String value) throws Exception;
@@ -224,6 +235,7 @@ public class CleoSpiConfig {
     }
     private File                          home           = null;
     private File                          lib            = null;
+    private Properties                    properties     = null;
     private MvnJar.Factory                factory        = null;
     private Map<String,UriScheme>         schemes        = null;  // cleo.uri.*
     private Map<String,AuthScheme>        authenticators = null;  // cleo.password.validator.*
@@ -233,6 +245,7 @@ public class CleoSpiConfig {
     // classical fluent setter/getters
     public  File                          home          (                                            ) { return this.home          ;                        }
     public  File                          lib           (                                            ) { return this.lib           ;                        }
+    public  Properties                    properties    (                                            ) { return this.properties    ;                        }
     public  MvnJar.Factory                factory       (                                            ) { return this.factory       ;                        }
     public  CleoSpiConfig                 schemes       (Map<String,UriScheme>         schemes       ) { this.schemes        = schemes       ; return this; }
     public  Map<String,UriScheme>         schemes       (                                            ) { return this.schemes       ;                        }
@@ -244,6 +257,37 @@ public class CleoSpiConfig {
     public  EnumMap<APIHookClass,APIHook> hooks         (                                            ) { return this.hooks         ;                        }
 
     // custom setter/getters
+    /**
+     * Custom getter that
+     * returns the system.properties value for {@code key}, or
+     * {@code null} if the properties were not loaded in the
+     * constructor or the property is not set.
+     * @param key the property to retrieve
+     * @return the value, or {@code null}
+     */
+    public String property(String key) {
+        return this.properties()==null ? null : this.properties().getProperty(key);
+    }
+    /**
+     * Custom setter that
+     * updates the system.property for {@code key}, if the
+     * properties were loaded in the constructor.  If {@code value}
+     * is {@code null}, the property is removed.  Otherwise it
+     * is set.
+     * @param key the property to set
+     * @param value the value to set
+     * @return {@code this}
+     */
+    public CleoSpiConfig property(String key, String value) {
+        if (this.properties()!=null) {
+            if (value==null) {
+                this.properties().remove(key);
+            } else {
+                this.properties().setProperty(key, value);
+            }
+        }
+        return this;
+    }
     /**
      * Custom getter that
      * returns the {@link UriScheme} for {@code name}, creating a
@@ -373,12 +417,17 @@ public class CleoSpiConfig {
     private static final String AUTH_PREFIX = "cleo.password.validator.";
     private static final String ADDITIONAL  = "cleo.additional.classpath";
 
+    /**
+     * Loads the Service Provider Interface (SPI) plugin configuration
+     * for the VersaLex installed in {@code home}.
+     * @param home
+     */
     public CleoSpiConfig(File home) {
         this.home    = home;
         this.lib     = new File(home(), "lib/uri");
         this.factory = new MvnJar.Factory(home, lib);
         // load property-based configuration
-        Properties properties = new Properties();
+        properties = new Properties();
         try (FileInputStream fis = new FileInputStream(new File(home(), "conf/system.properties"))) {
             properties.load(fis);
             for (String property : properties.stringPropertyNames()) {
@@ -468,14 +517,7 @@ public class CleoSpiConfig {
         if (additional()!=null) {
             properties.put(ADDITIONAL, S.join(":", additional()));
         }
-        // 4. write the file
-        try (FileOutputStream out = new FileOutputStream(new File(home(), "conf/system.properties"))) {
-            properties.store(out, "Properties updated by "+CleoSpiConfig.class.getCanonicalName());
-        } catch (Exception e) {
-            URI.report("error saving system.properties: "+e);
-        }
-
-        // save Options-based configuration
+        // 4. save Options-based configuration (some may be properties)
         for (Map.Entry<APIHookClass,APIHook> hook : hooks().entrySet()) {
             try {
                 String value = hook.getValue()==null ? null : hook.getValue().hook();
@@ -483,6 +525,12 @@ public class CleoSpiConfig {
             } catch (Exception e) {
                 URI.report("error saving "+hook.getKey().name()+": "+e);
             }
+        }
+        // 5. write the file
+        try (FileOutputStream out = new FileOutputStream(new File(home(), "conf/system.properties"))) {
+            properties.store(out, "Properties updated by "+CleoSpiConfig.class.getCanonicalName());
+        } catch (Exception e) {
+            URI.report("error saving system.properties: "+e);
         }
     }
 
@@ -514,6 +562,10 @@ public class CleoSpiConfig {
                 if (add.outgoing()!=null) {
                     hooks().put(APIHookClass.OUTGOING,
                             new APIHook().hook(add.outgoing()).jar(add));
+                }
+                if (add.usergroups()!=null) {
+                    hooks().put(APIHookClass.USERGROUPS,
+                            new APIHook().hook(add.usergroups()).jar(add));
                 }
                 if (add.listener()!=null) {
                     hooks().put(APIHookClass.LISTENER,
@@ -675,6 +727,10 @@ public class CleoSpiConfig {
                     if (auth!=null) {
                         auth.jar(cleojar.jar());
                     }
+                    APIHook listener = hooks().get(APIHookClass.LISTENER);
+                    if (listener!=null && listener.hook()!=null && listener.hook().equals(cleojar.listener())) {
+                        listener.jar(cleojar);
+                    }
                     APIHook incoming = hooks().get(APIHookClass.INCOMING);
                     if (incoming!=null && incoming.hook()!=null && incoming.hook().equals(cleojar.incoming())) {
                         incoming.jar(cleojar);
@@ -683,9 +739,9 @@ public class CleoSpiConfig {
                     if (outgoing!=null && outgoing.hook()!=null && outgoing.hook().equals(cleojar.outgoing())) {
                         outgoing.jar(cleojar);
                     }
-                    APIHook listener = hooks().get(APIHookClass.LISTENER);
-                    if (listener!=null && listener.hook()!=null && listener.hook().equals(cleojar.listener())) {
-                        listener.jar(cleojar);
+                    APIHook extended = hooks().get(APIHookClass.USERGROUPS);
+                    if (extended!=null && extended.hook()!=null && extended.hook().equals(cleojar.usergroups())) {
+                        extended.jar(cleojar);
                     }
                 }
             }

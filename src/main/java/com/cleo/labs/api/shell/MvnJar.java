@@ -76,6 +76,7 @@ public class MvnJar {
     private String      listener     = null;  // Cleo-API-LexiComLogListener
     private String      incoming     = null;  // Cleo-API-ILexiComIncoming
     private String      outgoing     = null;  // Cleo-API-LexiComOutgoingThread
+    private String      usergroups   = null;  // Cleo-API-ExtendedUserGroups
 
     private String      authscheme   = null;  // Cleo-Authenticator-Scheme
     private String      authclass    = null;  // Cleo-Authenticator-Class
@@ -92,6 +93,7 @@ public class MvnJar {
     public  String      listener    () { return this.listener    ; }
     public  String      incoming    () { return this.incoming    ; }
     public  String      outgoing    () { return this.outgoing    ; }
+    public  String      usergroups  () { return this.usergroups  ; }
     public  String      authscheme  () { return this.authscheme  ; }
     public  String      authclass   () { return this.authclass   ; }
     public  Set<String> providers   () { return this.providers   ; }
@@ -230,7 +232,8 @@ public class MvnJar {
                                 X.string2xml(new String(F.download(repo+dir+"maven-metadata.xml"))));
                         file = artifact()+"-"+value+".jar";
                     } catch (Exception ignore) {
-                        URI.report(ignore.toString());
+                        // usually NPE because file isn't there
+                        // URI.report(ignore.toString());
                     }
                 } else {
                     // contd.cleo.com
@@ -323,6 +326,7 @@ public class MvnJar {
         this.listener     = null;
         this.incoming     = null;
         this.outgoing     = null;
+        this.usergroups   = null;
         this.authscheme   = null;
         this.authclass    = null;
         this.providers    = null;
@@ -381,6 +385,10 @@ public class MvnJar {
                                     break;
                                 case "Cleo-API-LexiComOutgoingThread":
                                     this.outgoing = attrs.getValue(attr);
+                                    this.cleojar = true;
+                                    break;
+                                case "Cleo-API-ExtendedUserGroups":
+                                    this.usergroups = attrs.getValue(attr);
                                     this.cleojar = true;
                                     break;
                                 case "Cleo-Authenticator-Scheme":
@@ -491,6 +499,7 @@ public class MvnJar {
                 S.all("\n  listener=",listener())+
                 S.all("\n  incoming=",incoming())+
                 S.all("\n  outgoing=",outgoing())+
+                S.all("\n  usergroups=",usergroups())+
                 S.all("\n  auth:",authscheme(),"=",authclass())+
                 S.all("\n  additional=",S.join("\n    ", MvnJar.asStrings(additional())))+
                 S.all("\n  providers=",S.join(", ", providers));
