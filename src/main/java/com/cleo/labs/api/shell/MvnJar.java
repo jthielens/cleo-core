@@ -6,13 +6,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
@@ -84,6 +82,7 @@ public class MvnJar {
     private String      incoming     = null;  // Cleo-API-ILexiComIncoming
     private String      outgoing     = null;  // Cleo-API-LexiComOutgoingThread
     private String      usergroups   = null;  // Cleo-API-ExtendedUserGroups
+    private String      portalauth   = null;  // Cleo-API-IPortalUserAuthentication
 
     private String      authscheme   = null;  // Cleo-Authenticator-Scheme
     private String      authclass    = null;  // Cleo-Authenticator-Class
@@ -101,6 +100,7 @@ public class MvnJar {
     public  String      incoming    () { return this.incoming    ; }
     public  String      outgoing    () { return this.outgoing    ; }
     public  String      usergroups  () { return this.usergroups  ; }
+    public  String      portalauth  () { return this.portalauth  ; }
     public  String      authscheme  () { return this.authscheme  ; }
     public  String      authclass   () { return this.authclass   ; }
     public  Set<String> providers   () { return this.providers   ; }
@@ -357,6 +357,7 @@ public class MvnJar {
         this.incoming     = null;
         this.outgoing     = null;
         this.usergroups   = null;
+        this.portalauth   = null;
         this.authscheme   = null;
         this.authclass    = null;
         this.providers    = null;
@@ -423,6 +424,10 @@ public class MvnJar {
                                     break;
                                 case "Cleo-API-ExtendedUserGroups":
                                     this.usergroups = attrs.getValue(attr);
+                                    this.cleojar = true;
+                                    break;
+                                case "Cleo-API-IPortalUserAuthentication":
+                                    this.portalauth = attrs.getValue(attr);
                                     this.cleojar = true;
                                     break;
                                 case "Cleo-Authenticator-Scheme":
@@ -534,6 +539,7 @@ public class MvnJar {
                 S.all("\n  incoming=",incoming())+
                 S.all("\n  outgoing=",outgoing())+
                 S.all("\n  usergroups=",usergroups())+
+                S.all("\n  portalauth=",portalauth())+
                 S.all("\n  auth:",authscheme(),"=",authclass())+
                 S.all("\n  additional=",S.join("\n    ", MvnJar.relativized(additional())))+
                 S.all("\n  providers=",S.join(", ", providers));

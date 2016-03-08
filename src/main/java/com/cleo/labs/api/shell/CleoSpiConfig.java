@@ -74,6 +74,18 @@ public class CleoSpiConfig {
             public void set(CleoSpiConfig config, String value) throws Exception {
                 config.property(PROPERTY, value);
             }
+        },
+        PORTALAUTH {
+            static public final String PROPERTY = "cleo.iportaluserauthentication.class";
+            @Override
+            public String get(CleoSpiConfig config) throws Exception {
+                return S.ornull(config.property(PROPERTY));
+            }
+            @Override
+            public void set(CleoSpiConfig config, String value) throws Exception {
+                config.property(PROPERTY, value);
+            }
+            
         };
         public abstract String get(CleoSpiConfig config) throws Exception;
         public abstract void set(CleoSpiConfig config, String value) throws Exception;
@@ -417,6 +429,7 @@ public class CleoSpiConfig {
     private static final String AUTH_PREFIX = "cleo.password.validator.";
     private static final String ADDITIONAL  = "cleo.additional.classpath";
     private static final String USERGROUPS  = "cleo.extended.usergroups";
+    private static final String PORTALAUTH  = "cleo.iportaluserauthentication.class";
 
     /**
      * Loads the Service Provider Interface (SPI) plugin configuration
@@ -491,6 +504,7 @@ public class CleoSpiConfig {
         }
         properties.remove(ADDITIONAL);
         properties.remove(USERGROUPS);
+        properties.remove(PORTALAUTH);
         // 3. update managed properties
         if (schemes()!=null) {
             for (Map.Entry<String,UriScheme> entry : schemes().entrySet()) {
@@ -568,6 +582,10 @@ public class CleoSpiConfig {
                 if (add.usergroups()!=null) {
                     hooks().put(APIHookClass.USERGROUPS,
                             new APIHook().hook(add.usergroups()).jar(add));
+                }
+                if (add.portalauth()!=null) {
+                    hooks().put(APIHookClass.PORTALAUTH,
+                            new APIHook().hook(add.portalauth()).jar(add));
                 }
                 if (add.listener()!=null) {
                     hooks().put(APIHookClass.LISTENER,
@@ -745,6 +763,10 @@ public class CleoSpiConfig {
                     APIHook extended = hooks().get(APIHookClass.USERGROUPS);
                     if (extended!=null && extended.hook()!=null && extended.hook().equals(cleojar.usergroups())) {
                         extended.jar(cleojar);
+                    }
+                    APIHook portalauth = hooks().get(APIHookClass.PORTALAUTH);
+                    if (portalauth!=null && portalauth.hook()!=null && portalauth.hook().equals(cleojar.portalauth())) {
+                        portalauth.jar(cleojar);
                     }
                 }
             }

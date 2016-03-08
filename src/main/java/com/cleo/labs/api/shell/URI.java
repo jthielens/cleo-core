@@ -67,6 +67,7 @@ public class URI {
     public String             listener     = null;  // Cleo-API-LexiComLogListener
     public String             incoming     = null;  // Cleo-API-ILexiComIncoming
     public String             outgoing     = null;  // Cleo-API-LexiComOutgoingThread
+    public String             portalAuth   = null;  // Cleo-API-IPortalUserAuthentication
 
     public String             self         = null;  // if read from manifest
     public Map<String,String> properties   = new HashMap<String,String>();
@@ -115,6 +116,9 @@ public class URI {
             }
             classSet.addAll(addPath);
             props.setProperty("cleo.additional.classpath", S.join(COLON, classSet));
+        }
+        if (portalAuth!=null && !portalAuth.isEmpty()) {
+            props.setProperty("cleo.iportaluserauthentication.class", portalAuth);
         }
         return props;
     }
@@ -251,6 +255,7 @@ public class URI {
         // - listener              Cleo-API-LexiComLogListener
         // - incoming              Cleo-API-ILexiComIncoming
         // - outgoing              Cleo-API-LexiComOutgoingThread
+        // - portal auth class     Cleo-API-IPortalUserAuthentication
         // Note that first setting wins (for scheme and file classes that aren't lists).
         // Depends and Additional can appear multiple times (with unique suffixes, which are
         //      discarded), allowing for lists that would otherwise exceed the length limit
@@ -290,6 +295,10 @@ public class URI {
                     }
                     if (uri.outgoing==null && attrs.containsKey(new Attributes.Name("Cleo-API-LexiComOutgoingThread"))) {
                         uri.outgoing = attrs.getValue("Cleo-API-LexiComOutgoingThread");
+                        manifested = true;
+                    }
+                    if (uri.portalAuth==null && attrs.containsKey(new Attributes.Name("Cleo-API-IPortalUserAuthentication"))) {
+                        uri.portalAuth = attrs.getValue("Cleo-API-IPortalUserAuthentication");
                         manifested = true;
                     }
                     for (Object o : attrs.keySet()) {
