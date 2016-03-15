@@ -88,6 +88,7 @@ public class MvnJar {
     private String      authclass    = null;  // Cleo-Authenticator-Class
 
     private Set<String> providers    = null;  // com.cleo.labs.uri.vfs.provider.*.class
+    private Set<String> templates    = null;  // com.cleo.labs.uri.vfs.template.*.class
 
     public  boolean     cleojar     () { return this.cleojar     ; }
     public  String      scheme      () { return this.scheme      ; }
@@ -104,6 +105,7 @@ public class MvnJar {
     public  String      authscheme  () { return this.authscheme  ; }
     public  String      authclass   () { return this.authclass   ; }
     public  Set<String> providers   () { return this.providers   ; }
+    public  Set<String> templates   () { return this.templates   ; }
 
     public static class Factory {
         private static Map<String,MvnJar> library = new HashMap<>();
@@ -361,10 +363,12 @@ public class MvnJar {
         this.authscheme   = null;
         this.authclass    = null;
         this.providers    = null;
+        this.templates    = null;
         return this;
     }
 
     private static final String PROVIDER = "com/cleo/labs/uri/vfs/provider/";
+    private static final String TEMPLATE = "com/cleo/labs/uri/vfs/template/";
     /**
      * If the {@code file()} exists, parses its manifest and
      * sets cleo jar attributes, setting {@code cleojar=true} if
@@ -390,8 +394,10 @@ public class MvnJar {
                             String attr = o.toString();
                             if (attr.startsWith("Cleo-URI-Additional")) {
                                 addSet.addAll(factory.of(attrs.getValue(attr), "\\s+"));
+                                this.cleojar = true;
                             } else if (attr.startsWith("Cleo-URI-Depends")) {
                                 classSet.addAll(factory.of(attrs.getValue(attr), "\\s+"));
+                                this.cleojar = true;
                             } else {
                                 switch (attr) {
                                 case "Cleo-URI-Scheme":
@@ -445,20 +451,31 @@ public class MvnJar {
                         // by default, this jar (filename()) goes in private classpath setting
                         // if "this" appears in "Additional", we put it in additional instead
                         //MvnJar thisjar = new MvnJar("this");
-                        if (scheme()==null || addSet.contains(factory.THIS)) {
-                            addSet.remove(factory.THIS);
-                            addSet.add(this);
-                        } else {
-                            classSet.add(this);
-                        }
-                        // promote working Sets to member variables
-                        if (!addSet.isEmpty()) {
-                            this.additional = addSet;
-                            this.cleojar = true;
-                        }
-                        if (!classSet.isEmpty()) {
-                            this.classpath = classSet;
-                            this.cleojar = true;
+                        if (cleojar()) {
+                            if (scheme()==null) {
+                                // no classSet, so merge it with addSet and make sure THIS is in it
+                                addSet.addAll(classSet);
+                                classSet.clear();
+                                addSet.remove(factory.THIS);
+                                addSet.add(this);
+                            } else if (addSet.contains(factory.THIS)) {
+                                // URI scheme wants to be in additional
+                                addSet.remove(factory.THIS);
+                                addSet.add(this);
+                            } else {
+                                // URI scheme wants to be in classpath (default)
+                                classSet.remove(factory.THIS);
+                                classSet.add(this);
+                            }
+                            // promote working Sets to member variables
+                            if (!addSet.isEmpty()) {
+                                this.additional = addSet;
+                                this.cleojar = true;
+                            }
+                            if (!classSet.isEmpty()) {
+                                this.classpath = classSet;
+                                this.cleojar = true;
+                            }
                         }
                     }
                 }
@@ -497,6 +514,14 @@ public class MvnJar {
                         String provider = entry.getName();
                         provider = provider.substring(PROVIDER.length(), provider.length()-".class".length());
                         providers.add(provider);
+                        this.cleojar = true;
+                    } else if (entry.getName().matches(TEMPLATE+"[^/\\$]*.class")) {
+                        if (templates==null) {
+                            templates = new HashSet<>();
+                        }
+                        String template = entry.getName();
+                        template = template.substring(TEMPLATE.length(), template.length()-".class".length());
+                        templates.add(template);
                         this.cleojar = true;
                     }
                 }
@@ -542,7 +567,8 @@ public class MvnJar {
                 S.all("\n  portalauth=",portalauth())+
                 S.all("\n  auth:",authscheme(),"=",authclass())+
                 S.all("\n  additional=",S.join("\n    ", MvnJar.relativized(additional())))+
-                S.all("\n  providers=",S.join(", ", providers));
+                S.all("\n  providers=",S.join(", ", providers))+
+                S.all("\n  templates=",S.join(", ", templates));
     }
     @Override
     public int hashCode() {

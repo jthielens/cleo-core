@@ -574,27 +574,53 @@ public class Shell extends REPL {
     @Command(name="uri_list", args="[id ...]", comment="list URI drivers")
     public void uri_list(String...argv) {
         try{
-        CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome()).audit();
-        if (argv.length==0) {
-            // dump entire configuration
-            report(config.toString());
-            report("-----");
-            for (Map.Entry<MvnJar,Set<MvnJar>> e : config.dependencies().entrySet()) {
-                report(e.getKey().jar());
-                for (MvnJar depend : e.getValue()) {
-                    report("  "+depend.jar());
+            CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome());
+            if (argv.length==0) {
+                // dump entire configuration
+                report(config.toString());
+                Map<MvnJar,Set<MvnJar>> dependencies = config.dependencies();
+                if (!dependencies.isEmpty()) {
+                    report("dependencies");
+                    for (Map.Entry<MvnJar,Set<MvnJar>> e : dependencies.entrySet()) {
+                        report("  "+e.getKey().jar());
+                        for (MvnJar depend : e.getValue()) {
+                            report("    "+depend.jar());
+                        }
+                    }
+                }
+                Set<MvnJar> referenced = config.referenced_jars();
+                if (!referenced.isEmpty()) {
+                    report("referenced");
+                    for (MvnJar mj : referenced) {
+                        report("  "+mj.fileName());
+                    }
+                }
+                Set<MvnJar> unreferenced = config.unreferenced_jars();
+                if (!unreferenced.isEmpty()) {
+                    report("unreferenced");
+                    for (MvnJar mj : unreferenced) {
+                        report("  "+mj.fileName());
+                    }
+                }
+                Set<MvnJar> missing = config.missing_jars();
+                if (!missing.isEmpty()) {
+                    report("missing");
+                    for (MvnJar mj : missing) {
+                        report("  "+mj.fileName());
+                    }
+                }
+            } else {
+                // report on specific jars
+                for (String arg : argv) {
+                    MvnJar  mj = config.factory().get(arg);
+                    report(mj.toString());
                 }
             }
-        } else {
-            // report on specific jars
-            for (String arg : argv) {
-                MvnJar  mj = config.factory().get(arg);
-                report(mj.toString());
-            }
+        } catch (Exception e) {
+            error("failed", e);
         }
-        } catch (Exception e) {error("failed", e); }
     }
-    @Command(name="uri_install", args="file.jar ...", min=1, comment="install URI drivers")
+    @Command(name="uri_install", args="[no] file.jar ...", min=1, comment="install URI drivers")
     public void uri_install(String...argv) throws Exception {
         URI scheme = null;
         if (argv.length>0 && argv[0].endsWith(":")) {
@@ -608,18 +634,39 @@ public class Shell extends REPL {
                 error("invalid URI: "+S.join(" ", argv));
             }
         } else if (argv.length>0) {
-            // usage: uri install jar-with-manifest...
+            // usage: uri install [no] jar-with-manifest...
+            boolean preflight = argv[0].equalsIgnoreCase("no");
+            if (preflight) {
+                String[] rest = new String[argv.length-1];
+                System.arraycopy(argv, 1, rest, 0, rest.length);
+                argv = rest;
+            }
             CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome());
             for (String jar : argv) {
                 config.install_jar(config.factory().get(jar));
             }
-            config.save();
+            if (!preflight) {
+                config.save();
+            }
             report(config.toString());
         }
     }
-    @Command(name="uri_remove", args="id ...", min=1, comment="remove URI drivers")
+    @Command(name="uri_inspect", args="jar ...", min=1, comment="inspect a jar")
+    public void uri_inspect(String...argv) {
+        MvnJar.Factory factory = new MvnJar.Factory(LexiCom.getHome(), LexiCom.getHome("lib", "uri"));
+        for (String jar : argv) {
+            report(new MvnJar(jar, factory).toString());
+        }
+    }
+    @Command(name="uri_remove", args="id [no] ...", min=1, comment="remove URI drivers")
     public void uri_remove(String...argv) throws Exception {
         CleoSpiConfig config = new CleoSpiConfig(LexiCom.getHome());
+        boolean preflight = argv[0].equalsIgnoreCase("no");
+        if (preflight) {
+            String[] rest = new String[argv.length-1];
+            System.arraycopy(argv, 1, rest, 0, rest.length);
+            argv = rest;
+        }
         for (String uri : argv) {
             // choices are uri:scheme, auth:scheme, any APIHook, g%a%v, or *.jar
             if (uri.matches("(?i)uri:.*")) {
@@ -645,7 +692,9 @@ public class Shell extends REPL {
                 }
             }
         }
-        config.save();
+        if (!preflight) {
+            config.save();
+        }
         report(config.toString());
     }
 

@@ -18,6 +18,11 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -187,7 +192,7 @@ public class CleoSpiConfig {
             if (classpath()==null) {
                 classpath(new HashSet<String>());
             }
-            classpath().addAll(Arrays.asList(classPath.split(":")));
+            classpath().addAll(Arrays.asList(classPath.split(File.pathSeparator)));
             return this;
         }
         /**
@@ -223,26 +228,30 @@ public class CleoSpiConfig {
                    S.all("\n  file=",file())+
                    S.all("\n  inputStream=",inputstream())+
                    S.all("\n  outputStream=",outputstream())+
-                   S.all("\n  classPath=",S.join(":", classpath()))+
+                   S.all("\n  classPath=",S.join(File.pathSeparator, classpath()))+
                    S.all("\n  properties=",S.join("\n    ", properties(), "%s=%s"));
         }
     }
+    @Getter @Setter @Accessors(chain = true, fluent = true)
     public static class AuthScheme {
         private String scheme        = null;  // cleo.password.validator.scheme
         private String authenticator = null;  // cleo.password.validator.scheme=authenticator
-        private String jar           = null;  // CleoJar, if defined by one
+        private MvnJar jar           = null;  // CleoJar, if defined by one
         
-        public  AuthScheme scheme       (String scheme       ) { this.scheme        = scheme       ; return this; }
-        public  String     scheme       (                    ) { return this.scheme       ;                       }
-        public  AuthScheme authenticator(String authenticator) { this.authenticator = authenticator; return this; }
-        public  String     authenticator(                    ) { return this.authenticator;                       }
-        public  AuthScheme jar          (String jar          ) { this.jar           = jar          ; return this; }
-        public  String     jar          (                    ) { return this.jar          ;                       }
+        @Override
+        public String toString() {
+            return "auth:"+scheme()+S.all(" (",jar()!=null?jar().jar():null,")")+
+                   S.all("\n  authenticator=",authenticator());
+        }
+    }
+    @Getter @Setter @Accessors(chain = true, fluent = true) @EqualsAndHashCode
+    public static class JarScheme {
+        private String scheme = null;
+        private MvnJar jar    = null;
 
         @Override
         public String toString() {
-            return "auth:"+scheme()+S.all(" (",jar(),")")+
-                   S.all("\n  authenticator=",authenticator());
+            return scheme()+S.all(" (",jar()!=null?jar().jar():null,")");
         }
     }
     private File                          home           = null;
@@ -251,8 +260,11 @@ public class CleoSpiConfig {
     private MvnJar.Factory                factory        = null;
     private Map<String,UriScheme>         schemes        = null;  // cleo.uri.*
     private Map<String,AuthScheme>        authenticators = null;  // cleo.password.validator.*
-    private Set<String>                   additional     = null;  // cleo.additional.classpath
+    private Set<MvnJar>                   additional     = null;  // cleo.additional.classpath
     private EnumMap<APIHookClass,APIHook> hooks          = new EnumMap<>(APIHookClass.class); // Options.other.*
+
+    private Set<JarScheme>                providers      = null;  // com.cleo.labs.uri.vfs.provider.*.class
+    private Set<JarScheme>                templates      = null;  // com.cleo.labs.uri.vfs.template.*.class
 
     // classical fluent setter/getters
     public  File                          home          (                                            ) { return this.home          ;                        }
@@ -263,10 +275,12 @@ public class CleoSpiConfig {
     public  Map<String,UriScheme>         schemes       (                                            ) { return this.schemes       ;                        }
     public  CleoSpiConfig                 authenticators(Map<String,AuthScheme>        authenticators) { this.authenticators = authenticators; return this; }
     public  Map<String,AuthScheme>        authenticators(                                            ) { return this.authenticators;                        }
-    public  CleoSpiConfig                 additional    (Set<String>                   additional    ) { this.additional     = additional    ; return this; }
-    public  Set<String>                   additional    (                                            ) { return this.additional    ;                        }
+    public  CleoSpiConfig                 additional    (Set<MvnJar>                   additional    ) { this.additional     = additional    ; return this; }
+    public  Set<MvnJar>                   additional    (                                            ) { return this.additional    ;                        }
     public  CleoSpiConfig                 hooks         (EnumMap<APIHookClass,APIHook> hooks         ) { this.hooks          = hooks         ; return this; }
     public  EnumMap<APIHookClass,APIHook> hooks         (                                            ) { return this.hooks         ;                        }
+    public  Set<JarScheme>                providers     (                                            ) { return this.providers     ;                        }
+    public  Set<JarScheme>                templates     (                                            ) { return this.templates     ;                        }
 
     // custom setter/getters
     /**
@@ -343,9 +357,9 @@ public class CleoSpiConfig {
      * @param additional a :-separated list
      * @return {@code this}
      */
-    public CleoSpiConfig add_additional(String additional) {
-        return add_additional(Arrays.asList(additional.split(":")));
-    }
+//  public CleoSpiConfig add_additional(String additional) {
+//      return add_additional(Arrays.asList(additional.split(File.pathSeparator)));
+//  }
     /**
      * Custom setter that
      * adds an existing Set of Strings, creating a new
@@ -353,16 +367,16 @@ public class CleoSpiConfig {
      * @param additional a Set of Strings
      * @return {@code this}
      */
-    public CleoSpiConfig add_additional(Collection<String> additional) {
+    public CleoSpiConfig add_additional(Collection<MvnJar> additional) {
         if (additional!=null) {
             if (additional()==null) {
-                additional(new HashSet<String>());
+                additional(new HashSet<MvnJar>());
             }
             additional().addAll(additional);
         }
         return this;
     }
-    public CleoSpiConfig remove_additional(Collection<String> remove) {
+    public CleoSpiConfig remove_additional(Collection<MvnJar> remove) {
         if (remove!=null) {
             if (additional()!=null) {
                 additional().removeAll(remove);
@@ -393,7 +407,10 @@ public class CleoSpiConfig {
      * @return a Set of JAR filenames (possibly empty, but not @{code null})
      */
     public Set<MvnJar> jars() {
-        Set<MvnJar> jars = factory.of(additional());
+        Set<MvnJar> jars = new HashSet<>();
+        if (additional()!=null) {
+            jars.addAll(additional());
+        }
         jars.addAll(classpath_jars());
         return jars;
     }
@@ -419,10 +436,57 @@ public class CleoSpiConfig {
     public Set<MvnJar> unreferenced_jars() {
         Set<MvnJar> jars = new HashSet<>();
         if (additional()!=null) {
-            jars.addAll(factory.of(additional()));
+            jars.addAll(additional());
             jars.removeAll(referenced_jars());
         }
         return jars;
+    }
+    /**
+     * Returns a list of all jars that are referenced by the
+     * configuration, but don't appear in the classpath.
+     * @return
+     */
+    public Set<MvnJar> missing_jars() {
+        Set<MvnJar> referenced = referenced_jars();
+        referenced.removeAll(jars());
+        return referenced;
+    }
+
+    /**
+     * Custom setter that
+     * adds an existing Set of Strings, creating a new
+     * Set if needed, or adding the entries to the existing Set.
+     * @param providers a Set of Strings
+     * @return {@code this}
+     */
+    public CleoSpiConfig add_providers(Set<String> providers, MvnJar jar) {
+        if (providers!=null && !providers.isEmpty()) {
+            if (this.providers==null) {
+                this.providers = new HashSet<>();
+            }
+            for (String provider : providers) {
+                this.providers.add(new JarScheme().scheme(provider).jar(jar));
+            }
+        }
+        return this;
+    }
+    /**
+     * Custom setter that
+     * adds an existing Set of Strings, creating a new
+     * Set if needed, or adding the entries to the existing Set.
+     * @param providers a Set of Strings
+     * @return {@code this}
+     */
+    public CleoSpiConfig add_templates(Set<String> templates, MvnJar jar) {
+        if (templates!=null && !templates.isEmpty()) {
+            if (this.templates==null) {
+                this.templates = new HashSet<>();
+            }
+            for (String template : templates) {
+                this.templates.add(new JarScheme().scheme(template).jar(jar));
+            }
+        }
+        return this;
     }
 
     private static final String URI_PREFIX  = "cleo.uri.";
@@ -468,7 +532,7 @@ public class CleoSpiConfig {
                 } else if (property.startsWith(AUTH_PREFIX)) {
                     authenticator(property.substring(AUTH_PREFIX.length())).authenticator(properties.getProperty(property));
                 } else if (property.equals(ADDITIONAL)) {
-                    add_additional(properties.getProperty(property));
+                    add_additional(this.factory.of(properties.getProperty(property), File.pathSeparator));
                 }
             }
         } catch (Exception ignore) {
@@ -485,6 +549,15 @@ public class CleoSpiConfig {
                 // guess there's no value there
             }
         }
+        // load providers and templates parsed from CleoJars
+        for (MvnJar jar : jars()) {
+            if (jar.cleojar()) {
+                add_providers(jar.providers(), jar);
+                add_templates(jar.templates(), jar);
+            }
+        }
+        // audit
+        audit();
     }
 
     public void save() {
@@ -514,7 +587,7 @@ public class CleoSpiConfig {
                 if (scheme.inputstream ()!=null) properties.put(URI_PREFIX+id+".inputstream",  scheme.inputstream());
                 if (scheme.outputstream()!=null) properties.put(URI_PREFIX+id+".outputstream", scheme.outputstream());
                 if (scheme.classpath   ()!=null) {
-                    properties.put(URI_PREFIX+id+".classpath", S.join(":", scheme.classpath()));
+                    properties.put(URI_PREFIX+id+".classpath", S.join(File.pathSeparator, scheme.classpath()));
                 }
                 if (scheme.properties()!=null) {
                     for (Map.Entry<String,String> prop : scheme.properties().entrySet()) {
@@ -531,7 +604,7 @@ public class CleoSpiConfig {
             }
         }
         if (additional()!=null) {
-            properties.put(ADDITIONAL, S.join(":", additional()));
+            properties.put(ADDITIONAL, S.join(File.pathSeparator, MvnJar.relativized(additional())));
         }
         // 4. save Options-based configuration (some may be properties)
         for (Map.Entry<APIHookClass,APIHook> hook : hooks().entrySet()) {
@@ -552,12 +625,12 @@ public class CleoSpiConfig {
 
     public CleoSpiConfig install_jar(MvnJar mvnjar) {
         mvnjar.install();
-        Set<MvnJar> all = jars();
-        Deque<MvnJar> toadd = new ArrayDeque<>();
+        Set<MvnJar> added = new HashSet<>();        // jars already installed this time
+        Deque<MvnJar> toadd = new ArrayDeque<>();   // jars yet to install
         toadd.add(mvnjar);
         while (!toadd.isEmpty()) {
             MvnJar add = toadd.pop();
-            if (add.cleojar() && !all.contains(add)) {
+            if (add.cleojar() && !added.contains(add)) {
                 if (add.scheme()!=null) {
                     scheme(add.scheme())
                         .file(add.fileclass())
@@ -569,7 +642,7 @@ public class CleoSpiConfig {
                 if (add.authscheme()!=null) {
                     authenticator(add.authscheme())
                         .authenticator(add.authclass())
-                        .jar(add.jar());
+                        .jar(add);
                 }
                 if (add.incoming()!=null) {
                     hooks().put(APIHookClass.INCOMING,
@@ -592,11 +665,13 @@ public class CleoSpiConfig {
                             new APIHook().hook(add.listener()).jar(add));
                 }
                 if (add.additional()!=null) {
-                    add_additional(MvnJar.relativized(add.additional()));
+                    add_additional(add.additional());
                 }
-                all.add(add);
+                added.add(add);
                 toadd.addAll(add.dependencies());
                 //TODO: resync the dependencies
+                add_providers(add.providers(), add);
+                add_templates(add.templates(), add);
             }
         }
         return this;
@@ -604,21 +679,23 @@ public class CleoSpiConfig {
 
     public CleoSpiConfig remove_authenticator(String name) {
         if (authenticators().containsKey(name)) {
+            remove_jar(authenticators().get(name).jar());
             authenticators().remove(name);
-            remove_jar(null);
         }
         return this;
     }
     public CleoSpiConfig remove_scheme(String name) {
         if (schemes().containsKey(name)) {
+            remove_jar(schemes().get(name).jar());
             schemes().remove(name);
-            remove_jar(null);
         }
         return this;
     }
     public CleoSpiConfig remove_hook(APIHookClass hook) {
-        hooks().put(hook, null);
-        remove_jar(null);
+        if (hooks().get(hook) != null) {
+            remove_jar(hooks().get(hook).jar());
+            hooks().put(hook, null);
+        }
         return this;
     }
     /**
@@ -630,22 +707,20 @@ public class CleoSpiConfig {
      * @return
      */
     public CleoSpiConfig remove_jar(MvnJar jar) {
-        // TODO: figure out how to be smart about audit and dependency calculation
-        audit();
-        Map<MvnJar,Set<MvnJar>> dependencies = dependencies();
-        Set<MvnJar> unreferenced = unreferenced_jars();
-        // reverse dependencies to find all affected jars depending on jar
-        Set<MvnJar> affected = new HashSet<>();
+        Set<MvnJar> unreferenced = unreferenced_jars();         // remember these to put back later
+        Map<MvnJar,Set<MvnJar>> dependencies = dependencies();  // remember these are fully solved for transitive dependencies
+        Set<MvnJar> affected = new HashSet<>();                 // this jar, plus any that depends on it
         if (jar!=null) {
-            affected.add(jar);
+            affected.add(jar);                                  // this jar
+            URI.report("removal affects "+jar.fileName());
             for (Map.Entry<MvnJar,Set<MvnJar>> e : dependencies.entrySet()) {
-                if (e.getValue().contains(jar)) {
-                    affected.add(e.getKey());
+                if (e.getValue().contains(jar)) {               // if this jar is in transitive dependencies of e
+                    URI.report("removal also affects "+e.getKey().fileName());
+                    affected.add(e.getKey());                   // then e is also affected
                 }
             }
         }
         // now walk through uri scheme, auth schemes, and API hooks, eliminating those affected
-        Set<MvnJar> additional = new HashSet<>();
         if (schemes()!=null) {
             Set<String> uris = new HashSet<>(schemes().keySet());
             for (String uri : uris) {
@@ -655,13 +730,6 @@ public class CleoSpiConfig {
                     if (affected.contains(scheme_jar)) {
                         schemes().remove(uri);
                         URI.report("removing uri scheme "+uri);
-                    } else {
-                        if (dependencies.containsKey(scheme_jar)) {
-                            additional.addAll(dependencies.get(scheme_jar));
-                        }
-                        if (additional().contains(scheme_jar.jar())) {
-                            additional.add(scheme_jar);
-                        }
                     }
                 }
             }
@@ -671,17 +739,10 @@ public class CleoSpiConfig {
             for (String auth : auths) {
                 AuthScheme scheme = authenticators().get(auth);
                 if (scheme.jar()!=null) {
-                    MvnJar scheme_jar = factory.get(scheme.jar());
+                    MvnJar scheme_jar = scheme.jar();
                     if (affected.contains(scheme_jar)) {
                         authenticators().remove(auth);
                         URI.report("removing auth scheme "+auth);
-                    } else {
-                        if (dependencies.containsKey(scheme_jar)) {
-                            additional.addAll(dependencies.get(scheme_jar));
-                        }
-                        if (additional().contains(scheme_jar.jar())) {
-                            additional.add(scheme_jar);
-                        }
                     }
                 }
             }
@@ -694,37 +755,30 @@ public class CleoSpiConfig {
                     if (affected.contains(hook_jar)) {
                         hooks().put(hook, null);
                         URI.report("removing API Hook "+hook.name());
-                    } else {
-                        if (dependencies.containsKey(hook_jar)) {
-                            additional.addAll(dependencies.get(hook_jar));
-                        }
-                        if (additional().contains(hook_jar.jar())) {
-                            additional.add(hook_jar);
-                        }
                     }
                 }
             }
         }
-        // update additional
-        Set<String> removes = new HashSet<>(additional());
-        if (!additional.isEmpty()) {
-            removes.removeAll(MvnJar.relativized(additional));
-        }
-        for (String remove : removes) {
-            // add back any otherwise unreferenced unaffected jars
-            // for now, this means providers, which are not linked to
-            // the configuration other than just being there
-            // TODO: generalize this "just because" idea as a manifest property?
-            MvnJar keeper = factory.get(remove);
-            if (keeper.providers()!=null && !affected.contains(keeper)) {
-                additional.add(keeper);
-            } else {
-                URI.report("removing "+remove);
+        if (providers()!=null) {
+            for (JarScheme provider : new HashSet<>(providers())) {
+                if (affected.contains(provider.jar())) {
+                    providers.remove(provider);
+                    URI.report("removing Provider "+provider.scheme());
+                }
             }
         }
-        additional(MvnJar.relativized(additional));
-        add_additional(MvnJar.relativized(unreferenced));
-        //audit(); // needed for add, but not remove
+        if (templates()!=null) {
+            for (JarScheme template : new HashSet<>(templates())) {
+                if (affected.contains(template.jar())) {
+                    templates.remove(template);
+                    URI.report("removing Template "+template.scheme());
+                }
+            }
+        }
+        // now remove the affected jars from additional
+        remove_additional(affected);              // slice out the affected jars (classpath are already gone)
+        remove_additional(unreferenced_jars());   // now prune the extras
+        add_additional(unreferenced);             // but put these back
         return this;
     }
 
@@ -746,7 +800,7 @@ public class CleoSpiConfig {
                     }
                     AuthScheme auth = authenticators()==null ? null : authenticators().get(cleojar.authscheme());
                     if (auth!=null) {
-                        auth.jar(cleojar.jar());
+                        auth.jar(cleojar);
                     }
                     APIHook listener = hooks().get(APIHookClass.LISTENER);
                     if (listener!=null && listener.hook()!=null && listener.hook().equals(cleojar.listener())) {
@@ -768,6 +822,8 @@ public class CleoSpiConfig {
                     if (portalauth!=null && portalauth.hook()!=null && portalauth.hook().equals(cleojar.portalauth())) {
                         portalauth.jar(cleojar);
                     }
+                    add_providers(cleojar.providers(), cleojar);
+                    add_templates(cleojar.templates(), cleojar);
                 }
             }
         }
@@ -799,7 +855,8 @@ public class CleoSpiConfig {
                 // if there are some, enter them into the map
                 if (!dependencies.isEmpty()) {
                     // merge already known dependencies
-                    Set<MvnJar> keys = map.keySet();
+                    Set<MvnJar> keys = new HashSet<>();
+                    keys.addAll(map.keySet());
                     keys.retainAll(dependencies);
                     for (MvnJar key : keys) {
                         dependencies.addAll(map.get(key));
@@ -846,12 +903,27 @@ public class CleoSpiConfig {
             })).append('\n');
         }
         if (additional()!=null) {
-            s.append(S.all("additional=",S.join("\n  ",additional()))).append('\n');
+            s.append("additional\n");
+            for (MvnJar add : additional()) {
+                s.append("  ").append(add.jar()).append("\n");
+            }
         }
         for (APIHookClass hook : APIHookClass.values()) {
             APIHook apihook = hooks().get(hook);
             if (apihook!=null) {
                 s.append(hook.name().toLowerCase()).append('=').append(apihook.toString()).append('\n');
+            }
+        }
+        if (providers()!=null && !providers().isEmpty()) {
+            s.append("providers\n");
+            for (JarScheme scheme : providers()) {
+                s.append("  ").append(scheme.toString()).append("\n");
+            }
+        }
+        if (templates()!=null && !templates().isEmpty()) {
+            s.append("templates\n");
+            for (JarScheme scheme : templates()) {
+                s.append("  ").append(scheme.toString()).append("\n");
             }
         }
         return s.toString();
