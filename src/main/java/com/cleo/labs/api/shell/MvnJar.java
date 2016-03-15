@@ -299,10 +299,10 @@ public class MvnJar {
                 byte[] sha1 = F.hex(S.s(F.download(url+".sha1")));
                 try {
                     result = F.download(url, file(), "SHA-1", sha1, F.ClobberMode.OVERWRITE);
-                    URI.report(result.matched ? jar()+" matched to existing "+result.file
-                                              : jar()+" downloaded to "+result.file);
+                    URI.report(result.matched ? sbt()+" matched to existing "+result.file
+                                              : sbt()+" downloaded to "+result.file);
                 } catch (Exception e) {
-                    URI.report("error downloading "+jar()+": "+e);
+                    URI.report("error downloading "+sbt()+": "+e);
                 }
             }
             if (result==null) {
