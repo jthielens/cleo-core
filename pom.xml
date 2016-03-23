@@ -3,7 +3,7 @@
 
     <groupId>com.cleo.labs</groupId>
     <artifactId>cleo-labs-api-shell</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>5.2.0.0</version>
     <packaging>jar</packaging>
 
     <name>cleo-labs-api-shell</name>
