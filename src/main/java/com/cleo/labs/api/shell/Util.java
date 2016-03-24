@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,7 +35,7 @@ import com.cleo.lexicom.external.ILicense;
 
 public class Util {
 
-    public static String licensed_features(ILicense license) {
+    public static String licensed_features(ILicense license) throws RemoteException {
         ArrayList<String> features = new ArrayList<String>();
         if (license.isTranslatorLicensed()) features.add("integration");
         if (license.isVLProxyLicensed())    features.add("vlproxy");
@@ -79,7 +80,7 @@ public class Util {
         return "Unknown("+product+")";
     }
 
-    public static String licensed_until(ILicense license) {
+    public static String licensed_until(ILicense license) throws RemoteException {
         Date expires = license.getKeyExpiration();
         if (license.isTemporary() && expires != null) {
             return "through "+new SimpleDateFormat("yyyy/MM/dd").format(expires);

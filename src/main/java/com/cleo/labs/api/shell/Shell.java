@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.rmi.RemoteException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -218,12 +219,16 @@ public class Shell extends REPL {
     }
 
     private void report_license(ILicense license) {
-        report(Util.licensed_product(license.getProduct())
-               +" ["+license.getSerialNumber()+"]"
-               +" on "+Util.licensed_hosts(license.getAllowedHosts())
-               +" "+Util.licensed_until(license));
-        report("  platforms: "+Util.licensed_platform(license.getPlatform()));
-        report("  features:  "+Util.licensed_features(license));
+        try {
+            report(Util.licensed_product(license.getProduct())
+                   +" ["+license.getSerialNumber()+"]"
+                   +" on "+Util.licensed_hosts(license.getAllowedHosts())
+                   +" "+Util.licensed_until(license));
+            report("  platforms: "+Util.licensed_platform(license.getPlatform()));
+            report("  features:  "+Util.licensed_features(license));
+        } catch (RemoteException e) {
+            error(e);
+        }
     }
 
     @Command(name="report", args="[serial]", comment="license or serial # information")
