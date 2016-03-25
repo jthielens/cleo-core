@@ -841,8 +841,10 @@ public class Shell extends REPL {
     public void set(String pathname, String property, String...value) throws Exception {
         if (pathname.isEmpty()) {
             try {
-                Util.set_bean(LexiCom.getOptions(), property,
+                Options o = LexiCom.getOptions();
+                Util.set_bean(o, property,
                               value==null||value.length==0 ? null : value[0]);
+                o.save();
             } catch (Exception e) {
                 report(property+" not found: "+e.toString());
             }
@@ -1391,6 +1393,7 @@ public class Shell extends REPL {
                         //report(X.xml2string(Util.map2xml(xml.map)));
                     }
                 } else {
+                    // just try to dump a file
                     report(Util.file2string(name).contents);
                 }
             }
