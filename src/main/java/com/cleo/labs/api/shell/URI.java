@@ -470,7 +470,7 @@ public class URI {
             String jar  = gav[1]+"-"+gav[2]+".jar";
             String as   = jar;                         // local JAR name, initially same as remote
             if (gav[0].startsWith("com.cleo")) {
-                String contd = "10.80.80.156";  // contd.cleo.com behind the VPN
+                String contd = "10.10.1.57";  // contd.cleo.com behind the VPN
                 if (gav[2].contains("SNAPSHOT")) {
                     repo = "http://"+contd+"/nexus/content/repositories/snapshots/";
                     try {
