@@ -157,7 +157,11 @@ public class User {
         String hostalias;
         Host host = LexiCom.findLocalHost(user.type, user.root, user.folder);
         if (host==null) {
-            hostalias = user.typename+S.all(":", user.root)+" users";
+            if (user.type == HostType.LOCAL_USER) {
+                hostalias = "users"+S.all(": ", user.root);
+            } else {
+                hostalias = user.typename+S.all(":", user.root)+" users";
+            }
             if (user.folder!=null) {
                 String[] folders = user.folder.split("\\\\");
                 hostalias = folders[folders.length-1]+"/"+hostalias;
