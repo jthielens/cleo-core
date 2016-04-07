@@ -36,6 +36,7 @@ public class Defaults {
         ".transport",
         ".type",
         ".uid",
+        ".version",
         "licensed",
         "notes",
         "origin",
@@ -80,7 +81,6 @@ public class Defaults {
                      map.put(".secure", "False");
                      map.put(".servercertfile", "");
                      map.put(".test", "False");
-                     map.put(".version", "3");
                      map.put("Addcontenttypetoinbox", "False");
                      map.put("Advanced.AutoAcceptReceivedCertificate(CEM)", "");
                      map.put("Advanced.Compression-SigningOrder", "Sign then compress");
@@ -145,7 +145,6 @@ public class Defaults {
                      map.put(".partnerservercertfile", "");
                      map.put(".servercertfile", "");
                      map.put(".serversigncertfile", "");
-                     map.put(".version", "3");
                      map.put("Asyncdeliverymethod", "2");
                      map.put("Authtype", "0");
                      map.put("Compressedrequest", "False");
@@ -175,7 +174,6 @@ public class Defaults {
                      map.put(".securitymode", "None");
                      map.put(".servercertfile", "");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Activedataporthigh", "0");
                      map.put("Activedataportlow", "0");
                      map.put("Addcontenttypetoinbox", "False");
@@ -250,7 +248,6 @@ public class Defaults {
                      map.put(".partnerservercertfile", "");
                      map.put(".servercertfile", "");
                      map.put(".serversigncertfile", "");
-                     map.put(".version", "2");
                      map.put("Asyncdeliverymethod", "4");
                      map.put("Compressedrequest", "False");
                      map.put("Contenttype", "-1");
@@ -284,7 +281,6 @@ public class Defaults {
                      map.put(".id", "*Rw**");
                      map.put(".secure", "False");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Addcontenttypetoinbox", "False");
                      map.put("Advanced.Compression-SigningOrder", "Sign then compress");
                      map.put("Advanced.Encryption-SigningOrder", "Sign then encrypt");
@@ -343,7 +339,6 @@ public class Defaults {
                      map.put(".partnerservercertfile", "");
                      map.put(".partnersigncertfile", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Ackdesired", "False");
                      map.put("Authtype", "0");
                      map.put("Compressedrequest", "False");
@@ -368,7 +363,6 @@ public class Defaults {
              // FTP: com.cleo.lexicom.beans.ftpbean.FtpHost / com.cleo.lexicom.beans.ftpbean.FtpMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "3");
                      map.put("Activedataporthigh", "0");
                      map.put("Activedataportlow", "0");
                      map.put("Advanced.DeleteZeroLengthFiles", "False");
@@ -406,7 +400,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "3");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
                      map.put("Localpackaging", "None");
@@ -418,7 +411,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".securitymode", "SSL AUTH");
                      map.put(".test", "False");
-                     map.put(".version", "3");
                      map.put("Activedataporthigh", "0");
                      map.put("Activedataportlow", "0");
                      map.put("Advanced.DeleteZeroLengthFiles", "True");
@@ -466,7 +458,6 @@ public class Defaults {
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
                      map.put(".partnerservercertfile", "");
-                     map.put(".version", "3");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
                      map.put("Localpackaging", "None");
@@ -477,7 +468,6 @@ public class Defaults {
              // HTTP: com.cleo.lexicom.beans.httpbean.HttpHost / com.cleo.lexicom.beans.httpbean.HttpMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -513,7 +503,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Header[PUT]", "Content-type=application/x-www-form-urlencoded");
                      map.put("Lastclientemailexecutedate", "-1");
@@ -524,7 +513,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".secure", "False");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -562,7 +550,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Header[PUT]", "Content-type=multipart/form-data");
                      map.put("Lastclientemailexecutedate", "-1");
@@ -572,7 +559,6 @@ public class Defaults {
              // MQ: com.cleo.lexicom.beans.mqbean.MQHost / com.cleo.lexicom.beans.mqbean.MQMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -604,7 +590,6 @@ public class Defaults {
                      map.put(".receiveauthclient", "False");
                      map.put(".sendauthclient", "False");
                      map.put(".usesamesecurity", "True");
-                     map.put(".version", "2");
                      map.put("Forceuppercase", "False");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
@@ -620,7 +605,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".securetcpip", "False");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Acecapable", "False");
                      map.put("Advanced.DowngradeOFTPVersion", "");
                      map.put("Advanced.EBCDICEncoding", "Cp500 EBCDIC International");
@@ -677,7 +661,6 @@ public class Defaults {
                      map.put(".tlscertalias", "");
                      map.put(".tlscertpassword", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Allowlistenersendaction", "False");
                      map.put("Ciphersuite", "0");
                      map.put("Compress", "False");
@@ -701,7 +684,6 @@ public class Defaults {
              // SMTP: com.cleo.lexicom.beans.smtpbean.SmtpHost / com.cleo.lexicom.beans.smtpbean.SmtpMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -729,7 +711,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Dsnentiremessage", "False");
                      map.put("Dsnheadersonly", "False");
@@ -746,7 +727,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".securitymode", "None");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -777,7 +757,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Dsnentiremessage", "False");
                      map.put("Dsnheadersonly", "True");
@@ -793,7 +772,6 @@ public class Defaults {
              // SFTP: com.cleo.lexicom.beans.sshftpbean.SSHFTPHost / com.cleo.lexicom.beans.sshftpbean.SSHFTPMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "3");
                      map.put("Advanced.BufferRequests", "true");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -827,7 +805,6 @@ public class Defaults {
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
                      map.put(".usepka", "False");
-                     map.put(".version", "3");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
                      map.put("Localpackaging", "None");
@@ -838,7 +815,6 @@ public class Defaults {
              // MLLP: com.cleo.lexicom.beans.mllpbean.MLLPHost / com.cleo.lexicom.beans.mllpbean.MLLPMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Ackmode", "HL7 Original Acknowledgments");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -874,7 +850,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "2");
                      map.put("Inboundaction", "<receive>");
                      map.put("Inboundcreatequeue", "True");
                      map.put("Inboundqueuename", "DIRECT=OS:.\\Private$\\ReceiveQueue");
@@ -896,7 +871,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".secure", "False");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -950,7 +924,6 @@ public class Defaults {
                      map.put(".partnerpackaging", "None");
                      map.put(".partnersigncertfile", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
@@ -967,7 +940,6 @@ public class Defaults {
                      map.put(".folder", "");
                      map.put(".secure", "False");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Addpipdirtoinbox", "False");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1020,7 +992,6 @@ public class Defaults {
                      map.put(".partnerpackaging", "None");
                      map.put(".partnersigncertfile", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Hasattachments", "False");
                      map.put("Lastclientemailexecutedate", "-1");
@@ -1035,7 +1006,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".secure", "True");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.EBICSVersion", "EBICS 2.4");
                      map.put("Advanced.ESVersion", "A005");
                      map.put("Advanced.EncryptionAlgorithm", "AES-256");
@@ -1092,7 +1062,6 @@ public class Defaults {
                      map.put(".partnerservercertfile", "");
                      map.put(".partnersigncertfile", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Header[GET]", "Content-Type=text/xml");
                      map.put("Header[PUT]", "Content-Type=text/xml");
@@ -1107,7 +1076,6 @@ public class Defaults {
              // FASP: com.cleo.lexicom.beans.faspbean.FaspHost / com.cleo.lexicom.beans.faspbean.FaspMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.Encryption", "None");
                      map.put("Advanced.OutboxSort", "System Default");
                      map.put("Advanced.Overwrite", "Always");
@@ -1138,7 +1106,6 @@ public class Defaults {
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
                      map.put(".usepka", "False");
-                     map.put(".version", "2");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
                      map.put("Localpackaging", "None");
@@ -1151,7 +1118,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".secure", "True");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriority", "");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1199,7 +1165,6 @@ public class Defaults {
                      map.put(".partnerservercertfile", "");
                      map.put(".partnersigncertfile", "");
                      map.put(".uselocalsamecerts", "True");
-                     map.put(".version", "2");
                      map.put("Authtype", "0");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
@@ -1212,7 +1177,6 @@ public class Defaults {
                      map = new TreeMap<String,String>();
                      map.put(".omni", "True");
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -1255,7 +1219,6 @@ public class Defaults {
                      map.put(".partnerdecryptpassword", "");
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
-                     map.put(".version", "1");
                      map.put("Lastclientemailexecutedate", "-1");
                      map.put("Lastserveremailexecutedate", "-1");
                      map.put("Ldaphomedir", "False");
@@ -1270,7 +1233,6 @@ public class Defaults {
              // LOCAL_FTP: com.cleo.lexicom.beans.FtpUserHost / com.cleo.lexicom.beans.FtpUserMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -1317,7 +1279,6 @@ public class Defaults {
                      map.put(".partnerreadonly", "False");
                      map.put(".servercertfile", "");
                      map.put(".serversigncertfile", "");
-                     map.put(".version", "2");
                      map.put("Advanced.Compression-SigningOrder", "Sign then compress");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1366,7 +1327,6 @@ public class Defaults {
              // LOCAL_HTTP: com.cleo.lexicom.beans.httpserver.HttpUserHost / com.cleo.lexicom.beans.httpserver.HttpUserMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -1414,7 +1374,6 @@ public class Defaults {
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
                      map.put(".sslclientauth", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -1440,7 +1399,6 @@ public class Defaults {
              // LOCAL_SFTP: com.cleo.lexicom.beans.SshFtpUserHost / com.cleo.lexicom.beans.SshFtpUserMailbox
                      map = new TreeMap<String,String>();
                      map.put(".test", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
@@ -1478,7 +1436,6 @@ public class Defaults {
                      map.put(".partnerencryptcert", "");
                      map.put(".partnerpackaging", "None");
                      map.put(".usepka", "False");
-                     map.put(".version", "2");
                      map.put("Advanced.HighPriorityIncomingWeight", "10");
                      map.put("Advanced.HighPriorityOutgoingWeight", "10");
                      map.put("Advanced.OutboxSort", "System Default");
