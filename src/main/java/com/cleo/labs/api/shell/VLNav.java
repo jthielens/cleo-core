@@ -880,7 +880,7 @@ public class VLNav {
                             after.fullname, after.gid, etype, true, false, false); // IS, IS, ISNT);
             db.insert("VLUser",
                       S.a("VLEntityID","FirstName","LastName","BuildFullName","UserName","Alias","LDAPUser","UserPassword"),
-                      eid, after.first, after.last, after.build, after.username, after.alias, false, LexiCom.encode(after.password));
+                      eid, after.first, after.last, after.build, after.username, after.alias, false, LexiCom.hash(after.password));
             if (!S.empty(after.email)) {
                 db.insert("VLContact", CONTACT_COLUMNS, eid, emailContact, after.email, false);
             }

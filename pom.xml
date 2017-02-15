@@ -3,7 +3,7 @@
 
     <groupId>com.cleo.labs</groupId>
     <artifactId>cleo-labs-api-shell</artifactId>
-    <version>5.3.0.0-SNAPSHOT</version>
+    <version>5.4.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>cleo-labs-api-shell</name>
@@ -18,9 +18,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
-        <cleo.version>5.3-SNAPSHOT</cleo.version>
-        <github.release>5.3</github.release>
-        <github.tag>5.3</github.tag>
+        <cleo.version>5.4.0.0</cleo.version>
+        <github.release>5.4</github.release>
+        <github.tag>5.4</github.tag>
     </properties>
 
     <distributionManagement>
@@ -77,19 +77,19 @@
             <version>${cleo.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.cleo</groupId>
+            <groupId>com.cleo.product</groupId>
             <artifactId>LexiCom</artifactId>
             <version>${cleo.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.cleo</groupId>
+            <groupId>com.cleo.util</groupId>
             <artifactId>j2ssh</artifactId>
             <version>${cleo.version}</version>
         </dependency>
         <dependency>
             <groupId>com.cleo.labs</groupId>
             <artifactId>cleo-labs-util</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -103,7 +103,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.2</version>
+                <version>3.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>

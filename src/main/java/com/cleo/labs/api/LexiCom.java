@@ -525,6 +525,9 @@ public class LexiCom {
         }
         return password;
     }
+    public static String hash(String password) throws Exception {
+        return VLPBKDF2Authenticator.SCHEME_NAME+":"+VLPBKDF2Authenticator.createHash(password);
+    }
     public static String encrypt(String s) throws Exception {
         connect();
         return lexicom.encrypt(s);

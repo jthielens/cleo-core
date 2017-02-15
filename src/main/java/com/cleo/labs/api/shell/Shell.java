@@ -1007,11 +1007,13 @@ public class Shell extends REPL {
                 fos.write(DatatypeConverter.parseBase64Binary(enc));
                 fos.close();
             } else {
-                report("core:    "+enc);
+                report("core:     "+enc);
                 enc = LexBean.vlEncrypt((ConfigEncryption) null, src);
-                report("LexBean: "+enc);
+                report("LexBean:  "+enc);
                 enc = vlenc(src);
-                report("vlenc:   "+enc);
+                report("vlenc:    "+enc);
+                enc = LexiCom.hash(src);
+                report("vlpbkdf2: "+enc);
             }
         } catch (Exception e) {
             error("could not encrypt", e);

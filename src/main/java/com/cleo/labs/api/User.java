@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.cleo.labs.api.constant.HostType;
 import com.cleo.labs.util.S;
@@ -11,6 +13,8 @@ import com.cleo.labs.util.S;
 public class User {
     public static class Description {
         public String             folder;
+        public String             group;
+        public Map<String,String> group_properties;
         public String             username;
         public String             password;
         public String             typename;
@@ -28,18 +32,29 @@ public class User {
 
         public Description(String[] spec) {
             if (spec.length<2) {
-                throw new IllegalArgumentException("invalid user description: folder/username:password type:root");
+                throw new IllegalArgumentException("invalid user description: folder/username:password@group type:root");
             }
 
             // [folder/]username[:password]
             String[] folderup = splitFolder(spec[0]);
             folder   = folderup[0];
-            String[] userpass = folderup[1].split(":", 2);
+            String[] usergroup = folderup[1].split("@", 2);
+            String[] userpass = usergroup[0].split(":", 2);
             username = userpass[0];
             password = userpass.length>1 ? userpass[1] : null;
+            group    = usergroup.length>1 ? usergroup[1] : null;
             
+            // group_properties
+            int type_index = 1;
+            group_properties = new HashMap<String,String>();
+            while (type_index<spec.length && spec[type_index].contains("=")) {
+                String[] av = spec[type_index].split("=", 2);
+                group_properties.put(av[0], av.length>1 ? av[1] : "");
+                type_index++;
+            }
+
             // type[:root-folder-or-uri]
-            typename = spec[1];
+            typename = spec[type_index];
             root = null;
             if (typename.contains(":")) {
                 String[] tr = typename.split(":", 2);
@@ -54,7 +69,7 @@ public class User {
 
             // properties
             properties = new HashMap<String,String>();
-            for (int i=2; i<spec.length; i++) {
+            for (int i=type_index+1; i<spec.length; i++) {
                 String[] av = spec[i].split("=", 2);
                 properties.put(av[0], av.length>1 ? av[1] : "");
             }
@@ -65,7 +80,10 @@ public class User {
 
         public Description(Host h, Mailbox m) throws Exception {
             type       = h.getHostType();
-            root       = h.getSingleProperty("Ftprootpath");
+            group      = h.getPath().getAlias();
+            group_properties = Defaults.suppressHostDefaults(type, h.getProperties());
+            group_properties.remove(homedir(type));
+            root       = h.getSingleProperty(homedir(type));
             typename   = type.name().substring("LOCAL_".length()).toLowerCase();
             folder     = h.getSingleProperty("folder");
             // cleanup folder: \ to / and ending in / (unless empty)
@@ -96,19 +114,29 @@ public class User {
             if (notes==null) {
                 notes = new ArrayList<String>();
             }
+System.err.println(note);
             notes.add(note);
             return this;
         }
 
         public String[] toStrings() {
-            String[] strings = new String[2+(properties==null?0:properties.size())];
-            strings[0] = S.all(folder,"/")+S.s(username)+S.all(":",password);
-            strings[1] = S.s(typename);
-            if (root!=null && !root.equals(Defaults.getHostDefaults(type).get("Ftprootpath"))) {
-                strings[1] += ":"+root;
+            int group_count = (group_properties==null?0:group_properties.size());
+            String[] strings = new String[2+group_count
+                                           +(properties==null?0:properties.size())];
+            strings[0] = S.all(folder,"/")+S.s(username)+S.all(":",password)+S.all("@",group);
+            if (group_properties!=null) {
+                int i=1;
+                for (Map.Entry<String,String> e : group_properties.entrySet()) {
+                    strings[i] = S.s(e.getKey())+"="+S.s(e.getValue());
+                    i++;
+                }
+            }
+            strings[group_count+1] = S.s(typename);
+            if (root!=null && !root.equals(Defaults.getHostDefaults(type).get(homedir(type)))) {
+                strings[group_count+1] += ":"+root;
             }
             if (properties!=null) {
-                int i=2;
+                int i=group_count+2;
                 for (Map.Entry<String,String> e : properties.entrySet()) {
                     strings[i] = S.s(e.getKey())+"="+S.s(e.getValue());
                     i++;
@@ -135,6 +163,14 @@ public class User {
         }
     }
 
+    private static String homedir(HostType type) {
+        if (type == HostType.LOCAL_USER) {
+            return "Defaulthomedir";
+        } else {
+            return "Ftprootpath";
+        }
+    }
+
     public static Description[] list(Filter filter) throws Exception {
         List<Description> users = new ArrayList<Description>();
         for (Host h : LexiCom.getHosts()) {
@@ -155,9 +191,16 @@ public class User {
 
     private static Host find_host(Description user) throws Exception {
         String hostalias;
-        Host host = LexiCom.findLocalHost(user.type, user.root, user.folder);
+        Host host = null;
+        if (user.group != null) {
+            host = LexiCom.getHost(user.group);
+        } else {
+            host = LexiCom.findLocalHost(user.type, user.root, user.folder);
+        }
         if (host==null) {
-            if (user.type == HostType.LOCAL_USER) {
+            if (user.group != null) {
+                hostalias = user.group+S.all(":", user.root);
+            } else if (user.type == HostType.LOCAL_USER) {
                 hostalias = "users"+S.all(": ", user.root);
             } else {
                 hostalias = user.typename+S.all(":", user.root)+" users";
@@ -202,8 +245,8 @@ user.note("renamed template "+alias+": "+m.getPath());
             }
             //host.save();
             if (user.root!=null) {
-user.note("setting Ftprootpath "+user.root);
-                host.setProperty("Ftprootpath", user.root);
+user.note("setting "+homedir(host.getHostType())+" "+user.root);
+                host.setProperty(homedir(host.getHostType()), user.root);
             }
         } else {
             hostalias = host.getSingleProperty("alias");
@@ -212,37 +255,54 @@ user.note("found host "+hostalias);
         return host;
     }
 
+    private static final Pattern USERSET = Pattern.compile("(.*)\\[(\\d+)\\.\\.(\\d+)\\](.*)");
+
     public static Description update(Description user) throws Exception {
         Host host = find_host(user);
-        // got host -- find "mailbox"
-        Mailbox mailbox = host.findMailbox(user.username, user.password);
-        if (mailbox==null) {
-            try {
-                mailbox = host.cloneMailbox(user.username);
-                user.note("created new mailbox "+user.username+" from template");
-            } catch (Exception e) {
-                // maybe template isn't where we expect it -- just make new
-                mailbox = host.createMailbox(user.username);
-                user.note("created new mailbox "+user.username);
+        // see if it is a user set
+        String format = user.username.replace("%", "%%");
+        int from = 0;
+        int to = 0;
+        Matcher m = USERSET.matcher(user.username);
+        if (m.matches()) {
+            format = m.group(1).replace("%", "%%")+"%d"+m.group(4).replace("%", "%%");
+            from = Integer.valueOf(m.group(2));
+            to = Integer.valueOf(m.group(3));
+        }
+        // iterate to create users
+        for (int i=from; i<=to; i++) {
+            String username = String.format(format, i);
+            // got host -- find "mailbox"
+            Mailbox mailbox = host.findMailbox(username, user.password);
+            if (mailbox==null) {
+                try {
+                    mailbox = host.cloneMailbox(username);
+                    user.note("created new mailbox "+username+" from template");
+                } catch (Exception e) {
+                    // maybe template isn't where we expect it -- just make new
+                    mailbox = host.createMailbox(username);
+                    user.note("created new mailbox "+username);
+                }
+            } else {
+                user.note("updating existing mailbox "+username);
             }
-        } else {
-            user.note("updating existing mailbox "+user.username);
-        }
-        if (user.password!=null) {
-            mailbox.setProperty("Password", user.password);
-            user.note("user "+user.username+" password set");
-        }
-        boolean homeset = false;
-        for (Map.Entry<String,String> e : user.properties.entrySet()) {
-            mailbox.setProperty(e.getKey(), e.getValue());
-            if (e.getKey().equalsIgnoreCase("Homedirectory")) {
-                homeset = true;
+            if (user.password!=null) {
+                mailbox.setProperty("Password", user.password);
+                user.note("user "+username+" password set");
             }
+            boolean homeset = false;
+            for (Map.Entry<String,String> e : user.properties.entrySet()) {
+                mailbox.setProperty(e.getKey(), e.getValue());
+                if (e.getKey().equalsIgnoreCase("Homedirectory")) {
+                    homeset = true;
+                }
+            }
+            if (!homeset) {
+                mailbox.setProperty("Homedirectory", username);
+            }
+            mailbox.setProperty("Enabled", "True");
         }
-        if (!homeset) {
-            mailbox.setProperty("Homedirectory", user.username);
-        }
-        mailbox.setProperty("Enabled", "True");
+        // finally save the host
         host.save();
         return user;
     }
