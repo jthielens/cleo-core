@@ -44,8 +44,10 @@ public class Defaults {
         }));
     private static final Map<String,String> manualhostdefaults = new HashMap<String,String>();
     static {
+        manualhostdefaults.put("Advanced.ClientType",                  "");
         manualhostdefaults.put("Advanced.HighPriority",                "");
         manualhostdefaults.put("Advanced.PreferredPublicKeyAlgorithm", "");
+        manualhostdefaults.put(".standaloneaction",                    "False");
     }
     private static final Map<String,String> manualmailboxdefaults = new HashMap<String,String>();
     static {
@@ -1155,13 +1157,13 @@ public class Defaults {
         map.put("Advanced.PGPHashAlgorithm", "System Default");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
-        map.put("Allowedprotocols", "FTP,HTTP,SSHFTP");
+        map.put("Allowedprotocols", "FTP,SSHFTP,HTTP");
         map.put("Connecttype", "0");
         map.put("Defaulthomedir", "local\\root\\%username%");
         map.put("Editable", "True");
         map.put("Enablepasswordpolicy", "False");
-        map.put("Folderpermission", "root=upload,overwrite,download,delete");
-        map.put("Inbox", "outbox\\");
+        map.put("Folderpermission", "root=overwrite,delete,download,upload");
+        map.put("Inbox", "outbox/");
         map.put("Incomingfilepatterns", "*");
         map.put("Incomingmediatypes", "*");
         map.put("Index", "0");
@@ -1170,7 +1172,7 @@ public class Defaults {
         map.put("Ipfilterrequired", "False");
         map.put("Makeremovedirectories", "False");
         map.put("Notes", "This contains the local HTTP, FTP, and SSH FTP server user accounts.  These work in conjunction with the settings in the Local Listener HTTP, FTP and SSH FTP tabs.");
-        map.put("Outbox", "inbox\\");
+        map.put("Outbox", "inbox/");
         map.put("Overridepasswordpolicy", "False");
         map.put("Port", "0");
         map.put("Readonlyusers", "False");
