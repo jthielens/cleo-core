@@ -3,7 +3,7 @@
 
     <groupId>com.cleo.labs</groupId>
     <artifactId>cleo-labs-api-shell</artifactId>
-    <version>5.4.0.0-SNAPSHOT</version>
+    <version>5.4.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>cleo-labs-api-shell</name>
@@ -18,7 +18,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
-        <cleo.version>5.4.0.0</cleo.version>
+        <cleo.version>5.4.1-SNAPSHOT</cleo.version>
         <github.release>5.4</github.release>
         <github.tag>5.4</github.tag>
     </properties>
