@@ -114,7 +114,7 @@ public class User {
             if (notes==null) {
                 notes = new ArrayList<String>();
             }
-System.err.println(note);
+//System.err.println(note);
             notes.add(note);
             return this;
         }
@@ -273,7 +273,7 @@ user.note("found host "+hostalias);
         for (int i=from; i<=to; i++) {
             String username = String.format(format, i);
             // got host -- find "mailbox"
-            Mailbox mailbox = host.findMailbox(username, user.password);
+            Mailbox mailbox = host.findMailbox(username, null); //user.password);
             if (mailbox==null) {
                 try {
                     mailbox = host.cloneMailbox(username);
