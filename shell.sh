@@ -86,7 +86,7 @@ else
         cleohome=$(cd $cleohome && pwd -P)
         echo "CLEOHOME=$cleohome"
         unset DISPLAY
-        classpath=$here/cleo-labs-api-shell-5.4.1.0-SNAPSHOT.jar:$here/cleo-labs-util-5.4.1.0-SNAPSHOT.jar:$cleohome/lib/\*:$cleohome/lib/help/\*:$cleohome/webserver/AjaxSwing/lib/ajaxswing.jar:$cleohome/lib/hibernate/\*:$cleohome/lib/secureshare/\*:$cleohome/lib/json/\*:$cleohome/lib/jersey/\*:$cleohome/lib/ext/\*:$cleohome/lib/uri/\*:$cleohome/lib/saml/\*:$cleohome/lib/connector/\*
+        classpath=$here/cleo-labs-api-shell-5.4.1.0-SNAPSHOT.jar:$here/cleo-labs-util-5.4.1.0-SNAPSHOT.jar:$cleohome/lib/\*:$cleohome/lib/help/\*:$cleohome/webserver/AjaxSwing/lib/ajaxswing.jar:$cleohome/lib/hibernate/\*:$cleohome/lib/secureshare/\*:$cleohome/lib/json/\*:$cleohome/lib/jersey/\*:$cleohome/lib/ext/\*:$cleohome/lib/uri/\*:$cleohome/lib/saml/\*:$cleohome/lib/connector/\*:$cleohome/lib/docdb/\*
         (cd $cleohome; ./jre/bin/java -cp $classpath com.cleo.labs.api.shell.Shell -h . -m client "$@")
     else
         echo "Cleo installation not found"
