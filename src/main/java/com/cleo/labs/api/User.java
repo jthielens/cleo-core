@@ -19,6 +19,7 @@ public class User {
         public String             password;
         public String             typename;
         public HostType           type;
+        public boolean            delete;
         public String             root;
         public Map<String,String> properties;
         public List<String>       notes = null;
@@ -61,10 +62,14 @@ public class User {
                 typename = tr[0];
                 root     = tr[1];
             }
-            try {
-                type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("invalid user description: unrecognized type (protocol)");
+            if (typename.equalsIgnoreCase("delete")) {
+                delete = true;
+            } else {
+                try {
+                    type = HostType.valueOf("LOCAL_"+typename.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("invalid user description: unrecognized type (protocol)");
+                }
             }
 
             // properties
@@ -131,7 +136,7 @@ public class User {
                     i++;
                 }
             }
-            strings[group_count+1] = S.s(typename);
+            strings[group_count+1] = delete ? "delete" : S.s(typename);
             if (root!=null && !root.equals(Defaults.getHostDefaults(type).get(homedir(type)))) {
                 strings[group_count+1] += ":"+root;
             }
@@ -199,7 +204,7 @@ public class User {
         }
         if (host==null) {
             if (user.group != null) {
-                hostalias = user.group+S.all(":", user.root);
+                hostalias = user.group; // +S.all(":", user.root);
             } else if (user.type == HostType.LOCAL_USER) {
                 hostalias = "users"+S.all(": ", user.root);
             } else {
@@ -269,38 +274,47 @@ user.note("found host "+hostalias);
             from = Integer.valueOf(m.group(2));
             to = Integer.valueOf(m.group(3));
         }
-        // iterate to create users
+        // iterate to create/update/delete users
         for (int i=from; i<=to; i++) {
             String username = String.format(format, i);
             // got host -- find "mailbox"
             Mailbox mailbox = host.findMailbox(username, null); //user.password);
-            if (mailbox==null) {
-                try {
-                    mailbox = host.cloneMailbox(username);
-                    user.note("created new mailbox "+username+" from template");
-                } catch (Exception e) {
-                    // maybe template isn't where we expect it -- just make new
-                    mailbox = host.createMailbox(username);
-                    user.note("created new mailbox "+username);
+            if (user.delete) {
+                if (mailbox==null) {
+                    user.note("user "+username+" not deleted: not found");
+                } else {
+                    LexiCom.remove(mailbox.getPath());
+                    user.note("user "+username+" deleted");
                 }
             } else {
-                user.note("updating existing mailbox "+username);
-            }
-            if (user.password!=null) {
-                mailbox.setProperty("Password", user.password);
-                user.note("user "+username+" password set");
-            }
-            boolean homeset = false;
-            for (Map.Entry<String,String> e : user.properties.entrySet()) {
-                mailbox.setProperty(e.getKey(), e.getValue());
-                if (e.getKey().equalsIgnoreCase("Homedirectory")) {
-                    homeset = true;
+                if (mailbox==null) {
+                    try {
+                        mailbox = host.cloneMailbox(username);
+                        user.note("created new mailbox "+username+" from template");
+                    } catch (Exception e) {
+                        // maybe template isn't where we expect it -- just make new
+                        mailbox = host.createMailbox(username);
+                        user.note("created new mailbox "+username);
+                    }
+                } else {
+                    user.note("updating existing mailbox "+username);
                 }
+                if (user.password!=null) {
+                    mailbox.setProperty("Password", user.password);
+                    user.note("user "+username+" password set");
+                }
+                boolean homeset = false;
+                for (Map.Entry<String,String> e : user.properties.entrySet()) {
+                    mailbox.setProperty(e.getKey(), e.getValue());
+                    if (e.getKey().equalsIgnoreCase("Homedirectory")) {
+                        homeset = true;
+                    }
+                }
+                if (!homeset) {
+                    mailbox.setProperty("Homedirectory", username);
+                }
+                mailbox.setProperty("Enabled", "True");
             }
-            if (!homeset) {
-                mailbox.setProperty("Homedirectory", username);
-            }
-            mailbox.setProperty("Enabled", "True");
         }
         // finally save the host
         host.save();

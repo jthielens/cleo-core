@@ -1900,12 +1900,12 @@ public class Shell extends REPL {
         } else {
             try {
                 User.Description user = new User.Description(argv);
-                report("add/update user "+S.join(" ", qqequals(user.toStrings())));
+                report("add/update/delete user "+S.join(" ", qqequals(user.toStrings())));
                 user = User.update(user);
                 report(S.join("\n", user.notes));
                 report("user "+S.join(" ", qqequals(user.toStrings())));
             } catch (Exception e) {
-                error("can not create user", e);
+                error("can not add/update/delete user", e);
             }
         }
     }
