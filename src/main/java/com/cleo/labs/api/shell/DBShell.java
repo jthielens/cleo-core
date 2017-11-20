@@ -13,7 +13,7 @@ import com.cleo.lexicom.beans.Options.DBConnection;
 
 public class DBShell extends REPL {
     public static class DBOptions {
-        public enum Vendor { MYSQL, ORACLE, SQLSERVER, DB2, H2; }
+        public enum Vendor { MYSQL, ORACLE, SQLSERVER, DB2, H2, POSTGRESQL; }
         public Vendor vendor;
         public String user;
         public String password;
@@ -48,6 +48,13 @@ public class DBShell extends REPL {
                 this.type          = DBConnection.DB_CONTYPE_OTHER;
                 this.rawconnection = "jdbc:sqlserver://"+host+":"+port;
                 this.connection    = this.rawconnection+";databaseName="+this.db;
+                break;
+            case POSTGRESQL:
+                if (port==null) port = "5432";
+                this.driver        = "org.postgresql.Driver";
+                this.type          = DBConnection.DB_CONTYPE_OTHER;
+                this.rawconnection = "jdbc:postgresql://"+host+":"+port;
+                this.connection    = this.rawconnection+"/"+this.db;
                 break;
             case DB2:
                 if (port==null) port = "5000";
@@ -103,7 +110,7 @@ public class DBShell extends REPL {
             if (command.equalsIgnoreCase("create") || command.equalsIgnoreCase("drop")) {
                 DBOptions dbo = new DBOptions(string);
                 try {
-                    DB db = new DB(dbo.rawconnection, dbo.user, dbo.password);
+                    DB db = new DB(dbo.connection, dbo.user, dbo.password);
                     db.execute(command+" database "+dbo.db);
                     report("database "+dbo.db+" "+(command.equalsIgnoreCase("create")?"created":"dropped"));
                 } catch (SQLException e) {
