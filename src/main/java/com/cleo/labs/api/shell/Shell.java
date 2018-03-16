@@ -2059,28 +2059,6 @@ public class Shell extends REPL {
             }
         }
     }
-    @Command(name="scheduler", args="(autostart [on|off] | start)", comment="scheduler control")
-    public void scheduler(String...argv) {
-        try {
-            if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("on")) {
-                LexiCom.getSchedule().setAutoStartup(true);
-                LexiCom.getSchedule().save();
-                report("scheduler autostart set to on");
-            } else if (argv.length==2 && argv[0].equalsIgnoreCase("autostart") && argv[1].equalsIgnoreCase("off")) {
-                LexiCom.getSchedule().setAutoStartup(false);
-                report("scheduler autostart set to off");
-                LexiCom.getSchedule().save();
-            } else if (argv.length==1 && argv[0].equalsIgnoreCase("autostart")) {
-                report("scheduler autostart is "+(LexiCom.getSchedule().isAutoStartup()?"on":"off"));
-            } else if (argv.length==1 && argv[0].equalsIgnoreCase("start")) {
-                LexiCom.startService();
-            } else {
-                error("usage: scheduler (autostart [on|off] | start)");
-            }
-        } catch (Exception e) {
-            error("error managing scheduler", e);
-        }
-    }
     @Command(name="group", args="[name [definition]]", comment="export/create VLNav group(s)")
     public void group(String...argv) {
         if (argv.length==0 || (argv.length==1 && argv[0].equals("*"))) {
