@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.cleo.labs.api.LexiCom;
+import com.cleo.labs.api.shell.DBShell.DBOptions.Vendor;
 import com.cleo.labs.util.DB;
 import com.cleo.labs.util.repl.REPL;
 import com.cleo.labs.util.repl.annotation.Command;
@@ -110,7 +111,7 @@ public class DBShell extends REPL {
             if (command.equalsIgnoreCase("create") || command.equalsIgnoreCase("drop")) {
                 DBOptions dbo = new DBOptions(string);
                 try {
-                    DB db = new DB(dbo.connection, dbo.user, dbo.password);
+                    DB db = new DB(dbo.vendor==Vendor.POSTGRESQL ? dbo.connection : dbo.rawconnection, dbo.user, dbo.password);
                     db.execute(command+" database "+dbo.db);
                     report("database "+dbo.db+" "+(command.equalsIgnoreCase("create")?"created":"dropped"));
                 } catch (SQLException e) {
