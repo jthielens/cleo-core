@@ -1360,7 +1360,9 @@ public class Shell extends REPL {
                             } else {
                                 try {
                                     LDAP ldap = new LDAP(kv[1]);
-                                    X.setmap(xml.map, path, ldap.toMap(this.new VLCrypt()));
+                                    Map<String,Object> lmap = ldap.toMap(this.new VLCrypt());
+                                    //System.err.println(S.join("\n", lmap, "%s=%s"));
+                                    X.setmap(xml.map, path, lmap); // ldap.toMap(this.new VLCrypt()));
                                 } catch (Exception e) {
                                     // no big deal -- not LDAP, but see if it's DB
                                     try {
