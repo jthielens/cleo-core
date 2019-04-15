@@ -63,8 +63,8 @@ if [ "$1" = "update" ]; then
     fi
     . $here/cleo-util.sh
     quiet=short
-    githubassetdownload jthielens/cleo-labs-util 5.5 cleo-labs-util-5.5.0.0-SNAPSHOT.jar      $here >/dev/null
-    githubassetdownload jthielens/cleo-core      5.5 cleo-labs-api-shell-5.5.0.0-SNAPSHOT.jar $here >/dev/null
+    githubassetdownload jthielens/cleo-labs-util 5.6 cleo-labs-util-5.6.0.0-SNAPSHOT.jar      $here >/dev/null
+    githubassetdownload jthielens/cleo-core      5.6 cleo-labs-api-shell-5.6.0.0-SNAPSHOT.jar $here >/dev/null
     githubdownload      jthielens/versalex-ops       tools/cleo-util.sh                       $here >/dev/null
     githubdownload      jthielens/versalex-ops       service/cleo-service                     $here >/dev/null
     githubdownload      jthielens/cleo-core          shell.sh                                 $here >/dev/null
@@ -86,7 +86,7 @@ else
         cleohome=$(cd $cleohome && pwd -P)
         echo "CLEOHOME=$cleohome"
         unset DISPLAY
-        classpath=$here/cleo-labs-api-shell-5.5.0.0-SNAPSHOT.jar:$here/cleo-labs-util-5.5.0.0-SNAPSHOT.jar:$(find $cleohome/lib -type d|sed 's|$|/*|'|paste -s -d : -):$cleohome/webserver/AjaxSwing/lib/ajaxswing.jar
+        classpath=$here/cleo-labs-api-shell-5.6.0.0-SNAPSHOT.jar:$here/cleo-labs-util-5.6.0.0-SNAPSHOT.jar:$(find $cleohome/lib -type d|sed 's|$|/*|'|paste -s -d : -):$cleohome/webserver/AjaxSwing/lib/ajaxswing.jar
         (cd $cleohome; ./jre/bin/java -cp $classpath com.cleo.labs.api.shell.Shell -h . -m client "$@")
     else
         echo "Cleo installation not found"
