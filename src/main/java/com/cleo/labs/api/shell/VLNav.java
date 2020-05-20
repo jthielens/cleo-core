@@ -73,35 +73,41 @@ public class VLNav {
             this(access, null);
         }
     }
+    // VLTree;UsrTree;AppTree;CACrt;UsrCrt;Optns;Prxy;AS400;WinUnx;Lic;Sched;Route;LL;Hosts;SYS;SCR;TP EDITABLE
+    // Optns;Sched;Route;LL;Hosts;SYS;SCR STARTSTOP
     public enum Privilege {
-        SYSTEMS      ("VLTraders tree",                 "E-", "Systems tree", AccessInternal.SYSTEMS_TREE),
-        USERS        ("Users tree",                     "E-", "Users tree", AccessInternal.USERS_TREE),
-        APPLICATIONS ("Applications tree",              "E-", "Applications tree", AccessInternal.APPS_TREE),
-        CERTS        ("certs/*",                        "E-", "Trading partner/CA certificates"),
-        DATA         ("data/*",                         "E-", "User certificates/private keys"),
-        OPTIONS      ("conf/Options.xml",               "ES", "System options"),
-        PROXIES      ("conf/Proxies.xml",               "E-", "Proxy settings"),
-        AS400        ("conf/AS400.xml",                 "E-", "AS/400 configuration"),
-        FOLDERS      ("conf/WinUnixFolders.xml",        "E-", "Windows/Unix folders configuration"),
-        LICENSE      ("License",                        "E-", "License"),
-        SCHEDULE     ("conf/Schedule.xml",              "ES", "Schedule"),
-        ROUTES       ("conf/Route.xml",                 "ES", "Routes"),
-        _ROUTER      ("conf/Router.xml",                "ES", "Routes"), // ROUTES and ROUTER go together :-(
-        LISTENER     ("hosts/Local Listener.xml",       "ES", "Local Listener"),
-        HOSTS        ("hosts/*.xml",                    "ES", "Hosts", AccessInternal.HOSTS_TREE),
-        PARTNERS     ("conf/TradingPartners.xml",       "E-", "Trading partners"),
-        REPORT       ("TR",                             "--", "Transfer report");
+        SYSTEMS      ("VLTree",  "VLTraders tree",                 "E-", "Systems tree", AccessInternal.SYSTEMS_TREE),
+        USERS        ("UsrTree", "Users tree",                     "E-", "Users tree", AccessInternal.USERS_TREE),
+        APPLICATIONS ("AppTree", "Applications tree",              "E-", "Applications tree", AccessInternal.APPS_TREE),
+        CERTS        ("CACrt",   "certs/*",                        "E-", "Trading partner/CA certificates"),
+        DATA         ("UsrCrt",  "data/*",                         "E-", "User certificates/private keys"),
+        OPTIONS      ("Optns",   "conf/Options.xml",               "ES", "System options"),
+        PROXIES      ("Prxy",    "conf/Proxies.xml",               "E-", "Proxy settings"),
+        AS400        ("AS400",   "conf/AS400.xml",                 "E-", "AS/400 configuration"),
+        FOLDERS      ("WinUnx",  "conf/WinUnixFolders.xml",        "E-", "Windows/Unix folders configuration"),
+        LICENSE      ("Lic",     "License",                        "E-", "License"),
+        SCHEDULE     ("Sched",   "conf/Schedule.xml",              "ES", "Schedule"),
+        ROUTES       ("Route",   "conf/Route.xml",                 "ES", "Routes"),
+        _ROUTER      ("",        "conf/Router.xml",                "ES", "Routes"), // ROUTES and ROUTER go together :-(
+        LISTENER     ("LL",      "hosts/Local Listener.xml",       "ES", "Local Listener"),
+        HOSTS        ("Hosts",   "hosts/*.xml",                    "ES", "Hosts", AccessInternal.HOSTS_TREE),
+        SYS          ("SYS",     "",                               "ES", "System Actions"),
+        SCR          ("SCR",     "",                               "ES", "Script Actions"),
+        PARTNERS     ("TP",      "conf/TradingPartners.xml",       "E-", "Trading partners"),
+        REPORT       ("TR",      "TR",                             "--", "Transfer report");
         public String         token;
+        public String         legacy;
         public boolean        editable;
         public boolean        startable;
         public boolean        branched;
         public String         description;
         public AccessInternal tree;
-        private Privilege(String token, String flags, String description) {
-            this(token, flags, description, null);
+        private Privilege(String token, String legacy, String flags, String description) {
+            this(token, legacy, flags, description, null);
         }
-        private Privilege(String token, String flags, String description, AccessInternal tree) {
+        private Privilege(String token, String legacy, String flags, String description, AccessInternal tree) {
             this.token       = token;
+            this.legacy      = legacy;
             this.editable    = flags.contains("E");
             this.startable   = flags.contains("S");
             this.branched    = tree!=null;
@@ -122,20 +128,26 @@ public class VLNav {
             for (Map.Entry<Privilege,ScopedAccess> e : privs.entrySet()) {
                 if (e.getKey().startable && (e.getValue().access==Access.CTRL || e.getValue().access==Access.FULL)) {
                     sets.get(AccessInternal.STOPSTART).add(e.getKey().token);
+                    /* this is gone now
                     if (e.getKey()==ROUTES) {
                         sets.get(AccessInternal.STOPSTART).add(_ROUTER.token);
                     }
+                    */
                 }
                 if (e.getKey().editable && (e.getValue().access!=Access.READ)) {
                     sets.get(AccessInternal.EDITABLE).add(e.getKey().token);
+                    /* this is gone now
                     if (e.getKey()==ROUTES) {
                         sets.get(AccessInternal.EDITABLE).add(_ROUTER.token);
                     }
+                    */
                 } else {
                     sets.get(AccessInternal.VIEWONLY).add(e.getKey().token);
+                    /* this is gone now
                     if (e.getKey()==ROUTES) {
                         sets.get(AccessInternal.VIEWONLY).add(_ROUTER.token);
                     }
+                    */
                 }
                 if (e.getKey().branched && e.getValue().scope!=null) {
                     sets.get(e.getKey().tree).addAll(Arrays.asList(e.getValue().scope));
@@ -156,9 +168,9 @@ public class VLNav {
             Set<String> editables  = sets.get(AccessInternal.EDITABLE );
             Set<String> viewonlys  = sets.get(AccessInternal.VIEWONLY );
             for (Privilege p : Privilege.values()) {
-                boolean stopstart = stopstarts!=null && stopstarts.contains(p.token);
-                boolean editable  = editables !=null && editables .contains(p.token);
-                boolean viewonly  = viewonlys !=null && viewonlys .contains(p.token);
+                boolean stopstart = stopstarts!=null && (stopstarts.contains(p.token) || stopstarts.contains(p.legacy));
+                boolean editable  = editables !=null && (editables .contains(p.token) || editables .contains(p.legacy));
+                boolean viewonly  = viewonlys !=null && (viewonlys .contains(p.token) || viewonlys .contains(p.legacy));
                 Access  access    = null;
                 if (p.startable) {
                     if  (stopstart && (!p.editable || editable)) {

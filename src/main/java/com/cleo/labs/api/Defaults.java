@@ -4,6 +4,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -77,11 +78,12 @@ public class Defaults {
     static {
         Map<String,String> map;
         // *** from here
-     // AS2: com.cleo.lexicom.beans.as2bean.AS2Host / com.cleo.lexicom.beans.as2bean.AS2Mailbox
+ // AS2: com.cleo.lexicom.beans.as2bean.AS2Host / com.cleo.lexicom.beans.as2bean.AS2Mailbox
         map = new TreeMap<String,String>();
         map.put(".cemcapable", "False");
         map.put(".secure", "False");
         map.put(".servercertfile", "");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Addcontenttypetoinbox", "False");
         map.put("Advanced.AutoAcceptReceivedCertificate(CEM)", "");
@@ -92,6 +94,7 @@ public class Defaults {
         map.put("Advanced.PGPCompressionAlgorithm", "System Default");
         map.put("Advanced.PGPEncryptionAlgorithm", "System Default");
         map.put("Advanced.PGPHashAlgorithm", "System Default");
+        map.put("Advanced.RSA-OAEPKeyAlgorithmParameter", "MGF1-SHA1");
         map.put("Advanced.SSLCipher", "");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
@@ -126,6 +129,7 @@ public class Defaults {
         map.put("Serviceoverride", "False");
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[PUT]", "POST /as2\nAS2-From=,AS2-To=,Subject=,[Content-Type=|EDIFACT|X12|XML|Binary|Plain Text|EDI Consent|]");
+        map.put("Uidswpd", "True");
         map.put("Usedefaultfilename", "False");
         hostmap.put(HostType.AS2, map);
         map = new TreeMap<String,String>();
@@ -136,6 +140,7 @@ public class Defaults {
         map.put(".localencrpending", "False");
         map.put(".localencrreadonly", "False");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerclientcertfile", "");
@@ -157,12 +162,13 @@ public class Defaults {
         map.put("Forceencryption", "False");
         map.put("Forcemdnsignature", "False");
         map.put("Forcesignature", "False");
-        map.put("Localpackaging", "None");
+        map.put("Keyencryptionalgorithm", "0");
         map.put("Localreadonly", "False");
         map.put("Localsignpending", "False");
         map.put("Mictype", "0");
         map.put("Overridelistenercerts", "False");
         map.put("Receiptdesired", "False");
+        map.put("Signaturealgorithm", "0");
         map.put("Signedreceipt", "False");
         map.put("Signedrequest", "False");
         map.put("Useencrcert", "False");
@@ -173,6 +179,7 @@ public class Defaults {
         map = new TreeMap<String,String>();
         map.put(".securitymode", "None");
         map.put(".servercertfile", "");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
@@ -227,6 +234,7 @@ public class Defaults {
         map.put("Serverrequirestempdirectory", "False");
         map.put("Serverrequiresuniquefilenames", "False");
         map.put("Substitutepassiveipaddress", "True");
+        map.put("Uidswpd", "True");
         map.put("Usedefaultfilename", "False");
         hostmap.put(HostType.AS3, map);
         map = new TreeMap<String,String>();
@@ -239,6 +247,7 @@ public class Defaults {
         map.put(".localencrpending", "False");
         map.put(".localencrreadonly", "False");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerdecryptcert", "");
@@ -259,7 +268,7 @@ public class Defaults {
         map.put("Forceencryption", "False");
         map.put("Forcemdnsignature", "False");
         map.put("Forcesignature", "False");
-        map.put("Localpackaging", "None");
+        map.put("Keyencryptionalgorithm", "0");
         map.put("Localreadonly", "False");
         map.put("Localsignpending", "False");
         map.put("Mictype", "0");
@@ -269,6 +278,7 @@ public class Defaults {
         map.put("Overridelistenercerts", "False");
         map.put("Partneroverridelistenercert", "True");
         map.put("Receiptdesired", "True");
+        map.put("Signaturealgorithm", "0");
         map.put("Signedreceipt", "True");
         map.put("Signedrequest", "True");
         map.put("Subject", "AS3 Message");
@@ -280,6 +290,7 @@ public class Defaults {
         map = new TreeMap<String,String>();
         map.put(".id", "*Rw**");
         map.put(".secure", "False");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Addcontenttypetoinbox", "False");
         map.put("Advanced.Compression-SigningOrder", "Sign then compress");
@@ -321,6 +332,7 @@ public class Defaults {
         map.put("Standardhtmldirectory", "True");
         map.put("Storerawsent", "False");
         map.put("Syntax[PUT]", "POST /ebMS\nSOAPAction=\"ebXML\",[Content-Type=|EDIFACT|X12|XML|Binary|Plain Text|EDI-Consent|]");
+        map.put("Uidswpd", "True");
         map.put("Usedefaultfilename", "False");
         hostmap.put(HostType.EBMS, map);
         map = new TreeMap<String,String>();
@@ -328,6 +340,7 @@ public class Defaults {
         map.put(".localencrcertalias", "");
         map.put(".localencrcertpassword", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerclientcertfile", "");
@@ -348,7 +361,6 @@ public class Defaults {
         map.put("Forceencryption", "False");
         map.put("Forcesignature", "False");
         map.put("Honorreplyrequests", "Any");
-        map.put("Localpackaging", "None");
         map.put("Overridelistenercerts", "False");
         map.put("Overridelistenerfromroleserviceaction", "False");
         map.put("Preservemessageorder", "False");
@@ -360,6 +372,7 @@ public class Defaults {
         mailboxmap.put(HostType.EBMS, map);
 // FTP: com.cleo.lexicom.beans.ftpbean.FtpHost / com.cleo.lexicom.beans.ftpbean.FtpMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
@@ -390,15 +403,16 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Substitutepassiveipaddress", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.FTP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
-        map.put("Localpackaging", "None");
         map.put("Nopasswordrequired", "False");
         map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
@@ -406,6 +420,7 @@ public class Defaults {
 // FTPS: com.cleo.lexicom.beans.ftpbean.secure.FtpsHost / com.cleo.lexicom.beans.ftpbean.secure.FtpsMailbox
         map = new TreeMap<String,String>();
         map.put(".securitymode", "SSL AUTH");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Activedataporthigh", "0");
         map.put("Activedataportlow", "0");
@@ -443,24 +458,26 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Substitutepassiveipaddress", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.FTPS, map);
         map = new TreeMap<String,String>();
         map.put(".clientcertalias", "");
         map.put(".clientcertpassword", "");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
         map.put(".partnerservercertfile", "");
-        map.put("Localpackaging", "None");
         map.put("Nopasswordrequired", "False");
         map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
         mailboxmap.put(HostType.FTPS, map);
 // HTTP: com.cleo.lexicom.beans.httpbean.HttpHost / com.cleo.lexicom.beans.httpbean.HttpMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -489,21 +506,23 @@ public class Defaults {
         map.put("Secureportrequired", "False");
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[PUT]", "POST \nContent-type=|application/x-www-form-urlencoded|multipart/form-data|application/octet-stream|");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.HTTP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
         map.put("Authtype", "0");
         map.put("Header[PUT]", "Content-type=application/x-www-form-urlencoded");
-        map.put("Localpackaging", "None");
         mailboxmap.put(HostType.HTTP, map);
 // HTTPS: com.cleo.lexicom.beans.httpbean.secure.HttpsHost / com.cleo.lexicom.beans.httpbean.secure.HttpsMailbox
         map = new TreeMap<String,String>();
         map.put(".secure", "False");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -534,20 +553,22 @@ public class Defaults {
         map.put("Secureportrequired", "False");
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[PUT]", "POST \nContent-type=|application/x-www-form-urlencoded|multipart/form-data|application/octet-stream|");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.HTTPS, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
         map.put("Authtype", "0");
         map.put("Header[PUT]", "Content-type=multipart/form-data");
-        map.put("Localpackaging", "None");
         mailboxmap.put(HostType.HTTPS, map);
 // MQ: com.cleo.lexicom.beans.mqbean.MQHost / com.cleo.lexicom.beans.mqbean.MQMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -555,6 +576,7 @@ public class Defaults {
         map.put("Advanced.PGPCompressionAlgorithm", "System Default");
         map.put("Advanced.PGPEncryptionAlgorithm", "System Default");
         map.put("Advanced.PGPHashAlgorithm", "System Default");
+        map.put("Advanced.QueueAccessOnGet", "Exclusive");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
         map.put("Connecttype", "0");
@@ -567,12 +589,15 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
+        map.put("Usedefaultqmanager", "False");
         hostmap.put(HostType.MQ, map);
         map = new TreeMap<String,String>();
         map.put(".enablereceivesecurity", "False");
         map.put(".enablesendsecurity", "False");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
@@ -581,7 +606,6 @@ public class Defaults {
         map.put(".sendauthclient", "False");
         map.put(".usesamesecurity", "True");
         map.put("Forceuppercase", "False");
-        map.put("Localpackaging", "None");
         map.put("Msgpriority", "0");
         map.put("Notreadyreason", "Sender Queue is required.");
         map.put("Sendciphersuite", "SSL_RSA_WITH_3DES_EDE_CBC_SHA");
@@ -592,6 +616,7 @@ public class Defaults {
 // OFTP: com.cleo.lexicom.beans.oftpbean.OFTPHost / com.cleo.lexicom.beans.oftpbean.OFTPMailbox
         map = new TreeMap<String,String>();
         map.put(".securetcpip", "False");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Acecapable", "False");
         map.put("Advanced.DowngradeOFTPVersion", "");
@@ -621,9 +646,10 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Tcpip", "True");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.OFTP, map);
         map = new TreeMap<String,String>();
-        map.put(".authenticationcertalias", "SIGN105");
+        map.put(".authenticationcertalias", "ENCRYPT105");
         map.put(".authenticationmyuseencryptioncert", "True");
         map.put(".authenticationpartneruseencryptioncert", "True");
         map.put(".authpartnercertfile", "");
@@ -632,11 +658,12 @@ public class Defaults {
         map.put(".eerppartnersignfile", "");
         map.put(".eerppartnerusesigningcert", "True");
         map.put(".localdecryptcert", "");
-        map.put(".localencrcertalias", "SIGN105");
-        map.put(".localencrcertpassword", "vlenc:adde274b-e566-415c-9dfa-9de84b079c77:3f7d35a9859f19e3ff63ff91d95d3645");
+        map.put(".localencrcertalias", "ENCRYPT105");
+        map.put(".localencrcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:99e7a66d38a89df8da5325174509c0e6");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "SIGN105");
-        map.put(".localsigncertpassword", "vlenc:adde274b-e566-415c-9dfa-9de84b079c77:f66ba793b71cbd6eed5c4551dcf7d16d");
+        map.put(".localsigncertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:f573de204338fab9f13fc815efa64f14");
         map.put(".partnerclientcertfile", "");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
@@ -650,15 +677,14 @@ public class Defaults {
         map.put(".tlscertpassword", "");
         map.put(".uselocalsamecerts", "True");
         map.put("Allowlistenersendaction", "False");
-        map.put("Authenticationcertpassword", "vlenc:adde274b-e566-415c-9dfa-9de84b079c77:1fcb687279981cf9532aac7ead86ef4a");
+        map.put("Authenticationcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:043eb4239daaadf4a971c5cd3690dcc1");
         map.put("Ciphersuite", "0");
         map.put("Compress", "False");
-        map.put("Eerpcertpassword", "vlenc:adde274b-e566-415c-9dfa-9de84b079c77:2ad51b38ab0225073d8dd6a02f447326");
+        map.put("Eerpcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:9a5f74501b0a509b61e44f3a604a3448");
         map.put("Encryption", "False");
         map.put("Forceencryption", "False");
         map.put("Forcesignature", "False");
         map.put("Listenersendaction", "<send>");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Trading Partner User ID (SSIDCODE) required.");
         map.put("Overridedestination", "False");
         map.put("Overrideid", "False");
@@ -671,6 +697,7 @@ public class Defaults {
         mailboxmap.put(HostType.OFTP, map);
 // SMTP: com.cleo.lexicom.beans.smtpbean.SmtpHost / com.cleo.lexicom.beans.smtpbean.SmtpMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -691,10 +718,12 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Storerawsent", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.SMTP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
@@ -705,13 +734,13 @@ public class Defaults {
         map.put("Dsnondelay", "False");
         map.put("Dsnonsuccessorfailure", "False");
         map.put("Inmediatypes", "*");
-        map.put("Localpackaging", "None");
         map.put("Outmediatypes", "*");
         map.put("Overrideservice", "False");
         mailboxmap.put(HostType.SMTP, map);
 // SMTPS: com.cleo.lexicom.beans.smtpbean.secure.SmtpsHost / com.cleo.lexicom.beans.smtpbean.secure.SmtpsMailbox
         map = new TreeMap<String,String>();
         map.put(".securitymode", "None");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -733,12 +762,14 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Storerawsent", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.SMTPS, map);
         map = new TreeMap<String,String>();
         map.put(".clientcertalias", "");
         map.put(".clientcertpassword", "");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
@@ -749,12 +780,12 @@ public class Defaults {
         map.put("Dsnondelay", "False");
         map.put("Dsnonsuccessorfailure", "False");
         map.put("Inmediatypes", "*");
-        map.put("Localpackaging", "None");
         map.put("Outmediatypes", "*");
         map.put("Overrideservice", "False");
         mailboxmap.put(HostType.SMTPS, map);
 // SFTP: com.cleo.lexicom.beans.sshftpbean.SSHFTPHost / com.cleo.lexicom.beans.sshftpbean.SSHFTPMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.BufferRequests", "true");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
@@ -780,10 +811,13 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
+        map.put("Verifyhostkey", "False");
         hostmap.put(HostType.SFTP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
@@ -791,13 +825,13 @@ public class Defaults {
         map.put(".usepka", "False");
         map.put(".usercert", "");
         map.put(".usercertpassword", "");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Username required.");
         map.put("Partneroverridelistenercert", "True");
         map.put("Usepkafile", "False");
         mailboxmap.put(HostType.SFTP, map);
 // MLLP: com.cleo.lexicom.beans.mllpbean.MLLPHost / com.cleo.lexicom.beans.mllpbean.MLLPMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Ackmode", "HL7 Original Acknowledgments");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
@@ -826,10 +860,12 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.MLLP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
@@ -840,7 +876,6 @@ public class Defaults {
         map.put("Inboundqueuetype", "MSMQ");
         map.put("Inboundrunatstartup", "True");
         map.put("Inboundusequeue", "False");
-        map.put("Localpackaging", "None");
         map.put("Outboundaction", "<send>");
         map.put("Outboundcreatequeue", "True");
         map.put("Outboundqueuename", "DIRECT=OS:.\\Private$\\SendQueue");
@@ -852,6 +887,7 @@ public class Defaults {
 // WS: com.cleo.lexicom.beans.wsbean.WSHost / com.cleo.lexicom.beans.wsbean.WSMailbox
         map = new TreeMap<String,String>();
         map.put(".secure", "False");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -891,12 +927,14 @@ public class Defaults {
         map.put("Syntax[GET]", "");
         map.put("Syntax[PUT]", "");
         map.put("Syntaxversion", "1");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.WS, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencrcertalias", "");
         map.put(".localencrcertpassword", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerdecryptcert", "");
@@ -907,7 +945,6 @@ public class Defaults {
         map.put(".partnersigncertfile", "");
         map.put(".uselocalsamecerts", "True");
         map.put("Authtype", "0");
-        map.put("Localpackaging", "None");
         map.put("Overridelistenercerts", "True");
         map.put("Requiretimestamp", "False");
         map.put("Sendtimestamp", "False");
@@ -919,6 +956,7 @@ public class Defaults {
         map = new TreeMap<String,String>();
         map.put(".folder", "");
         map.put(".secure", "False");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Addpipdirtoinbox", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
@@ -954,6 +992,7 @@ public class Defaults {
         map.put("Secureportrequired", "False");
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[PUT]", "POST /?[pipCode=]&[pipVersion=]&[pipInstanceId=]&[actionType=|request|response|]");
+        map.put("Uidswpd", "True");
         map.put("Usedefaultfilename", "False");
         hostmap.put(HostType.RNIF, map);
         map = new TreeMap<String,String>();
@@ -963,6 +1002,7 @@ public class Defaults {
         map.put(".localencrcertalias", "");
         map.put(".localencrcertpassword", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerdecryptcert", "");
@@ -974,7 +1014,6 @@ public class Defaults {
         map.put(".uselocalsamecerts", "True");
         map.put("Authtype", "0");
         map.put("Hasattachments", "False");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Trading Partner Business Identifier is a required field.");
         map.put("Overridelistenercerts", "False");
         map.put("Overridelistenerids", "False");
@@ -983,6 +1022,7 @@ public class Defaults {
 // EBICS: com.cleo.lexicom.beans.ebicsbean.EBICSHost / com.cleo.lexicom.beans.ebicsbean.EBICSMailbox
         map = new TreeMap<String,String>();
         map.put(".secure", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.EBICSVersion", "EBICS 2.4");
         map.put("Advanced.ESVersion", "A005");
@@ -1020,6 +1060,7 @@ public class Defaults {
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[GET]", "POST \nContent-Type=|text/xml|application/xml|");
         map.put("Syntax[PUT]", "POST \nContent-Type=|text/xml|application/xml|");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.EBICS, map);
         map = new TreeMap<String,String>();
         map.put(".certalias", "");
@@ -1029,6 +1070,7 @@ public class Defaults {
         map.put(".localencrcertalias", "");
         map.put(".localencrcertpassword", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerclientcertfile", "");
@@ -1043,7 +1085,6 @@ public class Defaults {
         map.put("Authtype", "0");
         map.put("Header[GET]", "Content-Type=text/xml");
         map.put("Header[PUT]", "Content-Type=text/xml");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "EBICS tab:  My Partner ID is required.  Must be a string up to 35 characters ([a-zA-Z0-9,=]).");
         map.put("Overridelistenercerts", "False");
         map.put("Signatureclass", "Transport signature (type 'T')");
@@ -1051,6 +1092,7 @@ public class Defaults {
         mailboxmap.put(HostType.EBICS, map);
 // FASP: com.cleo.lexicom.beans.faspbean.FaspHost / com.cleo.lexicom.beans.faspbean.FaspMailbox
         map = new TreeMap<String,String>();
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.Encryption", "None");
         map.put("Advanced.OutboxSort", "System Default");
@@ -1073,16 +1115,17 @@ public class Defaults {
         map.put("Runninglocalrequired", "False");
         map.put("Secureportrequired", "False");
         map.put("Udpport", "-1");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.FASP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
         map.put(".usepka", "False");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Username required.");
         map.put("Packagingdecrypt", "False");
         map.put("Packagingencrypt", "False");
@@ -1091,6 +1134,7 @@ public class Defaults {
 // HSP: com.cleo.lexicom.beans.hspbean.HspHost / com.cleo.lexicom.beans.hspbean.HspMailbox
         map = new TreeMap<String,String>();
         map.put(".secure", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriority", "");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
@@ -1123,12 +1167,14 @@ public class Defaults {
         map.put("Secureportrequired", "False");
         map.put("Standardhtmldirectory", "True");
         map.put("Syntax[PUT]", "POST /hsp\nchannels=|1|2|8|16|32|");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.HSP, map);
         map = new TreeMap<String,String>();
         map.put(".localdecryptcert", "");
         map.put(".localencrcertalias", "");
         map.put(".localencrcertpassword", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerdecryptcert", "");
@@ -1140,15 +1186,18 @@ public class Defaults {
         map.put(".partnersigncertfile", "");
         map.put(".uselocalsamecerts", "True");
         map.put("Authtype", "0");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Trading Parter Signing Certificate is required.");
         map.put("Overridelistenercerts", "False");
         map.put("Usepartnersamecerts", "True");
         mailboxmap.put(HostType.HSP, map);
 // LOCAL_USER: com.cleo.lexicom.beans.OmniLocalUserHost / com.cleo.lexicom.beans.OmniLocalUserMailbox
         map = new TreeMap<String,String>();
+        map.put(".allowedprotocols", "FTP,HTTP,SSHFTP");
+        map.put(".homedirenabled", "True");
         map.put(".omni", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
+        map.put("Advanced.AllowActionsToRunConcurrently", "true");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
         map.put("Advanced.OutboxSort", "System Default");
@@ -1157,13 +1206,12 @@ public class Defaults {
         map.put("Advanced.PGPHashAlgorithm", "System Default");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
-        map.put("Allowedprotocols", "FTP,SSHFTP,HTTP");
         map.put("Connecttype", "0");
         map.put("Defaulthomedir", "local\\root\\%username%");
         map.put("Editable", "True");
         map.put("Enablepasswordpolicy", "False");
-        map.put("Folderpermission", "root=overwrite,delete,download,upload");
-        map.put("Inbox", "outbox/");
+        map.put("Folderpermission", "root=download,upload,overwrite,delete");
+        map.put("Inbox", "outbox\\");
         map.put("Incomingfilepatterns", "*");
         map.put("Incomingmediatypes", "*");
         map.put("Index", "0");
@@ -1172,7 +1220,7 @@ public class Defaults {
         map.put("Ipfilterrequired", "False");
         map.put("Makeremovedirectories", "False");
         map.put("Notes", "This contains the local HTTP, FTP, and SSH FTP server user accounts.  These work in conjunction with the settings in the Local Listener HTTP, FTP and SSH FTP tabs.");
-        map.put("Outbox", "inbox/");
+        map.put("Outbox", "inbox\\");
         map.put("Overridepasswordpolicy", "False");
         map.put("Port", "0");
         map.put("Readonlyusers", "False");
@@ -1180,29 +1228,40 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "True");
         map.put("Secureportrequired", "False");
+        map.put("Twofactorauthentication", "False");
+        map.put("Uidswpd", "True");
+        map.put("Usersmayinvite", "False");
+        map.put("Usersmayshare", "False");
         map.put("Viewpartnermailboxes", "False");
+        map.put("Viewtransfers", "True");
         hostmap.put(HostType.LOCAL_USER, map);
         map = new TreeMap<String,String>();
         map.put(".associateprimarymailbox", "False");
         map.put(".ldapusergroup", "False");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerclientcertfile", "");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
         map.put(".partnerencryptcert", "");
         map.put(".partnerpackaging", "None");
+        map.put("Allowpassorsshkey", "False");
+        map.put("Homedirectorytype", "DEFAULT_HOME");
         map.put("Ldaphomedir", "False");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
         map.put("Pipeincomingpayload", "False");
+        map.put("Requirepassandsshkey", "False");
+        map.put("Requirepasswordchangenextlogin", "False");
         map.put("Usedefroot", "True");
         map.put("Userlockedoutuntil", "0");
         mailboxmap.put(HostType.LOCAL_USER, map);
 // LOCAL_FTP: com.cleo.lexicom.beans.FtpUserHost / com.cleo.lexicom.beans.FtpUserMailbox
         map = new TreeMap<String,String>();
+        map.put(".homedirenabled", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1231,6 +1290,7 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "True");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.LOCAL_FTP, map);
         map = new TreeMap<String,String>();
         map.put(".as3user", "False");
@@ -1242,6 +1302,7 @@ public class Defaults {
         map.put(".localencrpending", "False");
         map.put(".localencrreadonly", "False");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "");
         map.put(".localsigncertpassword", "");
         map.put(".partnerdecryptcert", "");
@@ -1273,8 +1334,8 @@ public class Defaults {
         map.put("Forcemdnsignature", "False");
         map.put("Forcesignature", "False");
         map.put("Homedirectory", "myTradingPartner");
+        map.put("Keyencryptionalgorithm", "0");
         map.put("Ldaphomedir", "False");
-        map.put("Localpackaging", "None");
         map.put("Localreadonly", "False");
         map.put("Localsignpending", "False");
         map.put("Messageversion", "1.1");
@@ -1285,6 +1346,8 @@ public class Defaults {
         map.put("Overridelistenercerts", "False");
         map.put("Pipeincomingpayload", "False");
         map.put("Receiptdesired", "False");
+        map.put("Requirepasswordchangenextlogin", "False");
+        map.put("Signaturealgorithm", "0");
         map.put("Signedreceipt", "False");
         map.put("Signedrequest", "False");
         map.put("Usedefroot", "True");
@@ -1296,6 +1359,8 @@ public class Defaults {
         mailboxmap.put(HostType.LOCAL_FTP, map);
 // LOCAL_HTTP: com.cleo.lexicom.beans.httpserver.HttpUserHost / com.cleo.lexicom.beans.httpserver.HttpUserMailbox
         map = new TreeMap<String,String>();
+        map.put(".homedirenabled", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1329,6 +1394,7 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "True");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
         map.put("Usedefaultfilename", "False");
         map.put("Usemetadata", "False");
         map.put("Viewpartnermailboxes", "False");
@@ -1339,6 +1405,7 @@ public class Defaults {
         map.put(".ldapusergroup", "False");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerclientcertfile", "");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
@@ -1356,17 +1423,19 @@ public class Defaults {
         map.put("Advanced.action.NoSubDirectories", "");
         map.put("Homedirectory", "myTradingPartner");
         map.put("Ldaphomedir", "False");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
         map.put("Pipeincomingpayload", "False");
+        map.put("Requirepasswordchangenextlogin", "False");
         map.put("Usedefroot", "True");
         map.put("Userlockedoutuntil", "0");
         map.put("Zipportaluploads", "False");
         mailboxmap.put(HostType.LOCAL_HTTP, map);
 // LOCAL_SFTP: com.cleo.lexicom.beans.SshFtpUserHost / com.cleo.lexicom.beans.SshFtpUserMailbox
         map = new TreeMap<String,String>();
+        map.put(".homedirenabled", "True");
+        map.put(".standaloneaction", "False");
         map.put(".test", "False");
         map.put("Advanced.HighPriorityIncomingWeight", "10");
         map.put("Advanced.HighPriorityOutgoingWeight", "10");
@@ -1394,11 +1463,13 @@ public class Defaults {
         map.put("Runnable", "True");
         map.put("Runninglocalrequired", "True");
         map.put("Secureportrequired", "False");
+        map.put("Uidswpd", "True");
         hostmap.put(HostType.LOCAL_SFTP, map);
         map = new TreeMap<String,String>();
         map.put(".ldapusergroup", "False");
         map.put(".localdecryptcert", "");
         map.put(".localencryptcert", "");
+        map.put(".localpackaging", "None");
         map.put(".partnerclientcertfile", "");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
@@ -1416,11 +1487,11 @@ public class Defaults {
         map.put("Advanced.action.NoSubDirectories", "");
         map.put("Homedirectory", "myTradingPartner");
         map.put("Ldaphomedir", "False");
-        map.put("Localpackaging", "None");
         map.put("Notreadyreason", "Password required.");
         map.put("Overridedomain", "False");
         map.put("Overridefilter", "False");
         map.put("Pipeincomingpayload", "False");
+        map.put("Requirepasswordchangenextlogin", "False");
         map.put("Usedefroot", "True");
         map.put("Usepkafile", "False");
         map.put("Userlockedoutuntil", "0");
@@ -1523,6 +1594,9 @@ public class Defaults {
     public static Map<String,String> suppressHostDefaults(HostType type, Map<String,String> props) {
         if (props!=null) {
             Map<String,String> defaults = getHostDefaults(type);
+            if (defaults == null) {
+                defaults = Collections.emptyMap();
+            }
             Iterator<Map.Entry<String,String>> i = props.entrySet().iterator();
             while (i.hasNext()) {
                 Map.Entry<String,String> e = i.next();
