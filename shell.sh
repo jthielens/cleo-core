@@ -36,7 +36,7 @@ servicehome() {
     init=`ps -p1 | grep systemd > /dev/null && echo systemd || echo upstart`
     service=$1
     if [ "$init" = "systemd" ]; then
-        sed -n '/^Environment=CLEOHOME=/s/.*=\s*//p' /lib/systemd/system/$service.service 2>/dev/null
+        sed -n '/^Environment=CLEOHOME=/s/.*=\s*//p' /etc/systemd/system/$service.service 2>/dev/null
     else
         sed -n '/^env\s*CLEOHOME=/s/.*=\s*//p' /etc/init/$service.conf 2>/dev/null
     fi
