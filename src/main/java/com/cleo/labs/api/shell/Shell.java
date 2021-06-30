@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.rmi.RemoteException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -224,9 +223,11 @@ public class Shell extends REPL {
                    +" ["+license.getSerialNumber()+"]"
                    +" on "+Util.licensed_hosts(license.getAllowedHosts())
                    +" "+Util.licensed_until(license));
+            report("  hosts: "+license.getActiveHostCount());
+            report("  mailboxes: "+Arrays.toString(license.getActiveMailboxCount()));
             report("  platforms: "+Util.licensed_platform(license.getPlatform()));
             report("  features:  "+Util.licensed_features(license));
-        } catch (RemoteException e) {
+        } catch (Exception e) {
             error(e);
         }
     }

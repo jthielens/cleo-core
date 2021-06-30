@@ -541,4 +541,14 @@ public class LexiCom {
         connect();
         return lexicom.getVersion();
     }
+    public static void main(String[] args) {
+        for (String arg : args) {
+            try {
+                System.out.println(hash(arg));
+            } catch (Exception e) {
+                System.err.println("error hashing "+arg);
+                e.printStackTrace();
+            }
+        }
+    }
 }
