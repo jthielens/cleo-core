@@ -18,8 +18,8 @@ import com.cleo.labs.util.DB;
 import com.cleo.labs.util.S;
 
 public class VLNav {
-    public static final int IS = 1;
-    public static final int ISNT = 0;
+    public static final boolean IS = true;
+    public static final boolean ISNT = false;
 
     private enum AccessInternal {
         VIEWONLY, EDITABLE, STOPSTART,
@@ -353,7 +353,7 @@ public class VLNav {
             }
         }
         if (appl_type==null || appl_type.isEmpty()) {
-            appl_type = db.loadDictionary("VLApplicationNum", "Application", "IsEnabled=1");
+            appl_type = db.loadDictionary("VLApplicationNum", "Application", "IsEnabled=true");
             type_appl = new HashMap<Integer,String>();
             appl_lookup = new HashMap<String,String>();
             for (Map.Entry<String, Integer> e : appl_type.entrySet()) {
