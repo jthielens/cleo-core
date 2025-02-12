@@ -78,7 +78,7 @@ public class Defaults {
     static {
         Map<String,String> map;
         // *** from here
- // AS2: com.cleo.lexicom.beans.as2bean.AS2Host / com.cleo.lexicom.beans.as2bean.AS2Mailbox
+// AS2: com.cleo.lexicom.beans.as2bean.AS2Host / com.cleo.lexicom.beans.as2bean.AS2Mailbox
         map = new TreeMap<String,String>();
         map.put(".cemcapable", "False");
         map.put(".secure", "False");
@@ -659,11 +659,11 @@ public class Defaults {
         map.put(".eerppartnerusesigningcert", "True");
         map.put(".localdecryptcert", "");
         map.put(".localencrcertalias", "ENCRYPT105");
-        map.put(".localencrcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:99e7a66d38a89df8da5325174509c0e6");
+        map.put(".localencrcertpassword", "vlenc:7a8f96e3-6d3e-4b78-9460-1b8752647b78:24697a1f2ced19c22e2dfbec0cb1ccc3");
         map.put(".localencryptcert", "");
         map.put(".localpackaging", "None");
         map.put(".localsigncertalias", "SIGN105");
-        map.put(".localsigncertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:f573de204338fab9f13fc815efa64f14");
+        map.put(".localsigncertpassword", "vlenc:7a8f96e3-6d3e-4b78-9460-1b8752647b78:d2ed6f35c623162fd723d92e57339aba");
         map.put(".partnerclientcertfile", "");
         map.put(".partnerdecryptcert", "");
         map.put(".partnerdecryptpassword", "");
@@ -677,10 +677,10 @@ public class Defaults {
         map.put(".tlscertpassword", "");
         map.put(".uselocalsamecerts", "True");
         map.put("Allowlistenersendaction", "False");
-        map.put("Authenticationcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:043eb4239daaadf4a971c5cd3690dcc1");
+        map.put("Authenticationcertpassword", "vlenc:7a8f96e3-6d3e-4b78-9460-1b8752647b78:c230de7f3cba817d8fa5b5889ec53126");
         map.put("Ciphersuite", "0");
         map.put("Compress", "False");
-        map.put("Eerpcertpassword", "vlenc:73367ce4-ea5e-498e-9463-f1c8294a0eea:9a5f74501b0a509b61e44f3a604a3448");
+        map.put("Eerpcertpassword", "vlenc:7a8f96e3-6d3e-4b78-9460-1b8752647b78:205023e87c59d228ed0cd2e150e037c1");
         map.put("Encryption", "False");
         map.put("Forceencryption", "False");
         map.put("Forcesignature", "False");
@@ -970,6 +970,7 @@ public class Defaults {
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
         map.put("Checkservername", "False");
+        map.put("Cidx", "False");
         map.put("Connecttype", "0");
         map.put("Editable", "True");
         map.put("Fileidentifiedby", "0");
@@ -1204,13 +1205,14 @@ public class Defaults {
         map.put("Advanced.PGPCompressionAlgorithm", "System Default");
         map.put("Advanced.PGPEncryptionAlgorithm", "System Default");
         map.put("Advanced.PGPHashAlgorithm", "System Default");
+        map.put("Advanced.RequestAndResponseEvents", "Log");
         map.put("Advanced.XMLEncryptionAlgorithm", "System Default");
         map.put("Advanced.ZipCompressionLevel", "System Default");
         map.put("Connecttype", "0");
         map.put("Defaulthomedir", "local\\root\\%username%");
         map.put("Editable", "True");
         map.put("Enablepasswordpolicy", "False");
-        map.put("Folderpermission", "root=download,upload,overwrite,delete");
+        map.put("Folderpermission", "root=overwrite,download,delete,upload");
         map.put("Inbox", "outbox\\");
         map.put("Incomingfilepatterns", "*");
         map.put("Incomingmediatypes", "*");
@@ -1218,6 +1220,7 @@ public class Defaults {
         map.put("Indexdate", "-1");
         map.put("Internal", "0");
         map.put("Ipfilterrequired", "False");
+        map.put("Localtwofactor", "True");
         map.put("Makeremovedirectories", "False");
         map.put("Notes", "This contains the local HTTP, FTP, and SSH FTP server user accounts.  These work in conjunction with the settings in the Local Listener HTTP, FTP and SSH FTP tabs.");
         map.put("Outbox", "inbox\\");
@@ -1231,7 +1234,6 @@ public class Defaults {
         map.put("Twofactorauthentication", "False");
         map.put("Uidswpd", "True");
         map.put("Usersmayinvite", "False");
-        map.put("Usersmayshare", "False");
         map.put("Viewpartnermailboxes", "False");
         map.put("Viewtransfers", "True");
         hostmap.put(HostType.LOCAL_USER, map);
@@ -1255,6 +1257,8 @@ public class Defaults {
         map.put("Pipeincomingpayload", "False");
         map.put("Requirepassandsshkey", "False");
         map.put("Requirepasswordchangenextlogin", "False");
+        map.put("Samluser", "False");
+        map.put("Twofactoractive", "False");
         map.put("Usedefroot", "True");
         map.put("Userlockedoutuntil", "0");
         mailboxmap.put(HostType.LOCAL_USER, map);
@@ -1347,9 +1351,11 @@ public class Defaults {
         map.put("Pipeincomingpayload", "False");
         map.put("Receiptdesired", "False");
         map.put("Requirepasswordchangenextlogin", "False");
+        map.put("Samluser", "False");
         map.put("Signaturealgorithm", "0");
         map.put("Signedreceipt", "False");
         map.put("Signedrequest", "False");
+        map.put("Twofactoractive", "False");
         map.put("Usedefroot", "True");
         map.put("Useencrcert", "False");
         map.put("Userlockedoutuntil", "0");
@@ -1428,6 +1434,8 @@ public class Defaults {
         map.put("Overridefilter", "False");
         map.put("Pipeincomingpayload", "False");
         map.put("Requirepasswordchangenextlogin", "False");
+        map.put("Samluser", "False");
+        map.put("Twofactoractive", "False");
         map.put("Usedefroot", "True");
         map.put("Userlockedoutuntil", "0");
         map.put("Zipportaluploads", "False");
@@ -1492,6 +1500,8 @@ public class Defaults {
         map.put("Overridefilter", "False");
         map.put("Pipeincomingpayload", "False");
         map.put("Requirepasswordchangenextlogin", "False");
+        map.put("Samluser", "False");
+        map.put("Twofactoractive", "False");
         map.put("Usedefroot", "True");
         map.put("Usepkafile", "False");
         map.put("Userlockedoutuntil", "0");

@@ -7,6 +7,7 @@ public enum HostType {
     AS3        (Protocol.FTP_CLIENT,    Packaging.AS3,   ".DG", "AS3/FTP", "Generic Cleo VersaLex AS3"),
     EBMS       (Protocol.HTTP_CLIENT,   Packaging.EBMS,  "...", "ebXML Message Service/HTTP",
                                                                            "Generic ebXML"),
+    AS4        (Protocol.HTTP_CLIENT,   Packaging.AS4,   "...", "AS4/HTTP"),
     FTP        (Protocol.FTP_CLIENT,    Packaging.NONE,  ".DG", "FTP"),
     FTPS       (Protocol.FTP_CLIENT,    Packaging.NONE,  ".DG", "FTPs",    "Generic FTPs"),
     HTTP       (Protocol.HTTP_CLIENT,   Packaging.NONE,  ".DG", "HTTP"),

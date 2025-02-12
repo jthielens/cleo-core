@@ -8,6 +8,7 @@ public enum Packaging {
     NONE           (ILexiCom.NONE),
     AS2            (ILexiCom.AS2),
     AS3            (ILexiCom.AS3),
+    AS4            (ILexiCom.AS4),
     EBMS           (ILexiCom.ebMS),
     OPENPGP        (ILexiCom.OPENPGP),
     XML_ENCRYPTION (ILexiCom.XML_ENCRYPTION),
@@ -28,6 +29,9 @@ public enum Packaging {
     }
     
     public static Packaging valueOf(int id) {
-        return index.get(id);
+        if (index.containsKey(id)) {
+            return index.get(id);
+        }
+        return NONE;
     }
 }
